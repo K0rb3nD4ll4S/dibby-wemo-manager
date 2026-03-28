@@ -6,7 +6,7 @@ Dibby Wemo Manager gives you full local control of Belkin Wemo smart switches an
 
 | Component | Description |
 |---|---|
-| 🖥️ **Desktop App** | Windows Electron app — device dashboard, power control, scheduling |
+| 🖥️ **Desktop App** | Cross-platform Electron app (Windows + Linux) — device dashboard, power control, scheduling |
 | 🏠 **Homebridge Plugin** | HomeKit integration with custom scheduling UI inside Homebridge |
 
 Both share the same local-network Wemo protocol (UPnP/SOAP) and the same DWM scheduling engine. No Belkin account, no cloud dependency, no internet required.
@@ -16,12 +16,12 @@ Both share the same local-network Wemo protocol (UPnP/SOAP) and the same DWM sch
 ## Repository Layout
 
 ```
-wemo-manager/
+dibby-wemo-manager/
 ├── apps/
-│   └── desktop/          # Electron desktop app (Windows)
+│   └── desktop/          # Electron desktop app (Windows + Linux)
 ├── packages/
 │   ├── homebridge-plugin/ # homebridge-dibby-wemo Homebridge plugin
-│   └── wemo-core/        # Shared Wemo protocol helpers
+│   └── wemo-core/        # Shared Wemo protocol helpers (internal)
 └── package.json          # npm workspaces root
 ```
 
@@ -29,14 +29,24 @@ wemo-manager/
 
 ## Quick Start
 
-### Desktop App (Windows)
+### Desktop App
 
 Download the latest installer from [Releases](../../releases):
 
+**Windows:**
 - **`Dibby Wemo Manager Setup 2.0.0.exe`** — NSIS installer (recommended)
 - **`Dibby Wemo Manager 2.0.0.exe`** — Portable single-file executable
 
-Run the installer, launch the app. Wemo devices are discovered automatically via SSDP on your local network.
+**Linux (x64):**
+- **`Dibby Wemo Manager-2.0.0.AppImage`** — Universal AppImage, runs anywhere
+- **`dibby-wemo-manager_2.0.0_amd64.deb`** — Debian / Ubuntu
+- **`dibby-wemo-manager-2.0.0.x86_64.rpm`** — Fedora / RHEL
+
+**Linux (ARM64 — Raspberry Pi 4/5):**
+- **`Dibby Wemo Manager-2.0.0-arm64.AppImage`**
+- **`dibby-wemo-manager_2.0.0_arm64.deb`**
+
+Run the installer (Windows) or AppImage (Linux). Wemo devices are discovered automatically via SSDP on your local network.
 
 ### Homebridge Plugin
 
@@ -74,9 +84,13 @@ Restart Homebridge. Devices appear in HomeKit automatically.
   - **Always On** — enforce a device stays on; auto-corrects within 10 seconds
   - **Trigger** — IFTTT-style: when device A changes state, control device B
 - **Native firmware rules** — read, toggle and delete rules stored on the Wemo device itself
-- **Standalone service** — Windows background service that enforces rules even when the GUI is closed
+- **Background scheduler** — keeps rules firing even when the GUI is closed
+  - Windows: native Windows service (`DibbyWemoService`)
+  - Linux: background process, runs while app is in system tray
 - **Web remote** — optional local web interface accessible from your phone
 - **Sunrise/sunset support** — location-aware scheduling via city search
+
+**Platforms:** Windows 10+ (x64) · Linux x64 · Linux ARM64 (Raspberry Pi 4/5)
 
 ### 🏠 Homebridge Plugin
 
@@ -141,12 +155,16 @@ The Wemo device stores rules in a SQLite database inside a ZIP archive:
 
 The DWM (Dibby Wemo Manager) scheduler is a Node.js process that:
 
-- Loads rules from a JSON store (`dibby-wemo.json`)
+- Loads rules from a JSON store
 - Ticks every **30 seconds**, reloading rules on each tick (live edits take effect without restart)
 - Pre-schedules events within a **65-second look-ahead window**
 - On startup, catches up any rules missed within the last **10 minutes**
 - Runs a **health monitor** every 10 seconds for AlwaysOn and Trigger rules
 - Writes a **heartbeat** to the store on every tick so the UI can show scheduler status
+
+### Shared Core
+
+`packages/wemo-core` contains shared constants and utilities (day numbers, time conversions, sunrise/sunset calculator) used by both the desktop app and the Homebridge plugin without duplication. It is an internal npm workspace package, not published to npm.
 
 ---
 
@@ -157,10 +175,10 @@ The DWM (Dibby Wemo Manager) scheduler is a Node.js process that:
 - Node.js ≥ 18
 - npm ≥ 9
 
-### Install dependencies
+### Install all dependencies
 
 ```bash
-# From repo root
+# From repo root — installs all workspaces
 npm install
 ```
 
@@ -171,16 +189,27 @@ cd apps/desktop
 npm run dev
 ```
 
-### Desktop App — build Windows installer
+### Desktop App — build
 
 ```bash
+# Windows installer + portable exe
 cd apps/desktop
 npm run build:win
+
+# Linux AppImage + .deb + .rpm (x64)
+cd apps/desktop
+npm run build:linux
+
+# Linux ARM64 (Raspberry Pi)
+cd apps/desktop
+npm run build:linux:arm64
+
+# Windows x64 + Linux x64 in one command
+cd apps/desktop
+npm run build:all
 ```
 
-Output in `apps/desktop/dist/`:
-- `Dibby Wemo Manager Setup 2.0.0.exe` — NSIS installer
-- `Dibby Wemo Manager 2.0.0.exe` — portable EXE
+Output in `apps/desktop/dist/`.
 
 ### Homebridge Plugin — install locally
 
@@ -197,11 +226,16 @@ Then restart Homebridge.
 
 Each [GitHub Release](../../releases) includes:
 
-| File | Description |
-|---|---|
-| `Dibby Wemo Manager Setup 2.0.0.exe` | Windows NSIS installer (recommended) |
-| `Dibby Wemo Manager 2.0.0.exe` | Windows portable executable |
-| `homebridge-dibby-wemo-1.0.0.tgz` | Homebridge plugin npm package |
+| File | OS | Description |
+|---|---|---|
+| `Dibby Wemo Manager Setup 2.0.0.exe` | Windows | NSIS installer (recommended) |
+| `Dibby Wemo Manager 2.0.0.exe` | Windows | Portable executable |
+| `Dibby Wemo Manager-2.0.0.AppImage` | Linux x64 | Universal AppImage |
+| `dibby-wemo-manager_2.0.0_amd64.deb` | Linux x64 | Debian / Ubuntu package |
+| `dibby-wemo-manager-2.0.0.x86_64.rpm` | Linux x64 | Fedora / RHEL package |
+| `Dibby Wemo Manager-2.0.0-arm64.AppImage` | Linux ARM64 | Raspberry Pi 4/5 AppImage |
+| `dibby-wemo-manager_2.0.0_arm64.deb` | Linux ARM64 | Raspberry Pi OS package |
+| `homebridge-dibby-wemo-1.0.0.tgz` | Any | Homebridge plugin npm package |
 
 ---
 

@@ -1,8 +1,10 @@
 # Dibby Wemo Manager — Desktop App
 
-**Windows desktop application for local Belkin Wemo control.**
+**Cross-platform desktop application for local Belkin Wemo control.**
 
-Full device dashboard, power control, scheduling engine, Windows background service, and optional web remote — all communicating directly with your Wemo devices over your local network. No Belkin cloud account required.
+Full device dashboard, power control, scheduling engine, and optional web remote — all communicating directly with your Wemo devices over your local network. No Belkin cloud account required.
+
+On Windows the scheduler can run as a background service so rules keep firing after the GUI is closed. Linux uses a background process instead.
 
 ---
 
@@ -10,12 +12,40 @@ Full device dashboard, power control, scheduling engine, Windows background serv
 
 Download the latest release from [GitHub Releases](../../releases):
 
+### Windows
+
 | File | Description |
 |---|---|
 | `Dibby Wemo Manager Setup 2.0.0.exe` | **NSIS installer** — recommended, installs to Program Files, adds Start Menu shortcut |
 | `Dibby Wemo Manager 2.0.0.exe` | **Portable** — single executable, no installation, runs from any folder |
 
 Run the installer or portable exe. The app opens and immediately begins discovering Wemo devices on your network.
+
+### Linux
+
+| File | Description |
+|---|---|
+| `Dibby Wemo Manager-2.0.0.AppImage` | **AppImage** — universal, runs on any modern Linux distro. No install needed. |
+| `dibby-wemo-manager_2.0.0_amd64.deb` | **Debian / Ubuntu** package |
+| `dibby-wemo-manager-2.0.0.x86_64.rpm` | **Fedora / RHEL / openSUSE** package |
+| `Dibby Wemo Manager-2.0.0-arm64.AppImage` | **AppImage (ARM64)** — Raspberry Pi 4/5, Apple Silicon VMs |
+| `dibby-wemo-manager_2.0.0_arm64.deb` | **Debian ARM64** — Raspberry Pi OS |
+
+**AppImage:**
+```bash
+chmod +x "Dibby Wemo Manager-2.0.0.AppImage"
+./"Dibby Wemo Manager-2.0.0.AppImage"
+```
+
+**Debian / Ubuntu (.deb):**
+```bash
+sudo dpkg -i dibby-wemo-manager_2.0.0_amd64.deb
+```
+
+**Fedora / RHEL (.rpm):**
+```bash
+sudo rpm -i dibby-wemo-manager-2.0.0.x86_64.rpm
+```
 
 ---
 
@@ -57,39 +87,48 @@ Read and manage rules stored directly on the Wemo device's own firmware:
 
 > Wemo Dimmer V2 (WDS060) with newer RTOS firmware does not support firmware rule editing.
 
-### 🛠️ Windows Background Service
-
-The DWM scheduler can run as a **Windows service** (`DibbyWemoService`) so rules continue to fire even when the GUI is closed or the user logs out.
-
-- Install/uninstall the service from the app's System tab
-- The service reads rules from the shared data directory and syncs automatically when rules are saved in the GUI
-- Service uses `node-windows` for reliable Windows service registration
-
 ### 🌐 Web Remote
 
 Optional local web interface accessible from any device on your network (phone, tablet, another PC):
 
 - View device status
 - Toggle devices on/off
+- Manage DWM rules
 - QR code for easy mobile access
-- Configurable port; firewall rule created automatically (UAC prompt)
+- Configurable port; firewall rule created automatically on Windows (UAC prompt)
 
 ### 📍 Sunrise/Sunset Scheduling
 
 Set your city in the Settings tab. Schedule rules can then use local sunrise and sunset times as start/end points.
 
+### 🛠️ Background Scheduler
+
+The DWM scheduler continues running rules even when the main window is closed.
+
+**Windows** — installs as a native **Windows Service** (`DibbyWemoService`) via `node-windows`:
+- Install/uninstall from the System tab
+- The service reads rules from `C:\ProgramData\DibbyWemoManager\dwm-rules.json`
+- Syncs automatically when rules are saved in the GUI
+
+**Linux** — the scheduler runs as a background process spawned from the main Electron process. It continues running while the app is in the system tray.
+
 ---
 
 ## Data Storage
 
-All app data is stored in `%APPDATA%\DibbyWemoManager\` (typically `C:\Users\<you>\AppData\Roaming\DibbyWemoManager\`):
+All app data is stored in the OS user-data directory:
+
+| OS | Path |
+|---|---|
+| Windows | `%APPDATA%\DibbyWemoManager\` |
+| Linux | `~/.config/DibbyWemoManager/` |
 
 | File | Description |
 |---|---|
 | `wemo-manager.json` | App settings, discovered devices, DWM rules |
-| `dwm-rules.json` | DWM rules shared with the Windows background service |
+| `dwm-rules.json` | DWM rules shared with the background scheduler |
 
-The standalone service reads `C:\ProgramData\DibbyWemoManager\dwm-rules.json`. The GUI syncs rules to this location after every create, update, or delete.
+On Windows the standalone service reads `C:\ProgramData\DibbyWemoManager\dwm-rules.json`. The GUI syncs rules to this location after every create, update, or delete.
 
 ---
 
@@ -102,7 +141,7 @@ Electron Main Process
 ├── store.js          — JSON persistence layer
 ├── firewall.js       — Windows Firewall rule management (elevated)
 ├── web-server.js     — Express web remote server
-├── service-manager.js— node-windows service install/uninstall
+├── service-manager.js— node-windows service install/uninstall (Windows)
 └── ipc/
     ├── devices.ipc.js
     ├── rules.ipc.js
@@ -116,7 +155,7 @@ Electron Renderer (React 18 + Zustand)
 ├── AllRulesTab       — Native firmware rules per device
 └── Settings          — location, service, web remote config
 
-Standalone Service (scheduler-standalone.js)
+Standalone Scheduler (scheduler-standalone.js)
 └── Runs headless; reads dwm-rules.json; same scheduling logic
 ```
 
@@ -141,7 +180,7 @@ Native firmware rules are stored in a SQLite database (`temppluginRules.db`) ins
 
 - Node.js ≥ 18
 - npm ≥ 9
-- Windows (for Windows builds)
+- OS-specific toolchain (see below)
 
 ### Install dependencies
 
@@ -163,29 +202,67 @@ npm run dev
 
 Opens the Electron app with hot-reload for the renderer.
 
-### Production build
+### Production builds
+
+#### Windows (NSIS installer + portable exe)
+
+Run on a Windows machine:
 
 ```bash
 cd apps/desktop
 npm run build:win
 ```
 
-This:
-1. Compiles the renderer with `electron-vite`
-2. Bundles the standalone service script
-3. Runs `electron-builder` to produce the NSIS installer and portable exe
+Output in `apps/desktop/dist/`:
+- `Dibby Wemo Manager Setup 2.0.0.exe` — NSIS installer
+- `Dibby Wemo Manager 2.0.0.exe` — portable exe
 
-Output appears in `apps/desktop/dist/`.
+> **Code signing:** The build config expects a PFX certificate at `resources/srsit-codesign.pfx`. Remove the `win.certificateFile` entry from `package.json` if you don't have a certificate.
 
-> **Code signing:** The build configuration expects a PFX certificate at `resources/srsit-codesign.pfx`. Remove the `win.certificateFile` entry from `package.json` if you don't have a certificate.
+#### Linux x64 (AppImage + .deb + .rpm)
+
+Run on a Linux machine or in WSL2 / CI:
+
+```bash
+cd apps/desktop
+npm run build:linux
+```
+
+Output in `apps/desktop/dist/`:
+- `Dibby Wemo Manager-2.0.0.AppImage`
+- `dibby-wemo-manager_2.0.0_amd64.deb`
+- `dibby-wemo-manager-2.0.0.x86_64.rpm`
+
+#### Linux ARM64 (Raspberry Pi / Apple Silicon)
+
+```bash
+cd apps/desktop
+npm run build:linux:arm64
+```
+
+Output in `apps/desktop/dist/`:
+- `Dibby Wemo Manager-2.0.0-arm64.AppImage`
+- `dibby-wemo-manager_2.0.0_arm64.deb`
+
+#### All targets at once
+
+```bash
+cd apps/desktop
+npm run build:all
+```
+
+Builds Windows x64 and Linux x64 targets in sequence. Requires the build host to have `wine` installed (for Windows cross-compilation on Linux), or run each command on its native OS.
 
 ---
 
 ## Requirements
 
-- Windows 10 or later (x64)
-- Node.js ≥ 18 (only needed for building from source)
-- Wemo devices on the same LAN
+| Component | Windows | Linux |
+|---|---|---|
+| OS | Windows 10 or later (x64) | Any modern distro (x64 or ARM64) |
+| Node.js | ≥ 18 (build only) | ≥ 18 (build only) |
+| Runtime deps | None — bundled | `libgtk-3`, `libnss3`, `libxss1` (auto via .deb) |
+| Wemo devices | Same LAN | Same LAN |
 
 ---
 
