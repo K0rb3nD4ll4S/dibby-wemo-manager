@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About Dibby Wemo Manager</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0d1b27;
+      color: #d0dde8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 32px;
+      -webkit-app-region: drag;
+      user-select: none;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 28px;
+      -webkit-app-region: no-drag;
+      max-width: 500px;
+      width: 100%;
+    }
+
+    /* Top row: logo left, text block right */
+    .header-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      width: 100%;
+    }
+
+    img {
+      /* 2 cm × 2 cm at 96 DPI ≈ 76 px */
+      width: 76px;
+      height: 76px;
+      flex-shrink: 0;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+      border-radius: 10px;
+    }
+
+    .header-text {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.02em;
+    }
+
+    .version {
+      font-size: 13px;
+      color: #7ecfff;
+    }
+
+    .desc {
+      font-size: 14px;
+      color: #8ba5be;
+      line-height: 1.7;
+      width: 100%;
+    }
+
+    .tagline {
+      font-size: 13px;
+      color: #4a6a84;
+      border-top: 1px solid #1e3048;
+      padding-top: 16px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .heart { color: #e05; }
+
+    button {
+      padding: 8px 32px;
+      background: #00a9d5;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    button:hover { background: #0092ba; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header-row">
+    <img src="icon.png" alt="Dibby Wemo Manager" />
+    <div class="header-text">
+      <h1>Dibby Wemo Manager</h1>
+      <div class="version">Version 2.0</div>
+    </div>
+  </div>
+  <p class="desc">
+    Manage Belkin Wemo device rules — schedules, timers, and automations.<br />
+    Local control only. No cloud required.<br />
+    Scheduler runs in the background even when this window is closed.
+  </p>
+  <div class="tagline">
+    Developed by SRS IT &nbsp;·&nbsp; Dedicated to Dibby <span class="heart">❤️</span>
+  </div>
+  <button onclick="window.close()">Close</button>
+</div>
+</body>
+</html>

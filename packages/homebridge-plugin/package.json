@@ -1,0 +1,34 @@
+{
+  "name": "homebridge-dibby-wemo",
+  "version": "1.0.0",
+  "description": "Dibby Wemo Manager – Homebridge plugin for local Wemo control with DWM scheduling. No Belkin cloud required.",
+  "main": "index.js",
+  "customUi": true,
+  "scripts": {
+    "install-plugin": "npm install -g . && npm install --prefix \"%APPDATA%/npm/node_modules/homebridge-dibby-wemo\""
+  },
+  "keywords": [
+    "homebridge-plugin",
+    "wemo",
+    "belkin",
+    "homekit",
+    "smart-home"
+  ],
+  "engines": {
+    "homebridge": ">=1.6.0",
+    "node": ">=18"
+  },
+  "author": "SRS IT",
+  "license": "MIT",
+  "dependencies": {
+    "adm-zip": "^0.5.14",
+    "axios": "^1.7.0",
+    "sql.js": "^1.12.0",
+    "xml2js": "^0.6.2",
+    "xmlbuilder2": "^4.0.3",
+    "@homebridge/plugin-ui-utils": "^2.2.0"
+  },
+  "devDependencies": {
+    "homebridge": "^1.8.0"
+  }
+}

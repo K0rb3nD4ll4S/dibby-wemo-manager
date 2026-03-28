@@ -1,0 +1,50 @@
+{
+  "pluginAlias": "DibbyWemo",
+  "pluginType": "platform",
+  "singular": true,
+  "customUi": true,
+  "headerDisplay": "**Dibby Wemo Manager** – Local Wemo control with DWM scheduling. No Belkin cloud required.",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "title": "Plugin Name",
+        "type": "string",
+        "default": "DibbyWemo"
+      },
+      "location": {
+        "title": "Location (for sunrise/sunset rules)",
+        "type": "string",
+        "description": "Set your city in the plugin settings panel (click the Settings icon) for accurate sunrise/sunset times. This field is filled in automatically.",
+        "readOnly": true
+      },
+      "discoveryTimeout": {
+        "title": "Discovery Timeout (ms)",
+        "type": "integer",
+        "default": 10000,
+        "minimum": 3000,
+        "description": "How long to wait for SSDP discovery responses"
+      },
+      "pollInterval": {
+        "title": "Device Poll Interval (seconds)",
+        "type": "integer",
+        "default": 30,
+        "minimum": 10,
+        "description": "How often to poll device state for HomeKit updates"
+      },
+      "manualDevices": {
+        "title": "Manual Devices",
+        "type": "array",
+        "description": "Add devices that don't respond to SSDP discovery",
+        "items": {
+          "type": "object",
+          "properties": {
+            "host": { "title": "IP Address", "type": "string" },
+            "port": { "title": "Port",       "type": "integer", "default": 49153 }
+          },
+          "required": ["host"]
+        }
+      }
+    }
+  }
+}

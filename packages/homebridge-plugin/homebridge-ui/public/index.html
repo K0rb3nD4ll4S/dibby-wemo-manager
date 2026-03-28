@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dibby Wemo Manager</title>
+  <style>
+    :root {
+      --bg:      #1a1a2e;
+      --bg2:     #16213e;
+      --card:    #0f3460;
+      --accent:  #e94560;
+      --green:   #4ade80;
+      --text:    #e2e8f0;
+      --muted:   #94a3b8;
+      --border:  #2d3748;
+      --radius:  8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    h2 { font-size: 1.1rem; color: var(--text); margin-bottom: 12px; }
+    h3 { font-size: 0.95rem; color: var(--muted); margin-bottom: 8px; }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 2px;
+    }
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      padding: 8px 16px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      border-radius: var(--radius) var(--radius) 0 0;
+      transition: color 0.15s, background 0.15s;
+    }
+    .tab-btn.active {
+      color: var(--text);
+      background: var(--card);
+      font-weight: 600;
+    }
+    .tab-btn:hover:not(.active) { color: var(--text); }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Cards */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 10px;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .card-title { font-weight: 600; font-size: 0.95rem; }
+    .card-subtitle { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+
+    /* Buttons */
+    .btn {
+      padding: 6px 14px;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.4; cursor: default; }
+    .btn-primary  { background: var(--accent); color: #fff; }
+    .btn-success  { background: var(--green);  color: #111; }
+    .btn-ghost    { background: var(--bg2);    color: var(--text); border: 1px solid var(--border); }
+    .btn-danger   { background: #ef4444; color: #fff; }
+    .btn-sm       { padding: 4px 10px; font-size: 0.78rem; }
+
+    /* Toggle switch */
+    .toggle-wrap { display: flex; align-items: center; gap: 8px; }
+    .toggle {
+      position: relative; width: 42px; height: 24px;
+      display: inline-block; cursor: pointer;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; inset: 0; background: #374151;
+      border-radius: 24px; transition: background 0.2s;
+    }
+    .slider:before {
+      content: ''; position: absolute;
+      width: 18px; height: 18px; left: 3px; bottom: 3px;
+      background: #fff; border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    input:checked + .slider { background: var(--green); }
+    input:checked + .slider:before { transform: translateX(18px); }
+
+    /* Form */
+    .form-group { margin-bottom: 12px; }
+    label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 4px; }
+    input[type=text], input[type=number], select {
+      width: 100%;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 10px;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+    }
+    input:focus, select:focus { outline: 2px solid var(--accent); border-color: transparent; }
+
+    /* Day picker */
+    .day-picker { display: flex; gap: 6px; flex-wrap: wrap; }
+    .day-btn {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 1px solid var(--border); background: var(--bg2);
+      color: var(--muted); cursor: pointer; font-size: 0.75rem;
+      font-weight: 600; transition: all 0.15s;
+    }
+    .day-btn.selected { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    /* Chips */
+    .chip {
+      display: inline-block; padding: 2px 8px; border-radius: 12px;
+      font-size: 0.72rem; font-weight: 600; margin-left: 8px;
+    }
+    .chip-on  { background: #14532d; color: var(--green); }
+    .chip-off { background: #1f2937; color: var(--muted); }
+    .chip-dis { background: #422006; color: #fb923c; }
+
+    /* Status / alert */
+    .status-bar {
+      background: var(--bg2); border-left: 3px solid var(--accent);
+      padding: 10px 14px; border-radius: 0 var(--radius) var(--radius) 0;
+      font-size: 0.82rem; color: var(--muted); margin-bottom: 16px;
+    }
+    .alert {
+      padding: 10px 14px; border-radius: var(--radius);
+      font-size: 0.85rem; margin-bottom: 12px;
+    }
+    .alert-info    { background: #1e3a5f; color: #93c5fd; }
+    .alert-success { background: #14532d; color: var(--green); }
+    .alert-error   { background: #450a0a; color: #fca5a5; }
+
+    /* Inline form panel — no fixed/absolute positioning needed */
+    #dwm-form-panel .card { margin-bottom: 0; }
+
+    /* Row utils */
+    .flex-row { display: flex; align-items: center; gap: 8px; }
+    .flex-col  { display: flex; flex-direction: column; gap: 4px; }
+    .spacer    { flex: 1; }
+
+    /* Spinner */
+    .spin {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid var(--muted); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Empty state */
+    .empty { text-align: center; color: var(--muted); padding: 32px 0; font-size: 0.9rem; }
+
+    /* Location autocomplete */
+    .autocomplete-list {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); max-height: 200px; overflow-y: auto;
+      margin-top: 4px;
+    }
+    .autocomplete-item {
+      padding: 8px 12px; cursor: pointer; font-size: 0.82rem; color: var(--text);
+      border-bottom: 1px solid var(--border);
+    }
+    .autocomplete-item:last-child { border-bottom: none; }
+    .autocomplete-item:hover { background: var(--card); }
+  </style>
+</head>
+<body>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="devices">📱 Devices</button>
+  <button class="tab-btn" data-tab="dwm-rules">⏰ DWM Rules</button>
+  <button class="tab-btn" data-tab="wemo-rules">🔌 Device Rules</button>
+  <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
+  <button class="tab-btn" data-tab="help">❓ Help</button>
+</div>
+
+<!-- ── Devices Tab ──────────────────────────────────────────────────────── -->
+<div id="tab-devices" class="tab-panel active">
+  <div class="flex-row" style="margin-bottom:16px">
+    <h2 style="margin:0">Wemo Devices</h2>
+    <div class="spacer"></div>
+    <button class="btn btn-primary" id="btn-discover">🔍 Discover</button>
+  </div>
+  <div id="devices-status"></div>
+  <div id="devices-list"><div class="empty">Click Discover to find Wemo devices on your network.</div></div>
+</div>
+
+<!-- ── DWM Rules Tab ────────────────────────────────────────────────────── -->
+<div id="tab-dwm-rules" class="tab-panel">
+
+  <!-- List view -->
+  <div id="dwm-list-view">
+    <div class="flex-row" style="margin-bottom:12px">
+      <h2 style="margin:0">DWM Automation Rules</h2>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" id="btn-add-dwm">+ Add Rule</button>
+    </div>
+
+    <!-- Scheduler heartbeat bar -->
+    <div id="dwm-heartbeat" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:6px;margin-bottom:14px;font-size:0.8rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.18)">
+      <span id="hb-dot" style="width:10px;height:10px;border-radius:50%;background:#6b7280;flex-shrink:0"></span>
+      <span id="hb-text" style="color:#9ca3af">Checking scheduler…</span>
+      <div class="spacer"></div>
+      <span id="hb-next" style="color:#6b7280;font-size:0.75rem"></span>
+    </div>
+
+    <div id="dwm-rules-status"></div>
+    <div id="dwm-rules-list"><div class="empty">No DWM rules yet.</div></div>
+  </div>
+
+  <!-- Inline add/edit form (hidden until needed) -->
+  <div id="dwm-form-panel" style="display:none">
+    <div class="flex-row" style="margin-bottom:16px">
+      <h2 id="dwm-form-title" style="margin:0">Add DWM Rule</h2>
+      <div class="spacer"></div>
+      <button class="btn btn-ghost btn-sm" id="btn-dwm-form-cancel">✕ Cancel</button>
+    </div>
+
+    <div class="card">
+      <div class="form-group">
+        <label>Rule Name</label>
+        <input type="text" id="dwm-name" placeholder="e.g. Evening Lights" />
+      </div>
+
+      <div class="form-group">
+        <label>Type</label>
+        <select id="dwm-type">
+          <option value="Schedule">📅 Schedule (fixed on/off times)</option>
+          <option value="Countdown">⏱ Countdown (timer)</option>
+          <option value="Away">🏠 Away Mode (random)</option>
+          <option value="AlwaysOn">🔒 Always On (keep device on)</option>
+          <option value="Trigger">⚡ Trigger (IFTTT-style)</option>
+        </select>
+      </div>
+
+      <!-- Target devices (Schedule / Countdown / Away / AlwaysOn) -->
+      <div class="form-group" id="dwm-target-group">
+        <label>Target Devices</label>
+        <select id="dwm-target-devices" multiple size="4" style="height:90px"></select>
+        <div style="font-size:0.75rem;color:var(--muted);margin-top:4px">Hold Ctrl/Cmd to select multiple</div>
+      </div>
+
+      <!-- Trigger fields -->
+      <div id="dwm-trigger-fields" style="display:none">
+        <div class="form-group">
+          <label>Trigger Device (source)</label>
+          <select id="dwm-trigger-src"></select>
+        </div>
+        <div style="display:flex;gap:10px">
+          <div class="form-group" style="flex:1">
+            <label>When</label>
+            <select id="dwm-trigger-event">
+              <option value="any">Turns ON or OFF</option>
+              <option value="on">Turns ON</option>
+              <option value="off">Turns OFF</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:1">
+            <label>Then</label>
+            <select id="dwm-trigger-action">
+              <option value="on">Turn ON action devices</option>
+              <option value="off">Turn OFF action devices</option>
+              <option value="mirror">Mirror (same as trigger)</option>
+              <option value="opposite">Opposite (invert)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Action Devices (targets)</label>
+          <select id="dwm-trigger-targets" multiple size="4" style="height:90px"></select>
+          <div style="font-size:0.75rem;color:var(--muted);margin-top:4px">Hold Ctrl/Cmd to select multiple</div>
+        </div>
+      </div>
+
+      <div class="form-group" id="dwm-days-group">
+        <label>Days</label>
+        <div class="day-picker" id="dwm-days">
+          <button class="day-btn" data-day="1">Mon</button>
+          <button class="day-btn" data-day="2">Tue</button>
+          <button class="day-btn" data-day="3">Wed</button>
+          <button class="day-btn" data-day="4">Thu</button>
+          <button class="day-btn" data-day="5">Fri</button>
+          <button class="day-btn" data-day="6">Sat</button>
+          <button class="day-btn" data-day="7">Sun</button>
+        </div>
+      </div>
+
+      <div id="dwm-schedule-fields">
+        <div class="flex-row">
+          <div class="form-group" style="flex:1">
+            <label>Start Time</label>
+            <input type="text" id="dwm-start-time" placeholder="e.g. 8:30 PM" />
+          </div>
+          <div class="form-group" style="flex:1">
+            <label>End Time (optional)</label>
+            <input type="text" id="dwm-end-time" placeholder="e.g. 11:00 PM" />
+          </div>
+        </div>
+        <div class="flex-row">
+          <div class="form-group" style="flex:1">
+            <label>Start Action</label>
+            <select id="dwm-start-action">
+              <option value="1">Turn ON</option>
+              <option value="0">Turn OFF</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:1">
+            <label>End Action</label>
+            <select id="dwm-end-action">
+              <option value="-1">None</option>
+              <option value="0">Turn OFF</option>
+              <option value="1">Turn ON</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div id="dwm-countdown-fields" style="display:none">
+        <div class="form-group">
+          <label>Countdown Duration (minutes)</label>
+          <input type="number" id="dwm-countdown-mins" min="1" max="1440" placeholder="60" />
+        </div>
+      </div>
+
+      <div id="dwm-alwayson-info" style="display:none;margin-bottom:12px;padding:10px;background:rgba(48,209,88,.1);border:1px solid rgba(48,209,88,.3);border-radius:6px;font-size:0.82rem;color:#4ade80">
+        🔒 The scheduler polls this device every 10 seconds. If it is found OFF it will be turned back ON automatically. No schedule needed.
+      </div>
+
+      <div class="form-group">
+        <div class="toggle-wrap">
+          <label class="toggle">
+            <input type="checkbox" id="dwm-enabled" checked />
+            <span class="slider"></span>
+          </label>
+          <span style="font-size:0.88rem">Enabled</span>
+        </div>
+      </div>
+
+      <div id="dwm-form-error" class="alert alert-error" style="display:none"></div>
+
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
+        <button class="btn btn-ghost" id="dwm-form-cancel-btn">Cancel</button>
+        <button class="btn btn-primary" id="dwm-form-save-btn">Save Rule</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Wemo Device Rules Tab ────────────────────────────────────────────── -->
+<div id="tab-wemo-rules" class="tab-panel">
+  <div style="margin-bottom:12px">
+    <h2>Native Device Rules</h2>
+    <p style="font-size:0.82rem;color:var(--muted);margin-top:4px">
+      Manage on-device schedules stored in Wemo firmware. Select a device to view its rules.
+    </p>
+  </div>
+  <div class="form-group">
+    <label>Select Device</label>
+    <select id="wemo-rules-device-select"><option value="">— choose device —</option></select>
+  </div>
+  <div id="wemo-rules-status"></div>
+  <div id="wemo-rules-list"></div>
+</div>
+
+<!-- ── Settings Tab ─────────────────────────────────────────────────────── -->
+<div id="tab-settings" class="tab-panel">
+  <h2 style="margin-bottom:16px">Settings</h2>
+  <div class="card">
+    <h3>Location (for sunrise/sunset rules)</h3>
+    <div id="location-current" style="margin-bottom:10px;font-size:0.83rem;color:var(--muted)">Not set</div>
+    <div class="form-group">
+      <label>Search for your city</label>
+      <input type="text" id="location-search-input" placeholder="e.g. London" autocomplete="off" />
+      <div id="location-autocomplete" class="autocomplete-list" style="display:none"></div>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="btn-location-save" disabled>Save Location</button>
+    <span id="location-status" style="font-size:0.78rem;color:var(--green);margin-left:8px"></span>
+  </div>
+</div>
+
+<!-- ── Help Tab ──────────────────────────────────────────────────────────── -->
+<div id="tab-help" class="tab-panel">
+  <h2 style="margin-bottom:4px">❓ Help &amp; Guide</h2>
+  <p style="font-size:0.82rem;color:var(--muted);margin-bottom:20px">How to use Dibby Wemo Manager in Homebridge</p>
+
+  <!-- Getting Started -->
+  <div class="card" style="margin-bottom:10px">
+    <h3 style="color:var(--accent);margin-bottom:10px">🚀 Getting Started</h3>
+    <ol style="font-size:0.85rem;line-height:1.9;padding-left:18px;color:var(--text)">
+      <li>Go to the <strong>📱 Devices</strong> tab and click <strong>Discover</strong> — your Wemo devices on the local network will appear.</li>
+      <li>Devices are automatically added to HomeKit as switches. Toggle them from the Home app on your iPhone/iPad.</li>
+      <li>To create automation rules, go to the <strong>⏰ DWM Rules</strong> tab and click <strong>+ Add Rule</strong>.</li>
+      <li>Rules run inside Homebridge — no internet or Belkin cloud required.</li>
+    </ol>
+  </div>
+
+  <!-- DWM Rules -->
+  <div class="card" style="margin-bottom:10px">
+    <h3 style="color:var(--accent);margin-bottom:10px">⏰ DWM Rules — How to Create a Rule</h3>
+    <p style="font-size:0.83rem;color:var(--muted);margin-bottom:10px">DWM (Dibby Wemo Manager) rules are stored locally and run in Homebridge.</p>
+    <ol style="font-size:0.85rem;line-height:1.9;padding-left:18px;color:var(--text)">
+      <li>Click the <strong>⏰ DWM Rules</strong> tab at the top.</li>
+      <li>Click <strong>+ Add Rule</strong> — the rule form opens inline on the same page (no pop-up).</li>
+      <li>Enter a <strong>Rule Name</strong> (e.g. "Evening Lights").</li>
+      <li>Choose a <strong>Rule Type</strong> (see types below).</li>
+      <li>Select <strong>target devices</strong> — which lights/switches the rule controls.</li>
+      <li>Fill in the schedule details and click <strong>Save Rule</strong>. Click <strong>Cancel</strong> or the <strong>✕</strong> button to go back without saving.</li>
+      <li>The rule is active immediately — the toggle switch on the card enables/disables it without deleting it.</li>
+    </ol>
+
+    <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+      <p style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:8px">Rule Types:</p>
+      <table style="width:100%;font-size:0.82rem;border-collapse:collapse">
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:7px 8px;white-space:nowrap">📅 <strong>Schedule</strong></td>
+          <td style="padding:7px 8px;color:var(--muted)">Turn on/off at fixed times on selected days. Enter times in 12-hour format (e.g. <em>8:30 PM</em>). Set a start time and optional end time, choose the action for each.</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:7px 8px;white-space:nowrap">⏱ <strong>Countdown</strong></td>
+          <td style="padding:7px 8px;color:var(--muted)">Auto-off after a set number of minutes. Useful for things like a bathroom fan or porch light.</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:7px 8px;white-space:nowrap">🏠 <strong>Away Mode</strong></td>
+          <td style="padding:7px 8px;color:var(--muted)">Randomly turns lights on and off within a time window to simulate occupancy while you're away.</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:7px 8px;white-space:nowrap">🔒 <strong>Always On</strong></td>
+          <td style="padding:7px 8px;color:var(--muted)">Keeps a device permanently ON. If it's switched off by anyone, it will be turned back on within 10 seconds automatically. No time fields needed.</td>
+        </tr>
+        <tr>
+          <td style="padding:7px 8px;white-space:nowrap">⚡ <strong>Trigger</strong></td>
+          <td style="padding:7px 8px;color:var(--muted)">IFTTT-style: when one device turns on/off, automatically control another. E.g. "When the porch light turns ON, turn ON the driveway lights too."</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+      <p style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:6px">⏰ Entering Times</p>
+      <p style="font-size:0.82rem;color:var(--muted);margin-bottom:6px">Times use 12-hour AM/PM format. All of these are valid:</p>
+      <table style="font-size:0.82rem;border-collapse:collapse">
+        <tr><td style="padding:3px 12px 3px 0;color:var(--text)"><code style="background:var(--bg2);padding:1px 5px;border-radius:3px">8:30 PM</code></td><td style="color:var(--muted)">8:30 in the evening</td></tr>
+        <tr><td style="padding:3px 12px 3px 0;color:var(--text)"><code style="background:var(--bg2);padding:1px 5px;border-radius:3px">8:30PM</code></td><td style="color:var(--muted)">same — space is optional</td></tr>
+        <tr><td style="padding:3px 12px 3px 0;color:var(--text)"><code style="background:var(--bg2);padding:1px 5px;border-radius:3px">6:00 AM</code></td><td style="color:var(--muted)">6 o'clock in the morning</td></tr>
+        <tr><td style="padding:3px 12px 3px 0;color:var(--text)"><code style="background:var(--bg2);padding:1px 5px;border-radius:3px">12:00 AM</code></td><td style="color:var(--muted)">midnight</td></tr>
+        <tr><td style="padding:3px 12px 3px 0;color:var(--text)"><code style="background:var(--bg2);padding:1px 5px;border-radius:3px">12:00 PM</code></td><td style="color:var(--muted)">noon</td></tr>
+        <tr><td style="padding:3px 12px 3px 0;color:var(--text)"><code style="background:var(--bg2);padding:1px 5px;border-radius:3px">9 PM</code></td><td style="color:var(--muted)">9:00 PM — minutes are optional</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Trigger rules detail -->
+  <div class="card" style="margin-bottom:10px">
+    <h3 style="color:var(--accent);margin-bottom:10px">⚡ Trigger Rules (IFTTT)</h3>
+    <p style="font-size:0.83rem;color:var(--muted);margin-bottom:10px">Trigger rules let one device control another automatically.</p>
+    <ol style="font-size:0.85rem;line-height:1.9;padding-left:18px;color:var(--text)">
+      <li>Click <strong>+ Add Rule</strong> and select type <strong>⚡ Trigger</strong>.</li>
+      <li>Under <strong>Trigger Device</strong> — pick the device whose state change starts the action.</li>
+      <li>Under <strong>When</strong> — choose "Turns ON", "Turns OFF", or "Turns ON or OFF".</li>
+      <li>Under <strong>Then</strong> — choose what to do to the action devices:<br>
+        <span style="color:var(--muted);display:block;padding-left:12px;margin-top:2px">
+          • <strong>Turn ON</strong> — always turn action devices on<br>
+          • <strong>Turn OFF</strong> — always turn action devices off<br>
+          • <strong>Mirror</strong> — action devices copy the trigger (ON→ON, OFF→OFF)<br>
+          • <strong>Opposite</strong> — action devices invert the trigger (ON→OFF, OFF→ON)
+        </span>
+      </li>
+      <li>Under <strong>Action Devices</strong> — select which devices to control (hold Ctrl/Cmd for multiple).</li>
+      <li>Click <strong>Save Rule</strong>. Homebridge polls devices every 10 s and fires the trigger on state change.</li>
+    </ol>
+    <p style="font-size:0.8rem;color:var(--muted);margin-top:8px;padding:8px;background:rgba(255,214,10,.07);border-radius:6px">
+      ⚠️ The scheduler must be running for Trigger rules to work. If Homebridge restarts, rules resume automatically.
+    </p>
+  </div>
+
+  <!-- Device Rules -->
+  <div class="card" style="margin-bottom:10px">
+    <h3 style="color:var(--accent);margin-bottom:10px">🔌 Device Rules (Native Firmware)</h3>
+    <p style="font-size:0.83rem;color:var(--muted);margin-bottom:8px">These are rules stored directly on the Wemo device's own firmware — separate from DWM Rules.</p>
+    <ul style="font-size:0.85rem;line-height:1.8;padding-left:18px;color:var(--text)">
+      <li>Click <strong>🔌 Device Rules</strong> tab, then select a device from the dropdown.</li>
+      <li>Rules stored on the device are listed. You can enable/disable or delete them.</li>
+      <li>Note: Wemo Dimmer V2 devices with newer firmware do <strong>not</strong> support this feature.</li>
+      <li>DWM Rules are recommended over device rules as they support more features and work across multiple devices.</li>
+    </ul>
+  </div>
+
+  <!-- Settings -->
+  <div class="card" style="margin-bottom:10px">
+    <h3 style="color:var(--accent);margin-bottom:10px">⚙️ Settings — Location</h3>
+    <p style="font-size:0.83rem;color:var(--muted);margin-bottom:8px">Set your city for accurate sunrise/sunset times in Schedule rules.</p>
+    <ol style="font-size:0.85rem;line-height:1.9;padding-left:18px;color:var(--text)">
+      <li>Click the <strong>⚙️ Settings</strong> tab.</li>
+      <li>Type your city name in the search box (e.g. "London" or "New York").</li>
+      <li>Pick your city from the dropdown that appears.</li>
+      <li>Click <strong>Save Location</strong>.</li>
+      <li>You can now use 🌅 Sunrise and 🌇 Sunset as start/end times in Schedule rules.</li>
+    </ol>
+  </div>
+
+  <!-- Troubleshooting -->
+  <div class="card">
+    <h3 style="color:var(--accent);margin-bottom:10px">🔧 Troubleshooting</h3>
+    <table style="width:100%;font-size:0.82rem;border-collapse:collapse">
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:7px 8px;white-space:nowrap;color:var(--text)"><strong>No devices found</strong></td>
+        <td style="padding:7px 8px;color:var(--muted)">Make sure your PC and Wemo devices are on the same WiFi network. Try clicking Discover again. Some routers block SSDP multicast — add a manual device entry via the Homebridge config.</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:7px 8px;white-space:nowrap;color:var(--text)"><strong>HomeKit toggle not working</strong></td>
+        <td style="padding:7px 8px;color:var(--muted)">Restart Homebridge. Devices need to be discovered at least once before HomeKit can control them. Check the Homebridge logs for errors.</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:7px 8px;white-space:nowrap;color:var(--text)"><strong>Rules not firing</strong></td>
+        <td style="padding:7px 8px;color:var(--muted)">Check the <strong>⏰ DWM Rules</strong> tab status bar. 🟢 Green = scheduler running fine. 🟠 Amber = scheduler may have stopped — restart Homebridge. 🔴 Red = scheduler not running — check the DibbyWemo platform is in your Homebridge config. Times use 12-hour AM/PM (e.g. 8:30 PM).</td>
+      </tr>
+      <tr>
+        <td style="padding:7px 8px;white-space:nowrap;color:var(--text)"><strong>Settings panel blank</strong></td>
+        <td style="padding:7px 8px;color:var(--muted)">Run: <code style="background:var(--bg2);padding:1px 5px;border-radius:3px">npm install --prefix "%APPDATA%/npm/node_modules/homebridge-dibby-wemo"</code> then restart Homebridge.</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+
+<script src="index.js"></script>
+</body>
+</html>

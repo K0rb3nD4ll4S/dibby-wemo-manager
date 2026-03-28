@@ -1,0 +1,54 @@
+# ── Dependencies ──────────────────────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ── Build output ──────────────────────────────────────────────────────────────
+dist/
+out/
+build/
+*.blockmap
+builder-debug.yml
+builder-effective-config.yaml
+
+# ── Electron app user data written at runtime ─────────────────────────────────
+apps/desktop/WemoManagerData/
+
+# ── Code signing certificate — NEVER commit private keys ─────────────────────
+*.pfx
+*.p12
+*.key
+*.pem
+
+# ── Environment / secrets ─────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── OS artefacts ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── Editor / IDE ──────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ── Temporary files ───────────────────────────────────────────────────────────
+*.tmp
+*.temp
+.cache/
+
+# ── Claude agent internals ───────────────────────────────────────────────────
+.claude/

@@ -1,0 +1,122 @@
+{
+  "name": "dibby-wemo-manager",
+  "productName": "Dibby Wemo Manager",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Belkin Wemo device manager – local control, no cloud required",
+  "author": "SRS IT",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build && node scripts/bundle-standalone.js",
+    "build:win": "electron-vite build && node scripts/bundle-standalone.js && electron-builder --win --x64",
+    "build:linux": "electron-vite build && node scripts/bundle-standalone.js && electron-builder --linux --x64",
+    "build:linux:arm64": "electron-vite build && node scripts/bundle-standalone.js && electron-builder --linux --arm64",
+    "build:all": "electron-vite build && node scripts/bundle-standalone.js && electron-builder --win --x64 && electron-builder --linux --x64",
+    "preview": "electron-vite preview"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.14",
+    "axios": "^1.7.0",
+    "node-windows": "^1.0.0-beta.8",
+    "sql.js": "^1.12.0",
+    "qrcode": "^1.5.4",
+    "ws": "^8.18.0",
+    "xml2js": "^0.6.2",
+    "xmlbuilder2": "^4.0.3"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.0",
+    "electron": "33.4.11",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "vite": "^5.4.10",
+    "zustand": "^5.0.1"
+  },
+  "build": {
+    "appId": "com.srsit.dibbywemomanager",
+    "productName": "Dibby Wemo Manager",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "resources/icon.ico",
+      "signtoolOptions": {
+        "certificateFile": "resources/srsit-codesign.pfx",
+        "certificatePassword": "SRSITSign2024!",
+        "signingHashAlgorithms": ["sha256"]
+      }
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "linux": {
+      "target": [
+        { "target": "AppImage", "arch": ["x64"] },
+        { "target": "deb",      "arch": ["x64"] },
+        { "target": "rpm",      "arch": ["x64"] }
+      ],
+      "icon": "resources/icon.png",
+      "category": "Utility",
+      "synopsis": "Belkin Wemo device manager — local control, no cloud required",
+      "description": "Control Belkin Wemo smart switches and plugs. Set schedules, countdowns and away mode. No Belkin account or internet required.",
+      "maintainer": "SRS IT"
+    },
+    "deb": {
+      "depends": ["libgtk-3-0", "libnotify4", "libnss3", "libxss1", "libxtst6", "xdg-utils", "libatspi2.0-0", "libuuid1"]
+    },
+    "asarUnpack": [
+      "**/node_modules/sql.js/dist/**",
+      "**/node_modules/node-windows/**",
+      "out/main/scheduler-standalone.js",
+      "out/main/wemo.js"
+    ],
+    "extraResources": [
+      {
+        "from": "out/main/scheduler-standalone.js",
+        "to": "scheduler-standalone.js"
+      },
+      {
+        "from": "../../node_modules/sql.js/dist/sql-wasm.wasm",
+        "to": "sql-wasm.wasm"
+      },
+      {
+        "from": "resources/web",
+        "to": "web"
+      },
+      {
+        "from": "resources/icon.png",
+        "to": "icon.png"
+      },
+      {
+        "from": "resources/help.html",
+        "to": "help.html"
+      },
+      {
+        "from": "resources/about.html",
+        "to": "about.html"
+      }
+    ],
+    "files": [
+      "out/**/*"
+    ]
+  }
+}

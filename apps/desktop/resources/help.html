@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dibby Wemo Manager — Help</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0d1b27;
+      color: #d0dde8;
+      line-height: 1.7;
+      font-size: 15px;
+    }
+
+    /* ── Layout ── */
+    .layout { display: flex; min-height: 100vh; }
+
+    nav {
+      width: 248px;
+      min-width: 248px;
+      background: #0a1520;
+      border-right: 1px solid #1e3048;
+      padding: 24px 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    nav .logo {
+      font-size: 14px;
+      font-weight: 700;
+      color: #7ecfff;
+      padding: 0 20px 20px;
+      border-bottom: 1px solid #1e3048;
+      margin-bottom: 12px;
+    }
+
+    nav a {
+      display: block;
+      padding: 7px 20px;
+      color: #8ba5be;
+      text-decoration: none;
+      font-size: 13.5px;
+      border-left: 3px solid transparent;
+      transition: all .15s;
+    }
+    nav a:hover { color: #d0dde8; background: #122030; }
+    nav a.section {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: #4a6a84;
+      padding-top: 18px;
+      cursor: default;
+    }
+    nav a.section:hover { background: none; color: #4a6a84; }
+    nav a.active { color: #7ecfff; border-left-color: #7ecfff; background: #122030; }
+
+    main {
+      flex: 1;
+      padding: 40px 56px;
+      max-width: 880px;
+    }
+
+    /* ── Typography ── */
+    h1 { font-size: 28px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+    h2 { font-size: 20px; font-weight: 700; color: #7ecfff; margin: 48px 0 14px; padding-top: 48px;
+         border-top: 1px solid #1e3048; }
+    h2:first-of-type { margin-top: 24px; padding-top: 0; border-top: none; }
+    h3 { font-size: 16px; font-weight: 600; color: #a8d4f5; margin: 28px 0 10px; }
+
+    p  { margin-bottom: 12px; color: #b8cad8; }
+    ul, ol { padding-left: 22px; margin-bottom: 14px; color: #b8cad8; }
+    li { margin-bottom: 6px; }
+
+    strong { color: #d8eaf8; }
+
+    /* ── Callout boxes ── */
+    .tip, .warn, .note, .new {
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 14px;
+    }
+    .tip  { background: #0d2a1e; border-left: 4px solid #4caf50; color: #a8d4b8; }
+    .warn { background: #2a1a0a; border-left: 4px solid #ff9800; color: #d4b888; }
+    .note { background: #0d1e2e; border-left: 4px solid #7ecfff; color: #8dbcd8; }
+    .new  { background: #0d2235; border-left: 4px solid #00a9d5; color: #a0cce8; }
+
+    .tip strong, .warn strong, .note strong, .new strong { color: inherit; }
+
+    /* ── Step list ── */
+    .steps { counter-reset: steps; list-style: none; padding: 0; }
+    .steps li {
+      counter-increment: steps;
+      display: flex;
+      gap: 14px;
+      margin-bottom: 14px;
+      align-items: flex-start;
+    }
+    .steps li::before {
+      content: counter(steps);
+      background: #1a3a5c;
+      color: #7ecfff;
+      border-radius: 50%;
+      width: 26px;
+      height: 26px;
+      min-width: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    /* ── Feature cards ── */
+    .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0; }
+    .card {
+      background: #0f2235;
+      border: 1px solid #1e3048;
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+    .card-icon  { font-size: 22px; margin-bottom: 6px; }
+    .card-title { font-weight: 600; color: #d0dde8; margin-bottom: 4px; font-size: 14px; }
+    .card-desc  { font-size: 13px; color: #8ba5be; line-height: 1.5; }
+
+    /* ── Inline badge ── */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      vertical-align: middle;
+    }
+    .badge-green  { background: #0d2a1e; color: #4caf50; border: 1px solid #4caf50; }
+    .badge-orange { background: #2a1a0a; color: #ff9800; border: 1px solid #ff9800; }
+    .badge-red    { background: #2a0d0d; color: #f44336; border: 1px solid #f44336; }
+    .badge-blue   { background: #0d1e2e; color: #7ecfff; border: 1px solid #7ecfff; }
+    .badge-dwm    { background: #00a9d5; color: #fff; border-radius: 3px; font-size: 11px; padding: 1px 6px; }
+
+    /* ── Table ── */
+    table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 14px; }
+    th { text-align: left; padding: 8px 12px; background: #0f2235; color: #7ecfff;
+         border-bottom: 1px solid #1e3048; }
+    td { padding: 8px 12px; border-bottom: 1px solid #132030; color: #b8cad8; }
+    tr:hover td { background: #0f2235; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #1e3048; border-radius: 3px; }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ── Sidebar nav ── -->
+  <nav>
+    <div class="logo">📖 Help Guide</div>
+    <a href="#intro"       class="section">Getting Started</a>
+    <a href="#intro">      What is this app?</a>
+    <a href="#first-run">  First time setup</a>
+    <a href="#discover">   Finding your devices</a>
+    <a href="#tray">       System tray</a>
+
+    <a href="#devices"     class="section">Devices</a>
+    <a href="#power">      Turning devices on/off</a>
+    <a href="#info">       Device information</a>
+    <a href="#rename">     Renaming a device</a>
+
+    <a href="#rules"       class="section">Rules &amp; Schedules</a>
+    <a href="#rules">      DWM Rules vs Wemo Rules</a>
+    <a href="#schedule">   Schedule rule</a>
+    <a href="#countdown">  Countdown rule</a>
+    <a href="#away">       Away mode</a>
+    <a href="#alwayson">   Always On rule</a>
+    <a href="#trigger">    Trigger rule (IFTTT)</a>
+    <a href="#manage">     Managing rules</a>
+    <a href="#copy-dwm">   Wemo Rules: edit, toggle, copy</a>
+    <a href="#import">     Import &amp; Export</a>
+
+    <a href="#scheduler"   class="section">Scheduler</a>
+    <a href="#scheduler">  How the scheduler works</a>
+    <a href="#svc">        Always-on service</a>
+
+    <a href="#web-remote"  class="section">Web Remote</a>
+    <a href="#web-remote"> Phone &amp; tablet access</a>
+    <a href="#qr-code">    QR code setup</a>
+
+    <a href="#wifi"        class="section">Advanced</a>
+    <a href="#wifi">       WiFi setup</a>
+    <a href="#reset">      Reset options</a>
+    <a href="#tips">       Tips &amp; troubleshooting</a>
+  </nav>
+
+  <!-- ── Main content ── -->
+  <main>
+    <div style="text-align:center; margin-bottom: 32px;">
+      <img src="icon.png" alt="Dibby Wemo Manager"
+           style="width:512px; height:512px; border-radius:16px; image-rendering:crisp-edges;" />
+    </div>
+    <h1>Dibby Wemo Manager</h1>
+    <p style="color:#7ecfff; font-size:16px;">Complete help guide — everything you need to know.</p>
+
+    <!-- ═══════════════════════ INTRO ═══════════════════════ -->
+    <h2 id="intro">What is Dibby Wemo Manager?</h2>
+    <p>
+      Dibby Wemo Manager lets you control <strong>Belkin Wemo smart switches and plugs</strong> on your
+      home network — entirely from your PC. You can turn lights on and off, set up schedules,
+      and automate your home without needing the Belkin app, a Belkin account, or any internet connection.
+    </p>
+    <p>
+      Belkin's cloud service that used to power Wemo schedules was permanently shut down.
+      This app replaces it completely — all scheduling runs locally on your computer, so your
+      automations keep working even without internet.
+    </p>
+
+    <div class="card-grid">
+      <div class="card"><div class="card-icon">💡</div>
+        <div class="card-title">Control lights &amp; plugs</div>
+        <div class="card-desc">Turn any Wemo device on or off instantly from the app.</div>
+      </div>
+      <div class="card"><div class="card-icon">📅</div>
+        <div class="card-title">Set schedules</div>
+        <div class="card-desc">Turn devices on/off at specific times, every day or selected days.</div>
+      </div>
+      <div class="card"><div class="card-icon">⏱</div>
+        <div class="card-title">Countdown timers</div>
+        <div class="card-desc">Turn a device off automatically after a set number of minutes.</div>
+      </div>
+      <div class="card"><div class="card-icon">🏠</div>
+        <div class="card-title">Away mode</div>
+        <div class="card-desc">Randomly turn lights on and off to make your home look occupied.</div>
+      </div>
+      <div class="card"><div class="card-icon">📱</div>
+        <div class="card-title">Web Remote</div>
+        <div class="card-desc">Control devices and manage rules from any phone or tablet on your home network.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════ FIRST RUN ═══════════════════════ -->
+    <h2 id="first-run">First time setup</h2>
+    <p>When you open the app for the first time, follow these steps:</p>
+
+    <ol class="steps">
+      <li><strong>Make sure your Wemo devices are powered on</strong> and connected to the same
+          Wi-Fi network as your computer.</li>
+      <li>Click the <strong>🔍 Discover</strong> button in the top-left panel. The app scans your
+          network and finds all Wemo devices automatically. This takes about 10 seconds.</li>
+      <li>Your devices appear in the left panel. Click any device to see its details and controls.</li>
+      <li>Create your first rule by selecting a device, clicking the <strong>Rules</strong> tab,
+          then clicking <strong>+ New Rule</strong>. Rules you create here are
+          <strong>DWM Rules</strong> — the scheduler knows to fire them automatically.</li>
+      <li>To keep your schedules running automatically — even when the app is closed or you're
+          not logged in — click <strong>⬆ Install Service</strong> in the scheduler section
+          (see <a href="#svc" style="color:#7ecfff">Always-on service</a> below).</li>
+    </ol>
+
+    <div class="tip">
+      <strong>Tip:</strong> If a device doesn't appear after scanning, make sure it's on the same
+      Wi-Fi network. You can also add it manually by clicking the <strong>+</strong> button and
+      entering its IP address.
+    </div>
+
+    <!-- ═══════════════════════ DISCOVER ═══════════════════════ -->
+    <h2 id="discover">Finding your devices</h2>
+    <p>
+      The app automatically finds Wemo devices on your local network using a process called
+      <em>discovery</em>. You don't need to know any IP addresses or technical details.
+    </p>
+
+    <h3>Automatic discovery</h3>
+    <p>Click <strong>🔍 Discover</strong> at the top of the device list. The app broadcasts a signal
+    on your network and all Wemo devices respond within a few seconds.</p>
+
+    <h3>Manual add</h3>
+    <p>If a device isn't found automatically (for example, it's on a different network segment),
+    click the <strong>+</strong> button and enter the device's IP address and port number.
+    Your router's admin page usually shows connected device IP addresses.</p>
+
+    <div class="note">
+      <strong>Note:</strong> Discovered devices are remembered between app sessions.
+      You only need to run discovery again when you add new devices to your home.
+    </div>
+
+    <!-- ═══════════════════════ TRAY ═══════════════════════ -->
+    <h2 id="tray">System tray — the app keeps running when closed</h2>
+    <p>
+      When you click the <strong>✕ close button</strong> on the app window, Dibby Wemo Manager
+      does <em>not</em> fully exit. Instead, it hides to the system tray
+      (the small icons in the bottom-right corner of your Windows taskbar) and continues running
+      in the background.
+    </p>
+    <p>
+      This means the <strong>in-app scheduler keeps firing your rules</strong> even when the
+      window is hidden. A balloon notification briefly appears to let you know.
+    </p>
+
+    <h3>Reopening the app from the tray</h3>
+    <p>
+      Find the Dibby Wemo Manager icon in the system tray and <strong>double-click</strong> it,
+      or right-click it and choose <strong>Open</strong>.
+    </p>
+
+    <h3>Tray menu items</h3>
+    <p>Right-clicking the tray icon shows the following items:</p>
+    <table>
+      <tr><th>Item</th><th>What it does</th></tr>
+      <tr><td>🟢 / ⚫ Scheduler running/stopped</td><td>Status indicator — not clickable</td></tr>
+      <tr><td>📱 Web Remote: http://…:3456</td><td>Shows the URL your phone uses to connect — not clickable</td></tr>
+      <tr><td>Copy Web Remote URL</td><td>Copies the web remote address to the clipboard</td></tr>
+      <tr><td>Open Web Remote in Browser</td><td>Opens the web remote in your PC's default browser for testing</td></tr>
+      <tr><td>📷 Show QR Code</td><td>Opens a small window with a scannable QR code for the web remote</td></tr>
+      <tr><td>🔓 Open Port in Windows Firewall</td><td>Adds inbound firewall rules for port 3456 and the app executable — required for phone access. Also removes any auto-created block rules. Shows ✅ Firewall rule active once done.</td></tr>
+      <tr><td>🗑 Delete Firewall Rule</td><td>Removes the DWM firewall rules (only visible when the rule is active). Use this to reset and re-apply if phone access stops working.</td></tr>
+      <tr><td>Open</td><td>Brings the main app window back to the foreground</td></tr>
+      <tr><td>Quit</td><td>Fully closes the app and stops the scheduler</td></tr>
+    </table>
+
+    <h3>Fully quitting the app</h3>
+    <p>
+      Right-click the tray icon and choose <strong>Quit</strong>, or use
+      <strong>File → Quit</strong> (Ctrl+Q) from the menu bar. This fully closes the app
+      and stops the in-app scheduler. The tray icon disappears.
+    </p>
+
+    <div class="tip">
+      <strong>Tip:</strong> For fully automatic scheduling with no window required at all,
+      install the <a href="#svc" style="color:#a8d4b8">Windows Service</a>. It runs at boot
+      before anyone logs in, so rules fire 24/7 even if the app window is never opened.
+    </div>
+
+    <!-- ═══════════════════════ POWER ═══════════════════════ -->
+    <h2 id="power">Turning devices on and off</h2>
+    <p>
+      Click any device in the left panel to select it. In the main area you'll see a large
+      <strong>power button</strong>. Click it to toggle the device on or off.
+      The button shows green when the device is on, and grey when it's off.
+    </p>
+    <p>
+      You can also toggle devices directly from the device list without clicking into them —
+      each device card has a small power indicator on the right side.
+    </p>
+
+    <!-- ═══════════════════════ INFO ═══════════════════════ -->
+    <h2 id="info">Device information</h2>
+    <p>Select a device and click the <strong>Info</strong> tab to see all details about it:</p>
+
+    <table>
+      <tr><th>Field</th><th>What it means</th></tr>
+      <tr><td><strong>Name</strong></td><td>The friendly name you gave the device (e.g. "Kitchen Lights")</td></tr>
+      <tr><td><strong>Model</strong></td><td>The Wemo hardware model number</td></tr>
+      <tr><td><strong>IP Address</strong></td><td>The device's address on your home network</td></tr>
+      <tr><td><strong>MAC Address</strong></td><td>A unique hardware ID for the device</td></tr>
+      <tr><td><strong>Serial Number</strong></td><td>The device's factory serial number</td></tr>
+      <tr><td><strong>Firmware</strong></td><td>The software version running on the device</td></tr>
+      <tr><td><strong>Signal Strength</strong></td><td>How strong the Wi-Fi connection is (higher is better)</td></tr>
+      <tr><td><strong>Device Clock</strong></td><td>The time the device thinks it is — click Sync to correct it</td></tr>
+    </table>
+
+    <p>Each field has a <strong>copy button</strong> (📋) so you can paste the value elsewhere if needed.</p>
+
+    <!-- ═══════════════════════ RENAME ═══════════════════════ -->
+    <h2 id="rename">Renaming a device</h2>
+    <p>
+      On the Info tab, click the <strong>pencil icon</strong> next to the device name to rename it.
+      The new name is saved directly to the device — it will show the same name in any Wemo app.
+    </p>
+
+    <!-- ═══════════════════════ RULES ═══════════════════════ -->
+    <h2 id="rules">DWM Rules and Wemo Rules — what's the difference?</h2>
+    <p>
+      When you click the <strong>Rules</strong> tab for any device, you'll see two sub-tabs:
+      <strong>DWM Rules</strong> and <strong>Wemo Rules</strong>. Understanding the difference
+      is important.
+    </p>
+
+    <div class="card-grid">
+      <div class="card" style="border-color: #00a9d5;">
+        <div class="card-icon">🔵</div>
+        <div class="card-title">DWM Rules</div>
+        <div class="card-desc">
+          Rules created and managed through this app, stored <strong>locally on your PC</strong>
+          (not on the Wemo device). These are the <strong>only rules the scheduler will fire</strong>.
+          When you click <strong>+ New Rule</strong>, it creates a DWM rule saved to your computer.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">⚙️</div>
+        <div class="card-title">Wemo Rules</div>
+        <div class="card-desc">
+          All rules stored on your Wemo devices — including rules from the old Belkin iOS app.
+          You can <strong>enable/disable</strong> or <strong>edit</strong> them here and the
+          changes are written directly to the device. Duplicates are removed so each rule
+          appears once across all devices.
+        </div>
+      </div>
+    </div>
+
+    <h3>Where are DWM Rules stored?</h3>
+    <p>
+      DWM Rules live in a local database file on your PC
+      (<code style="font-size:13px;background:#0f2235;padding:2px 6px;border-radius:4px;">wemo-manager.json</code>
+      in your AppData folder). Nothing is written to the Wemo device itself — the device is
+      only contacted when a rule fires (to send the on/off command).
+    </p>
+    <p>
+      This means DWM rules travel with your PC, not with the device. If you replace a Wemo switch,
+      your rules stay intact — just point them at the new device.
+    </p>
+
+    <h3>Why the separation?</h3>
+    <p>
+      Many Wemo devices have old rules from when Belkin's cloud was working — rules that no longer
+      fire because the cloud was shut down. The scheduler ignores those device-stored rules entirely.
+      Only rules in your local DWM database are scheduled.
+    </p>
+
+    <div class="new">
+      <strong>In short:</strong> Create or copy rules into <strong>DWM Rules</strong> and they
+      fire automatically via the scheduler. In the <strong>Wemo Rules</strong> tab you can
+      toggle or edit native device rules directly — but those rules are <em>not</em> fired by
+      the DWM scheduler. Use <strong>📥 Add to DWM</strong> to bring them under scheduler control.
+    </div>
+
+    <!-- ═══════════════════════ SCHEDULE ═══════════════════════ -->
+    <h2 id="schedule">Schedule rule — turn on/off at a set time</h2>
+    <p>
+      A schedule rule turns a device on or off at a specific time of day, on the days you choose.
+      This is the most common type of rule.
+    </p>
+
+    <h3>How to create a schedule rule</h3>
+    <ol class="steps">
+      <li>Select the device you want to schedule from the left panel.</li>
+      <li>Click the <strong>Rules</strong> tab. Make sure you're on the <strong>DWM Rules</strong>
+          sub-tab, then click <strong>+ New Rule</strong>.</li>
+      <li>Choose <strong>Schedule</strong> as the rule type.</li>
+      <li>Enter a name for the rule (e.g. "Evening lights").</li>
+      <li>Pick which days of the week the rule should apply. Click a day to toggle it on/off.
+          Use the quick buttons to select All, Weekdays, or Weekends.</li>
+      <li>Set the <strong>Start time</strong> — this is when the device turns ON.</li>
+      <li>Set the <strong>End time</strong> — this is when the device turns OFF.
+          Leave it blank if you only want to turn the device on.</li>
+      <li>Click <strong>💾 Save Rule</strong>.</li>
+    </ol>
+
+    <div class="tip">
+      <strong>Example:</strong> To turn your porch light on at sunset every day and off at 11 PM —
+      set Start to <em>Sunset</em> and End to <em>11:00 PM</em>, with all days selected.
+    </div>
+
+    <div class="note">
+      <strong>Sunrise / Sunset:</strong> Instead of a fixed time, you can choose Sunrise or Sunset.
+      The device calculates the actual time each day based on your location. Make sure your
+      location is set in Settings for this to work accurately.
+    </div>
+
+    <!-- ═══════════════════════ COUNTDOWN ═══════════════════════ -->
+    <h2 id="countdown">Countdown rule — turn off after a timer</h2>
+    <p>
+      A countdown rule turns a device off (or on) after a set number of minutes from when the
+      physical button on the device is pressed. This is useful for things like:
+    </p>
+    <ul>
+      <li>A bathroom fan that turns off automatically after 20 minutes</li>
+      <li>A bedside lamp that turns off after you fall asleep</li>
+      <li>An electric heater that shuts off after an hour for safety</li>
+    </ul>
+
+    <h3>How to create a countdown rule</h3>
+    <ol class="steps">
+      <li>Select the device, go to the <strong>DWM Rules</strong> sub-tab, click <strong>+ New Rule</strong>.</li>
+      <li>Choose <strong>Countdown</strong> as the rule type.</li>
+      <li>Enter a name and set the number of minutes.</li>
+      <li>Optionally enable an <strong>Active Window</strong> to restrict the rule to specific hours (see below).</li>
+      <li>Select the <strong>Target Devices</strong> this rule should control. Use <strong>All</strong> / <strong>None</strong> for quick selection.</li>
+      <li>Click <strong>💾 Save Rule</strong>.</li>
+    </ol>
+
+    <div class="warn">
+      <strong>Note:</strong> The countdown starts when someone physically presses the button on
+      the Wemo switch. It does not start automatically — a button press is required to trigger it.
+    </div>
+
+    <h3>Active Window — restrict countdown to certain hours</h3>
+    <p>
+      Enable the <strong>Active Window</strong> toggle on a countdown rule to restrict when it
+      is in effect. When a window is set, the scheduler will:
+    </p>
+    <ul>
+      <li>Turn the device <strong>ON</strong> at the window start time.</li>
+      <li>Turn the device <strong>OFF</strong> at the window end time (regardless of the countdown).</li>
+      <li>The countdown auto-off fires normally in between — but outside the window, the rule has no effect.</li>
+    </ul>
+    <p>
+      This is useful when you want the countdown rule to coexist with a separate schedule rule
+      outside those hours. For example: a 1-hour auto-off that only applies between 8 AM and 5 PM,
+      while a different schedule rule controls the device overnight.
+    </p>
+    <div class="note">
+      <strong>Cross-midnight windows:</strong> If the window end time is earlier in the day than
+      the start time (e.g. 8:00 PM → 3:00 AM), the app detects this and schedules the OFF command
+      on the following calendar day automatically.
+    </div>
+
+    <!-- ═══════════════════════ AWAY ═══════════════════════ -->
+    <h2 id="away">Away mode — make your home look occupied</h2>
+    <p>
+      Away mode randomly turns lights on and off within a time window you set. This mimics
+      natural activity and is a great security feature when you're on holiday or away for the evening.
+    </p>
+    <p>
+      For example, you could set a living room lamp to randomly switch on and off between
+      7 PM and 10 PM. The <strong>DWM scheduler</strong> handles all randomisation — the device
+      turns on for 30–90 minutes at a time, then off for 1–15 minutes, cycling throughout the window.
+    </p>
+
+    <div class="warn">
+      <strong>Requires the scheduler to be running.</strong> Away Mode randomisation is performed by
+      the DWM Scheduler on your PC — it is <em>not</em> stored on the Wemo device firmware. The app
+      (or Windows Service) must be running during the window for the rule to fire.
+    </div>
+
+    <h3>How to create an away mode rule</h3>
+    <ol class="steps">
+      <li>Go to the <strong>DWM Rules</strong> sub-tab, click <strong>+ New Rule</strong>.</li>
+      <li>Choose <strong>Away Mode</strong> as the rule type.</li>
+      <li>Set the <strong>Window Start</strong> and <strong>Window End</strong> — either a fixed time
+          or Sunrise / Sunset (with optional offset). For example: Start = Sunset, End = 10:30 PM.</li>
+      <li>Choose which <strong>Active Days</strong> the rule applies.</li>
+      <li>Select the <strong>Target Devices</strong> to control. Use <strong>All</strong> / <strong>None</strong>
+          for quick selection — Away Mode can randomise multiple devices simultaneously.</li>
+      <li>Click <strong>💾 Save Rule</strong>.</li>
+    </ol>
+
+    <div class="note">
+      <strong>Sunrise / Sunset windows:</strong> Instead of a fixed time, the window start or end
+      can be set to Sunrise or Sunset with a minute offset. Make sure your location is configured
+      in <strong>⚙️ Settings</strong> for accurate solar times.
+    </div>
+
+    <div class="tip">
+      <strong>Mid-session restart:</strong> If you restart the app while an Away Mode window is
+      already active, the scheduler automatically resumes the randomisation loop from where it left
+      off — it does not wait until the next day's window start.
+    </div>
+
+    <!-- ═══════════════════════ ALWAYS ON ═══════════════════════ -->
+    <h2 id="alwayson">Always On rule — keep a device on at all times</h2>
+    <p>
+      An <strong>Always On</strong> rule tells the health monitor to check the device every
+      10 seconds and turn it back on immediately if it is found to be off. This is useful for
+      devices that should never be manually switched off (e.g. a network switch, a refrigerator
+      plug, an always-lit lamp).
+    </p>
+
+    <h3>How to create an Always On rule</h3>
+    <ol class="steps">
+      <li>Go to the <strong>DWM Rules</strong> sub-tab, click <strong>+ New Rule</strong>.</li>
+      <li>Choose <strong>Always On</strong> as the rule type.</li>
+      <li>Select the <strong>Target Device(s)</strong> to keep on.</li>
+      <li>Click <strong>💾 Save Rule</strong>.</li>
+    </ol>
+
+    <div class="note">
+      <strong>How enforcement works:</strong> The health monitor polls every 10 seconds.
+      If the device reports <code>BinaryState=0</code>, a <code>SetBinaryState=1</code> command
+      is sent immediately and a <code>[always-on]</code> entry appears in the event log.
+    </div>
+
+    <!-- ═══════════════════════ TRIGGER ═══════════════════════ -->
+    <h2 id="trigger">Trigger rule — if this device does X, do Y on another</h2>
+    <p>
+      A <strong>Trigger</strong> rule links two or more devices: when one device (the
+      <em>trigger device</em>) changes state, the scheduler automatically acts on one or more
+      other devices (the <em>action devices</em>). This is similar to IFTTT but runs entirely
+      on your local network — no cloud, no accounts.
+    </p>
+
+    <h3>Example uses</h3>
+    <ul>
+      <li>When the <strong>hallway switch turns ON</strong>, also turn ON the <strong>staircase light</strong>.</li>
+      <li>When the <strong>master switch turns OFF</strong>, turn OFF <strong>all room lights</strong>.</li>
+      <li>When <strong>any switch changes</strong>, <strong>mirror</strong> its state on a second switch.</li>
+    </ul>
+
+    <h3>How to create a Trigger rule</h3>
+    <ol class="steps">
+      <li>Go to the <strong>DWM Rules</strong> sub-tab, click <strong>+ New Rule</strong>.</li>
+      <li>Choose <strong>Trigger</strong> as the rule type.</li>
+      <li>Select the <strong>Trigger Device</strong> — the device whose state change starts the chain.</li>
+      <li>Choose <strong>When it…</strong>: Turns ON / Turns OFF / Changes (either way).</li>
+      <li>Choose <strong>Then…</strong>: Turn ON / Turn OFF / Mirror state / Opposite state.</li>
+      <li>Select one or more <strong>Action Devices</strong> — these will receive the command.</li>
+      <li>Click <strong>💾 Save Rule</strong>.</li>
+    </ol>
+
+    <div class="note">
+      <strong>How detection works:</strong> The health monitor polls every 10 seconds.
+      When it detects a state change on the trigger device it fires the action immediately
+      — typical response time is under 10 seconds from the physical toggle.
+    </div>
+
+    <div class="warn">
+      <strong>Requires the scheduler to be running.</strong> Trigger rules are evaluated by
+      the DWM Scheduler on your PC — they are not stored on the Wemo device firmware.
+      Start the scheduler (or install the Windows Service) to keep triggers active at all times.
+    </div>
+
+    <!-- ═══════════════════════ MANAGE ═══════════════════════ -->
+    <h2 id="manage">Managing rules</h2>
+
+    <h3>Editing a rule</h3>
+    <p>In the <strong>DWM Rules</strong> tab, click the <strong>pencil icon</strong> (✏️) next to
+    any rule to open it and make changes.</p>
+
+    <h3>Deleting a rule</h3>
+    <p>Click the <strong>trash icon</strong> (🗑) next to a rule and confirm the deletion.</p>
+
+    <h3>Enabling and disabling a rule</h3>
+    <p>
+      Each rule has an on/off toggle. Disabling a rule stops it from firing without deleting it —
+      useful if you want to pause a schedule temporarily (e.g. during the holidays) and turn it
+      back on later.
+    </p>
+
+    <h3>Testing a rule</h3>
+    <p>
+      Click the <strong>▶ Test</strong> button on any DWM rule to immediately turn the device on,
+      so you can verify the rule targets the right device.
+    </p>
+
+    <h3>Refreshing the rule list</h3>
+    <p>
+      Click <strong>⟳ Refresh</strong> to reload DWM rules from the local database.
+      Since rules are stored on your PC — not on the device — this is only needed if you
+      suspect the display is out of sync.
+    </p>
+
+    <!-- ═══════════════════════ COPY DWM ═══════════════════════ -->
+    <h2 id="copy-dwm">Managing Wemo Rules — edit, toggle, and copy to DWM</h2>
+    <p>
+      The <strong>Wemo Rules</strong> tab shows all rules stored directly on your Wemo devices,
+      including any created by the old Belkin iOS app. You can manage them from here without
+      leaving the app.
+    </p>
+
+    <h3>Enable or disable a Wemo rule</h3>
+    <p>
+      Each rule card has a toggle switch on the right. Flipping it sets the rule's
+      <code style="font-size:13px;background:#0f2235;padding:2px 6px;border-radius:4px;">State</code>
+      field directly in the Wemo device's rule database — the schedule is preserved so you can
+      re-enable it at any time. If the same rule appears on multiple devices (deduplicated),
+      it is toggled on all of them simultaneously.
+    </p>
+
+    <h3>Edit a Wemo rule</h3>
+    <p>
+      Click the <strong>✏️</strong> button on any rule card to open the rule editor. Changes are
+      written directly back to the Wemo device when you save. Use this to adjust times, days, or
+      actions for rules that were originally created in the Belkin app. Run a device scan first
+      if you see a "Device not found" message — the editor needs the device to be in the
+      discovered list.
+    </p>
+
+    <h3>Copy a Wemo rule to DWM</h3>
+    <p>
+      If you previously had rules set up using the old Belkin Wemo app, those rules still exist
+      on your devices — they appear here but are <em>not fired</em> by the DWM scheduler.
+      You can bring them under scheduler control in one click.
+    </p>
+
+    <ol class="steps">
+      <li>Click the <strong>Rules</strong> tab (any device), then click <strong>Wemo Rules</strong>.</li>
+      <li>Click <strong>⟳ Load All Rules</strong> to fetch rules from all devices on your network.</li>
+      <li>Find the rule you want. Rules already in DWM show a
+          <span class="badge-dwm">DWM</span> badge — these don't need to be copied.</li>
+      <li>For any rule without a <span class="badge-dwm">DWM</span> badge, click
+          <strong>📥 Add to DWM</strong>.</li>
+      <li>The rule is saved to your <strong>local DWM database</strong> and immediately
+          appears in the <strong>DWM Rules</strong> tab. The scheduler will fire it automatically.</li>
+    </ol>
+
+    <div class="note">
+      <strong>What gets copied?</strong> The rule's name, type, schedule, days, on/off actions,
+      and the devices it targets are all copied into your local DWM database.
+      <strong>Nothing is written to the Wemo device.</strong>
+      The original device rule remains unchanged.
+    </div>
+
+    <div class="tip">
+      <strong>Tip:</strong> After copying, you can edit the DWM version of the rule
+      (click ✏️ in the DWM Rules tab) to adjust the target devices, time, or days.
+    </div>
+
+    <!-- ═══════════════════════ IMPORT/EXPORT ═══════════════════════ -->
+    <h2 id="import">Importing and exporting rules</h2>
+    <p>
+      You can back up your entire DWM rules database to a file and restore it at any time.
+      Because DWM rules are stored locally (not on the device), the export captures all your rules
+      in one file — regardless of which devices they target.
+    </p>
+
+    <h3>Exporting rules</h3>
+    <p>
+      In the <strong>DWM Rules</strong> tab, click <strong>↓ JSON</strong> or <strong>↓ CSV</strong>.
+    </p>
+    <ul>
+      <li><strong>JSON</strong> — best for backing up and restoring. Preserves all rule details including target devices.</li>
+      <li><strong>CSV</strong> — best if you want to view rules in Excel or share a summary.</li>
+    </ul>
+
+    <h3>Importing rules</h3>
+    <p>
+      Click <strong>↑ Import</strong>, select a JSON file, and the rules are added to your local
+      DWM database immediately — ready for the scheduler.
+    </p>
+
+    <div class="tip">
+      <strong>Moving to a new PC?</strong> Export your rules to JSON on the old PC, copy the file
+      to the new PC, open the app there, and import the JSON. All your schedules are restored
+      instantly — no reconfiguration needed.
+    </div>
+
+    <!-- ═══════════════════════ SCHEDULER ═══════════════════════ -->
+    <h2 id="scheduler">The Scheduler — how it works</h2>
+    <p>
+      Belkin's cloud service (which used to trigger Wemo rules) was permanently shut down.
+      Without it, rules stored on the device simply don't fire — the device waits for a cloud
+      signal that never comes.
+    </p>
+    <p>
+      <strong>Dibby Wemo Manager's Scheduler replaces the cloud entirely.</strong>
+      It runs on your PC, reads your <strong>DWM Rules</strong> from the local database, and sends
+      the on/off commands at exactly the right time — all on your local network with no
+      internet required.
+    </p>
+    <p>
+      The scheduler reads directly from the app's local rule database — it does not need to
+      contact Wemo devices to load rules. Only when a rule fires does the scheduler send a
+      command to the target device.
+    </p>
+
+    <div class="warn">
+      <strong>Important:</strong> The scheduler <em>only fires DWM Rules</em> — rules in the
+      app's local database. Rules that appear only in the <strong>Wemo Rules</strong> tab
+      (created by the old Belkin iOS app or stored directly on the device) are intentionally
+      ignored. Use <a href="#copy-dwm" style="color:#d4b888">📥 Add to DWM</a> to bring any
+      of them under scheduler control.
+    </div>
+
+    <h3>Starting the in-app scheduler</h3>
+    <p>
+      In the left panel, click <strong>⏱ In-app sched. OFF</strong> to start the scheduler.
+      The label turns green and shows your next scheduled events for today.
+    </p>
+    <p>
+      When you <strong>minimise or close</strong> the app window, the scheduler keeps running
+      in the background (the app hides to the system tray). Only choosing
+      <strong>Quit</strong> from the tray menu fully stops it.
+    </p>
+
+    <h3>The "Next fires today" panel</h3>
+    <p>
+      When the scheduler is running, click the <strong>▼</strong> button next to it to expand
+      a list of all DWM rule actions scheduled for today — showing the rule name, time, and
+      whether it will turn the device ON or OFF.
+    </p>
+    <p>
+      This list shows each unique action once (even if the same rule exists on multiple devices)
+      and updates automatically whenever you save, change, or delete a rule.
+    </p>
+
+    <h3>Scheduler notifications</h3>
+    <p>
+      Each time the scheduler fires a rule, a small notification appears in the bottom-right
+      corner of the app. A green notification means it worked. A red notification means
+      the device was unreachable — check that it's still powered on and connected to Wi-Fi.
+    </p>
+    <p>
+      The scheduler also <strong>verifies</strong> each action: 3 seconds after sending the
+      on/off command, it checks the device's actual state. If it didn't change, it retries
+      automatically one more time.
+    </p>
+
+    <!-- ═══════════════════════ SERVICE ═══════════════════════ -->
+    <h2 id="svc">Always-on service — rules fire with no login required</h2>
+    <p>
+      The <strong>Windows Service</strong> is the recommended way to run the scheduler for a
+      home that's always automated. Once installed, the service:
+    </p>
+    <ul>
+      <li>Starts automatically every time your computer turns on — before you even log in</li>
+      <li>Runs in the background with no window open</li>
+      <li>Fires all your DWM schedules reliably, 24/7</li>
+      <li>Restarts itself automatically if it stops unexpectedly</li>
+    </ul>
+
+    <div class="new">
+      <strong>Windows Service vs In-app scheduler:</strong> Both only fire DWM Rules.
+      The difference is when they run. The in-app scheduler runs only while the app window is
+      open (or hidden to tray). The Windows Service runs constantly, even when no one is logged in.
+      For a house you want automated 24/7, use the Windows Service.
+    </div>
+
+    <h3>Installing the service (one-time setup)</h3>
+    <ol class="steps">
+      <li>First, make sure you've discovered your devices — click <strong>🔍 Discover</strong>
+          and wait for them to appear.</li>
+      <li>In the left panel, click the service status area (it shows a grey dot and
+          "Service: not installed").</li>
+      <li>Click <strong>⬆ Install Service</strong>.</li>
+      <li>Windows may ask for administrator permission — click Yes.</li>
+      <li>After a few seconds the dot turns <span class="badge badge-green">green</span> and
+          shows "Service: running". That's it — you're done.</li>
+    </ol>
+
+    <div class="tip">
+      <strong>After adding new devices or changing your network:</strong> Click
+      <strong>🔄 Sync device list to service</strong> to make sure the service knows about
+      the updated devices. Always do this after discovering new devices.
+    </div>
+
+    <h3>Service status indicators</h3>
+    <table>
+      <tr>
+        <td><span class="badge badge-green">●</span> Service: running</td>
+        <td>Everything is working. DWM rules will fire automatically.</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-orange">●</span> Service: stopped</td>
+        <td>The service is installed but not running. Click Start.</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-red">●</span> Service: not installed</td>
+        <td>Not yet set up. Click Install Service.</td>
+      </tr>
+    </table>
+
+    <h3>Removing the service</h3>
+    <p>
+      If you no longer want the service running, click the service status area to expand it,
+      then click <strong>🗑 Remove</strong>. The service will be stopped and uninstalled.
+      Your rules remain on the devices — only the background scheduler is removed.
+    </p>
+
+    <!-- ═══════════════════════ WIFI ═══════════════════════ -->
+    <h2 id="web-remote">Web Remote — phone &amp; tablet access</h2>
+
+    <p>
+      Dibby Wemo Manager includes a built-in web server that lets you control your devices and
+      manage DWM rules from <strong>any phone, tablet, or browser on the same local WiFi
+      network</strong> — no installation required on the phone.
+    </p>
+
+    <h3>How to connect</h3>
+    <ol class="steps">
+      <li>Make sure the DWM desktop app is running on your PC.</li>
+      <li>Right-click the <strong>DWM tray icon</strong> in the system tray.</li>
+      <li>Note the URL shown: <code style="font-size:13px;background:#0f2235;padding:2px 6px;border-radius:4px;">📱 Web Remote: http://192.168.x.x:3456</code></li>
+      <li>Type that address into your phone's browser, or scan the QR code (see below).</li>
+    </ol>
+
+    <div class="note">
+      <strong>Same network required:</strong> Your phone must be connected to the same WiFi network
+      as the PC running DWM. The web remote is not accessible from outside your home network.
+    </div>
+
+    <div class="note">
+      <strong>Port in use?</strong> The web remote starts on port 3456 by default. If that port is
+      already occupied by another program, DWM automatically tries 3457, 3458 … up to 3465 until
+      it finds a free port. The tray menu always shows the actual URL in use — check it if
+      3456 doesn't work.
+    </div>
+
+    <h3>What the web remote can do</h3>
+    <ul>
+      <li><strong>Devices tab</strong> — lists all saved devices with large on/off toggle switches.
+          Tap <strong>⟳ Scan</strong> to discover new devices.</li>
+      <li><strong>Rules tab</strong> — shows all DWM rules with enable/disable toggles.</li>
+      <li><strong>Status tab</strong> — live scheduler status and a real-time event log showing
+          every rule that fires (updates instantly via WebSocket).</li>
+    </ul>
+
+    <h3>Compatible clients — what can connect</h3>
+    <p>
+      The web remote is a standard HTTP server — any device with a modern browser on the same
+      local network can connect. No app or software installation needed on the client.
+    </p>
+    <table>
+      <tr><th>Client OS / Device</th><th>How to access</th><th>Notes</th></tr>
+      <tr>
+        <td><strong>Android phone / tablet</strong></td>
+        <td>Chrome, Firefox, Edge — scan QR code or type URL</td>
+        <td>Tested. Full touch UI with large toggles.</td>
+      </tr>
+      <tr>
+        <td><strong>iPhone / iPad (iOS)</strong></td>
+        <td>Safari, Chrome — scan QR code or type URL</td>
+        <td>Full support. Add to home screen via Share → Add to Home Screen for app-like access.</td>
+      </tr>
+      <tr>
+        <td><strong>Windows PC / laptop</strong></td>
+        <td>Any browser — or use <em>Open Web Remote in Browser</em> from tray</td>
+        <td>Works on the same PC running DWM via localhost:3456.</td>
+      </tr>
+      <tr>
+        <td><strong>Linux (Ubuntu, Fedora, etc.)</strong></td>
+        <td>Any browser on the same network</td>
+        <td>Full support. No drivers or agents needed.</td>
+      </tr>
+      <tr>
+        <td><strong>Raspberry Pi</strong></td>
+        <td>Chromium or any browser on the Pi</td>
+        <td>Useful as a wall-mounted control panel. Run in kiosk mode for a dedicated display.</td>
+      </tr>
+      <tr>
+        <td><strong>Linux Server / Docker</strong></td>
+        <td>REST API over HTTP (headless)</td>
+        <td>Use <code>curl</code> or any HTTP client to control devices and rules programmatically.</td>
+      </tr>
+      <tr>
+        <td><strong>Python 3.10+ (any OS)</strong></td>
+        <td>REST API via <code>requests</code> library</td>
+        <td>See REST API section below for endpoint reference.</td>
+      </tr>
+      <tr>
+        <td><strong>macOS</strong></td>
+        <td>Safari, Chrome, Firefox</td>
+        <td>Full browser support.</td>
+      </tr>
+    </table>
+
+    <h3>REST API — programmatic access</h3>
+    <p>
+      Every web remote action is available as a plain HTTP JSON API. The DWM app must be running on
+      the Windows PC. Base URL: <code>http://&lt;PC-IP&gt;:3456</code>
+    </p>
+    <table>
+      <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+      <tr><td>GET</td><td><code>/api/devices</code></td><td>List all saved devices with current on/off state</td></tr>
+      <tr><td>POST</td><td><code>/api/devices/discover</code></td><td>Trigger a network scan for new devices</td></tr>
+      <tr><td>POST</td><td><code>/api/devices/:host/:port/state</code></td><td>Turn device on/off. Body: <code>{"state":1}</code> (1=on, 0=off)</td></tr>
+      <tr><td>GET</td><td><code>/api/dwm-rules</code></td><td>List all DWM scheduler rules</td></tr>
+      <tr><td>PATCH</td><td><code>/api/dwm-rules/:id</code></td><td>Enable/disable a rule. Body: <code>{"enabled":true}</code></td></tr>
+      <tr><td>GET</td><td><code>/api/scheduler/status</code></td><td>Current scheduler status and next scheduled events</td></tr>
+    </table>
+    <p>Python example:</p>
+    <pre style="background:#0f2235;padding:12px;border-radius:6px;font-size:12px;overflow-x:auto;"><code>import requests
+
+BASE = 'http://192.168.1.100:3456'
+
+# List devices
+devices = requests.get(f'{BASE}/api/devices').json()
+
+# Turn on a device
+requests.post(f'{BASE}/api/devices/192.168.1.50/49153/state', json={'state': 1})
+
+# Disable a DWM rule
+requests.patch(f'{BASE}/api/dwm-rules/42', json={'enabled': False})</code></pre>
+
+    <h3 id="qr-code">QR code setup</h3>
+    <p>
+      The easiest way to connect a phone is to scan the QR code:
+    </p>
+    <ol class="steps">
+      <li>Right-click the DWM tray icon.</li>
+      <li>Click <strong>📷 Show QR Code</strong>.</li>
+      <li>A small window opens showing a scannable QR code for the web remote URL.</li>
+      <li>Point your phone camera at the QR code — tap the notification to open the remote.</li>
+    </ol>
+
+    <div class="tip">
+      <strong>Tray shortcuts:</strong> The tray menu also has <strong>Copy Web Remote URL</strong>
+      (puts the URL on the clipboard) and <strong>Open Web Remote in Browser</strong>
+      (opens on the PC so you can test it).
+    </div>
+
+    <h2 id="wifi">WiFi setup — connecting a device to your network</h2>
+    <p>
+      If you've just bought a new Wemo device, or your Wi-Fi network name/password has changed,
+      you can reconnect devices from the <strong>WiFi</strong> tab.
+    </p>
+    <ol class="steps">
+      <li>Select the device and click the <strong>WiFi</strong> tab.</li>
+      <li>Click <strong>Scan Networks</strong> to see available Wi-Fi networks near the device.</li>
+      <li>Click your home network, or type the name manually.</li>
+      <li>Enter your Wi-Fi password and click <strong>Connect</strong>.</li>
+      <li>The app shows <span class="badge badge-green">Connected</span> once the device
+          joins the network successfully.</li>
+    </ol>
+
+    <div class="warn">
+      <strong>Note:</strong> During the connection process the device temporarily creates its
+      own Wi-Fi hotspot. Your computer may briefly disconnect from your home network.
+      This is normal and it reconnects automatically.
+    </div>
+
+    <!-- ═══════════════════════ RESET ═══════════════════════ -->
+    <h2 id="reset">Reset options</h2>
+    <p>
+      On the <strong>Info</strong> tab, scroll down to find three reset options. Use these
+      with care — they cannot be undone.
+    </p>
+
+    <table>
+      <tr><th>Option</th><th>What it does</th><th>When to use it</th></tr>
+      <tr>
+        <td><strong>Clear Data</strong></td>
+        <td>Wipes all rules and settings from the device</td>
+        <td>When you want a clean start without losing Wi-Fi</td>
+      </tr>
+      <tr>
+        <td><strong>Clear WiFi</strong></td>
+        <td>Removes the saved Wi-Fi network from the device</td>
+        <td>Before moving a device to a different network</td>
+      </tr>
+      <tr>
+        <td><strong>Factory Reset</strong></td>
+        <td>Wipes everything — rules, settings, and Wi-Fi</td>
+        <td>When selling or giving away the device</td>
+      </tr>
+    </table>
+
+    <div class="tip">
+      <strong>Reboot Device:</strong> The <strong>⏻ Reboot Device</strong> button on the Rules
+      tab restarts the device remotely. This is occasionally needed to refresh the device's
+      internal state.
+    </div>
+
+    <!-- ═══════════════════════ TIPS ═══════════════════════ -->
+    <h2 id="tips">Tips &amp; troubleshooting</h2>
+
+    <h3>A device shows as offline</h3>
+    <ul>
+      <li>Check the device is plugged in and the LED is on.</li>
+      <li>Make sure your PC and the device are on the same Wi-Fi network.</li>
+      <li>Try clicking <strong>🔍 Discover</strong> again — sometimes devices take a moment to respond.</li>
+      <li>If it still doesn't appear, try unplugging the device, waiting 10 seconds, and plugging it back in.</li>
+    </ul>
+
+    <h3>A scheduled rule didn't fire</h3>
+    <ul>
+      <li>Make sure the rule is in the <strong>DWM Rules</strong> tab — only DWM rules are
+          fired by the scheduler. If it only appears in <strong>Wemo Rules</strong>, use
+          <a href="#copy-dwm" style="color:#7ecfff">Copy to DWM Rules</a> to bring it under
+          scheduler control.</li>
+      <li>Make sure the <strong>Scheduler is running</strong> (green dot in the left panel) —
+          or the <strong>Windows Service</strong> is installed and running.</li>
+      <li>Check that the rule is <strong>enabled</strong> (the toggle next to it is on).</li>
+      <li>Verify the rule's days include today.</li>
+      <li>Check the rule's time — it may have already passed for today.</li>
+      <li>Make sure the device is online and reachable when the rule fires.</li>
+    </ul>
+
+    <h3>Rules show in the list but don't run</h3>
+    <p>
+      If the rules are in the <strong>Wemo Rules</strong> tab but not the <strong>DWM Rules</strong>
+      tab, they were created by the old Wemo iOS app and are not managed by this scheduler.
+      Go to the Wemo Rules tab and click <strong>📥 Add to DWM</strong> on each rule you want
+      to schedule. They will then appear in DWM Rules and fire automatically.
+    </p>
+
+    <h3>"Next fires today" shows no entries</h3>
+    <p>
+      This means no DWM rules are scheduled for later today. Possible reasons:
+    </p>
+    <ul>
+      <li>No DWM rules have been created yet — create rules in the DWM Rules tab, or copy
+          them from the Wemo Rules tab.</li>
+      <li>All of today's rules have already fired (it's late in the day).</li>
+      <li>The rules exist in Wemo Rules but haven't been copied to DWM Rules yet.</li>
+    </ul>
+
+    <h3>Windows asks "Do you want to allow Electron to access networks?"</h3>
+    <p>
+      This prompt appears the first time the app's built-in web server starts. Click
+      <strong>Allow</strong>. If you clicked Cancel by mistake, use the tray menu option below.
+    </p>
+    <div class="note">
+      The dialog shows <em>"Publisher: GitHub, Inc."</em> because the Electron framework is signed
+      by GitHub. This is normal — it does not mean the app is from GitHub. DWM is published by SRS IT.
+    </div>
+
+    <h3>My phone can't reach the web remote after clicking Allow</h3>
+    <p>
+      Windows Firewall sometimes needs an explicit inbound rule. Right-click the DWM tray icon
+      and click <strong>🔓 Open Port in Windows Firewall</strong>. A UAC elevation prompt will
+      appear — click <strong>Yes</strong> to let the app add the rule. The tray item changes to
+      <strong>✅ Firewall rule active</strong> once it succeeds. Try the web remote URL again
+      on your phone.
+    </p>
+
+    <h3>Firewall rule shows ✅ active but phone still can't connect</h3>
+    <p>
+      When Windows first asks <em>"Do you want to allow Electron to access networks?"</em> and you
+      click <strong>Block</strong> (or dismiss the prompt), Windows creates hidden block rules named
+      <strong>"Electron"</strong> in Windows Firewall. These block rules override any port-based allow
+      rules, so the port remains closed even though the DWM rule appears active.
+    </p>
+    <p>
+      <strong>Quick fix — one step:</strong> Click <strong>🔓 Open Port in Windows Firewall</strong>
+      from the DWM tray icon. This automatically:
+    </p>
+    <ul>
+      <li>Removes the <em>Electron</em> block rules</li>
+      <li>Removes any previous DWM allow rules</li>
+      <li>Creates fresh inbound allow rules for both the port and the app executable</li>
+      <li>Ensures the Private/Domain/Public profile isn't set to block all inbound connections</li>
+    </ul>
+    <p>After the UAC prompt completes, the tray item shows <strong>✅ Firewall rule active</strong>. Try your phone again.</p>
+    <div class="note">
+      <strong>Manual verification:</strong> Open <strong>Windows Defender Firewall with Advanced Security</strong>
+      (press Win+R, type <code>wf.msc</code>) → <strong>Inbound Rules</strong>. After running the tray option,
+      there should be no entry named <em>Electron</em> with a red ❌ block icon, and two entries named
+      <em>DWM Web Remote</em> (port rule) and <em>DWM Web Remote (App)</em> (application rule) with green ✔ allow icons.
+    </div>
+    <div class="tip">
+      <strong>Confirmed fix:</strong> If turning off the Windows Private Firewall entirely makes your phone
+      connect, but it still fails with firewall on, the Electron block rules are the cause.
+      The <strong>🔓 Open Port in Windows Firewall</strong> tray option was specifically designed to fix this.
+    </div>
+
+    <h3>The web remote URL opens but the page is blank or says "Not found"</h3>
+    <ul>
+      <li>Make sure Windows Firewall allowed access (see above).</li>
+      <li>Check the tray menu for the actual URL — the port may have shifted from 3456 to 3457 etc. if another program used 3456.</li>
+      <li>Try opening the URL on the same PC first (use <strong>Open Web Remote in Browser</strong> from the tray) to verify the server is running.</li>
+    </ul>
+
+    <h3>The app can't find any devices</h3>
+    <ul>
+      <li>Ensure your PC is on the same network as the devices (not a guest network).</li>
+      <li>Some corporate or advanced home routers block device discovery signals.
+          Try adding devices manually using their IP address.</li>
+      <li>Check that Windows Firewall isn't blocking the app.</li>
+    </ul>
+
+    <h3>A device was replaced — how do I keep my rules?</h3>
+    <p>
+      Because DWM rules are stored locally on your PC (not on the Wemo device), your rules are
+      completely unaffected when you replace hardware. Just:
+    </p>
+    <ol class="steps">
+      <li>Set up the new device on your Wi-Fi and discover it in the app.</li>
+      <li>Open the DWM Rules tab, find any rules that targeted the old device, and click ✏️ Edit.</li>
+      <li>In the Target Devices picker, deselect the old device and select the new one.</li>
+      <li>Save — the scheduler immediately starts using the new device's address.</li>
+    </ol>
+    <div class="tip">
+      <strong>Tip:</strong> You can also export your rules to JSON as a backup before any
+      hardware change — use <strong>↓ JSON</strong> in the DWM Rules tab.
+    </div>
+
+    <h3>I see the same rule many times in the Wemo Rules tab</h3>
+    <p>
+      The Wemo Rules tab automatically removes duplicates. If a rule appears on multiple devices
+      (which is normal — the old Wemo app synced rules to all devices), it shows as a single
+      entry with small <strong>📍 Device Name</strong> chips listing every device that holds it.
+    </p>
+
+    <div class="note" style="margin-top: 40px;">
+      <strong>Dedicated to Dibby ❤️</strong><br>
+      Dibby Wemo Manager was built with love. If something isn't working as expected,
+      the app is always being improved — check for updates regularly.
+    </div>
+
+  </main>
+</div>
+
+<script>
+  // Highlight active nav link on scroll
+  const sections = document.querySelectorAll('h2[id], h3[id]');
+  const links = document.querySelectorAll('nav a[href^="#"]');
+
+  const observer = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (e.isIntersecting) {
+        const id = e.target.id;
+        links.forEach((l) => {
+          l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+        });
+      }
+    }
+  }, { rootMargin: '-10% 0px -80% 0px' });
+
+  sections.forEach((s) => observer.observe(s));
+</script>
+</body>
+</html>
