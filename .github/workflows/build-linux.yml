@@ -29,20 +29,16 @@ jobs:
       - name: Install workspace dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Ensure app-builder binary
+      - name: Install app-builder to system PATH
         run: |
-          BINARY="node_modules/app-builder-bin/linux/x64/app-builder"
-          if [ ! -f "$BINARY" ]; then
-            VERSION=$(node -e "console.log(require('./node_modules/app-builder-bin/package.json').version)")
-            echo "Downloading app-builder $VERSION"
-            mkdir -p "$(dirname $BINARY)"
-            curl -fL "https://github.com/develar/app-builder/releases/download/v${VERSION}/app-builder_${VERSION}_linux_amd64.tar.gz" \
-              -o /tmp/app-builder.tar.gz
-            tar -xzf /tmp/app-builder.tar.gz -C "$(dirname $BINARY)"
-          fi
-          chmod +x "$BINARY"
-          echo "Binary: $GITHUB_WORKSPACE/$BINARY"
-          "$BINARY" --version
+          VERSION=$(node -e "console.log(require('./node_modules/app-builder-bin/package.json').version)")
+          echo "Downloading app-builder $VERSION"
+          curl -fL "https://github.com/develar/app-builder/releases/download/v${VERSION}/app-builder_${VERSION}_linux_amd64.tar.gz" \
+            -o /tmp/app-builder.tar.gz
+          tar -xzf /tmp/app-builder.tar.gz -C /tmp/
+          chmod +x /tmp/app-builder
+          sudo mv /tmp/app-builder /usr/local/bin/app-builder
+          app-builder --version
 
       - name: Vite build
         run: npx electron-vite build
@@ -58,7 +54,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-          CUSTOM_APP_BUILDER_PATH: ${{ github.workspace }}/node_modules/app-builder-bin/linux/x64/app-builder
+          USE_SYSTEM_APP_BUILDER: "true"
 
       - name: Build Linux arm64 packages
         run: npx electron-builder --linux --arm64
@@ -66,7 +62,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-          CUSTOM_APP_BUILDER_PATH: ${{ github.workspace }}/node_modules/app-builder-bin/linux/x64/app-builder
+          USE_SYSTEM_APP_BUILDER: "true"
 
       - name: List build output
         run: ls -lh apps/desktop/dist/
