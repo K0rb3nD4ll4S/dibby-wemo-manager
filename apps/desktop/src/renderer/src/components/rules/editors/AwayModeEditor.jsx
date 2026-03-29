@@ -126,6 +126,30 @@ export default function AwayModeEditor({ form, onChange, sunTimes }) {
         configured window. The DWM scheduler handles all randomisation while the app is running.
       </div>
 
+      {/* Start / End action */}
+      <div style={{ display: 'flex', gap: 16, marginBottom: 4 }}>
+        <div className="form-group" style={{ flex: 1 }}>
+          <label>Window Start Action</label>
+          <select
+            value={form.startAction ?? 1}
+            onChange={(e) => onChange({ ...form, startAction: Number(e.target.value) })}
+          >
+            <option value={1}>Turn ON</option>
+            <option value={0}>Turn OFF</option>
+          </select>
+        </div>
+        <div className="form-group" style={{ flex: 1 }}>
+          <label>Window End Action</label>
+          <select
+            value={form.endAction ?? 0}
+            onChange={(e) => onChange({ ...form, endAction: Number(e.target.value) })}
+          >
+            <option value={0}>Turn OFF</option>
+            <option value={1}>Turn ON</option>
+          </select>
+        </div>
+      </div>
+
       {/* Active days */}
       <div className="form-group">
         <label>Active Days</label>

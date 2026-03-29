@@ -2,8 +2,9 @@ import React from 'react';
 import DayPicker from '../DayPicker';
 
 export default function CountdownEditor({ form, onChange }) {
-  const mins           = form.countdownMins  ?? 60;
-  const windowEnabled  = form.windowEnabled  ?? false;
+  const mins            = form.countdownMins   ?? 60;
+  const countdownAction = form.countdownAction ?? 'on_to_off';
+  const windowEnabled   = form.windowEnabled   ?? false;
   const windowStartTime = form.windowStartTime ?? '';
   const windowEndTime   = form.windowEndTime   ?? '';
   const windowDays      = form.windowDays      ?? ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
@@ -18,14 +19,26 @@ export default function CountdownEditor({ form, onChange }) {
 
   return (
     <>
-      <div className="notice notice-info">
-        The device automatically turns off after the countdown completes.
-        The countdown starts when the device is manually turned on (or at window start, if an active window is set below).
+      {/* Condition */}
+      <div className="form-group">
+        <label>Condition</label>
+        <select
+          value={countdownAction}
+          onChange={(e) => onChange({ ...form, countdownAction: e.target.value })}
+        >
+          <option value="on_to_off">If device turns ON → auto-OFF after duration</option>
+          <option value="off_to_on">If device turns OFF → auto-ON after duration</option>
+        </select>
+        <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>
+          {countdownAction === 'on_to_off'
+            ? 'When the device is turned ON, it will automatically turn OFF after the countdown.'
+            : 'When the device is turned OFF, it will automatically turn ON after the countdown.'}
+        </div>
       </div>
 
       {/* Countdown duration */}
       <div className="form-group">
-        <label>Turn off after (minutes)</label>
+        <label>Duration (minutes)</label>
         <input
           type="number" min="1" max="1440"
           value={mins}
@@ -59,9 +72,8 @@ export default function CountdownEditor({ form, onChange }) {
         {windowEnabled && (
           <>
             <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 12 }}>
-              The scheduler will turn the device <strong>ON</strong> at the window start and
-              <strong> OFF</strong> at the window end. The countdown auto-off fires in between.
-              Use this to prevent the timer rule conflicting with other rules outside these hours.
+              The countdown only activates when the device state changes within this time window.
+              State changes outside the window are ignored.
             </p>
 
             {/* Window times */}
@@ -88,7 +100,6 @@ export default function CountdownEditor({ form, onChange }) {
             {windowStartTime && windowEndTime && crossesMidnight() && (
               <div className="notice notice-info" style={{ marginBottom: 12, fontSize: 12 }}>
                 🌙 Window crosses midnight — ends at <strong>{windowEndTime}</strong> the <strong>next day</strong>.
-                The OFF command fires on the following calendar day.
               </div>
             )}
 

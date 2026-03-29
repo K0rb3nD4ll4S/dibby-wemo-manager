@@ -61,8 +61,10 @@ class LocalScheduler {
     this._onStatus      = null;        // (statusObj) status callback
     this._onHealth      = null;        // ({host, port, name, online, msg}) health event callback
     this._deviceHealth  = new Map();   // 'host:port' → true | false
-    this._triggerStates = new Map();   // 'host:port' → last known boolean state (for Trigger rules)
-    this._healthTimer   = null;
+    this._triggerStates   = new Map();   // 'host:port' → last known boolean state (for Trigger rules)
+    this._countdownStates = new Map();   // 'host:port' → last known boolean state (for Countdown rules)
+    this._countdownTimers = new Map();   // 'deviceKey-ruleId' → {timer, wantOn}
+    this._healthTimer     = null;
     this._startedAt     = null;
   }
 
@@ -162,6 +164,9 @@ class LocalScheduler {
         const endSecs   = resolveSecs(Number(rule.endTime   ?? -1), rule.endType,   rule.endOffset);
         if (startSecs === null) continue; // no location set or polar day/night
 
+        const awayStartAction = Number(rule.startAction ?? 1);
+        const awayEndAction   = Number(rule.endAction   ?? 0);
+
         for (const dayId of (rule.days ?? [])) {
           const td0 = rule.targetDevices?.[0]; // for status display only
           // Window-start entry: fires the away loop
@@ -172,7 +177,7 @@ class LocalScheduler {
             targetPort:  td0?.port ?? 0,
             dayId:       Number(dayId),
             targetSecs:  startSecs,
-            action:      1,
+            action:      awayStartAction,
             isAwayStart: true,
           });
           // Window-end entry: stops the away loop
@@ -184,7 +189,7 @@ class LocalScheduler {
               targetPort: td0?.port ?? 0,
               dayId:      Number(dayId),
               targetSecs: endSecs,
-              action:     0,
+              action:     awayEndAction,
               isAwayEnd:  true,
               awayRuleId: rule.id,
             });
@@ -193,31 +198,8 @@ class LocalScheduler {
         continue;
       }
 
-      // ── Countdown with active window ─────────────────────────────────────
-      if (rule.type === 'Countdown') {
-        const windowStart = Number(rule.windowStart ?? -1);
-        const windowEnd   = Number(rule.windowEnd   ?? -1);
-        if (windowStart < 0 || !(rule.windowDays?.length)) continue;
-
-        const crossesMidnight = windowEnd >= 0 && windowEnd < windowStart;
-
-        for (const dayId of rule.windowDays) {
-          for (const td of (rule.targetDevices ?? [])) {
-            if (!td.host || !td.port) continue;
-            schedule.push({ ruleId: rule.id, ruleName: rule.name,
-              targetHost: td.host, targetPort: td.port,
-              dayId: Number(dayId), targetSecs: windowStart, action: 1 });
-
-            if (windowEnd >= 0) {
-              const offDayId = crossesMidnight ? (Number(dayId) % 7) + 1 : Number(dayId);
-              schedule.push({ ruleId: rule.id + '-wend', ruleName: rule.name,
-                targetHost: td.host, targetPort: td.port,
-                dayId: offDayId, targetSecs: windowEnd, action: 0 });
-            }
-          }
-        }
-        continue;
-      }
+      // ── Countdown — handled by the health-monitor state-change poll ─────
+      if (rule.type === 'Countdown') continue;
 
       // ── Schedule / other time-based rules ────────────────────────────────
       const startSecs   = resolveSecs(Number(rule.startTime ?? -1), rule.startType, rule.startOffset);
@@ -354,13 +336,15 @@ class LocalScheduler {
     this._awayLoops.delete(ruleId);
 
     if (forceOff) {
+      const endAction = Number(loop.rule.endAction ?? 0);
+      const turnOn    = endAction === 1;
       for (const td of loop.devices) {
-        wemo.setBinaryState(td.host, td.port, false).catch(() => {});
+        wemo.setBinaryState(td.host, td.port, turnOn).catch(() => {});
       }
       this._onFire?.({
         success: true,
-        msg: `"${loop.rule.name}" Away Mode window ended — all devices OFF`,
-        entry: { action: 0 },
+        msg: `"${loop.rule.name}" Away Mode window ended — all devices ${turnOn ? 'ON' : 'OFF'}`,
+        entry: { action: endAction },
       });
     }
   }
@@ -453,8 +437,9 @@ class LocalScheduler {
     // Build device map: all targets + trigger source devices
     const deviceMap    = new Map(); // 'host:port' → { host, port, name }
     const allRules     = store.getDwmRules();
-    const alwaysOnSet  = new Set(); // keys with an active AlwaysOn rule
-    const triggerSrcSet = new Set(); // keys that are trigger source devices
+    const alwaysOnSet    = new Set(); // keys with an active AlwaysOn rule
+    const triggerSrcSet  = new Set(); // keys that are trigger source devices
+    const countdownDevMap = new Map(); // deviceKey → [{rule, td}]
 
     const addDev = (td) => {
       if (!td?.host || !td?.port) return;
@@ -474,7 +459,12 @@ class LocalScheduler {
       }
       for (const td of (rule.targetDevices ?? [])) {
         const k = addDev(td);
-        if (k && rule.type === 'AlwaysOn') alwaysOnSet.add(k);
+        if (!k) continue;
+        if (rule.type === 'AlwaysOn') alwaysOnSet.add(k);
+        if (rule.type === 'Countdown') {
+          if (!countdownDevMap.has(k)) countdownDevMap.set(k, []);
+          countdownDevMap.get(k).push({ rule, td });
+        }
       }
     }
 
@@ -515,6 +505,60 @@ class LocalScheduler {
           this._triggerStates.set(key, isOn);
           if (prevState !== undefined && prevState !== isOn) {
             await this._fireTriggerRules(key, isOn);
+          }
+        }
+
+        // ── Countdown — fire only when state matches condition and within window ──
+        if (countdownDevMap.has(key)) {
+          const prevState = this._countdownStates.get(key);
+          this._countdownStates.set(key, isOn);
+          if (prevState !== undefined && prevState !== isOn) {
+            const nowSecs = secondsFromMidnight(new Date());
+            for (const { rule, td } of countdownDevMap.get(key)) {
+              const condition = rule.countdownAction ?? 'on_to_off';
+              const triggered = condition === 'on_to_off' ? isOn : !isOn;
+              if (!triggered) continue;
+
+              // Check active window (if defined)
+              const winStart = Number(rule.windowStart ?? -1);
+              const winEnd   = Number(rule.windowEnd   ?? -1);
+              if (winStart >= 0 && winEnd >= 0) {
+                const crossesMidnight = winEnd < winStart;
+                const inWindow = crossesMidnight
+                  ? (nowSecs >= winStart || nowSecs <= winEnd)
+                  : (nowSecs >= winStart && nowSecs <= winEnd);
+                if (!inWindow) continue;
+              } else if (winStart >= 0) {
+                if (nowSecs < winStart) continue;
+              }
+
+              const timerKey  = `${key}-${rule.id}`;
+              const existing  = this._countdownTimers.get(timerKey);
+              if (existing) { clearTimeout(existing.timer); this._countdownTimers.delete(timerKey); }
+
+              const wantOn     = condition === 'off_to_on';
+              const durationMs = (Number(rule.countdownTime) || 60) * 1000;
+              const label      = wantOn ? 'ON' : 'OFF';
+              const mins       = Math.round(durationMs / 60000);
+              this._onFire?.({ success: true,
+                msg: `"${rule.name}" countdown started — will turn ${label} in ${mins} min (${td.host})`,
+                entry: { action: wantOn ? 1 : 0 } });
+
+              const timer = setTimeout(async () => {
+                this._countdownTimers.delete(timerKey);
+                try {
+                  await wemo.setBinaryState(td.host, td.port, wantOn);
+                  this._onFire?.({ success: true,
+                    msg: `"${rule.name}" countdown elapsed → ${label} (${td.host}) ✓`,
+                    entry: { action: wantOn ? 1 : 0 } });
+                } catch (e2) {
+                  this._onFire?.({ success: false,
+                    msg: `"${rule.name}" countdown elapsed → ${label} FAILED: ${e2.message}`,
+                    entry: { action: wantOn ? 1 : 0 } });
+                }
+              }, durationMs);
+              this._countdownTimers.set(timerKey, { timer, wantOn });
+            }
           }
         }
 
@@ -626,6 +670,8 @@ class LocalScheduler {
     for (const t of this._timers) clearTimeout(t);
     this._timers = [];
     if (this._tickTimer) { clearTimeout(this._tickTimer); this._tickTimer = null; }
+    for (const { timer } of this._countdownTimers.values()) clearTimeout(timer);
+    this._countdownTimers.clear();
   }
 
   _scheduleUpcoming() {
