@@ -5,6 +5,7 @@
   "private": true,
   "description": "Belkin Wemo device manager – local control, no cloud required",
   "author": "SRS IT",
+  "homepage": "https://github.com/K0rb3nD4ll4S/dibby-wemo-manager",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
