@@ -98,9 +98,11 @@ class DwmScheduler {
     this._lastFireMsg   = null;        // last fire event for heartbeat
     this._onStatus      = null;        // (statusObj) status callback
     this._onHealth      = null;        // ({host, port, name, online, msg}) health event callback
-    this._deviceHealth  = new Map();   // 'host:port' → true | false
-    this._triggerStates = new Map();   // 'host:port' → last known boolean state (for Trigger rules)
-    this._healthTimer   = null;
+    this._deviceHealth    = new Map();   // 'host:port' → true | false
+    this._triggerStates   = new Map();   // 'host:port' → last known boolean state (for Trigger rules)
+    this._countdownStates = new Map();   // 'host:port' → last known boolean state (for Countdown rules)
+    this._countdownTimers = new Map();   // 'deviceKey-ruleId' → {timer, wantOn}
+    this._healthTimer     = null;
     this._startedAt     = null;
   }
 
@@ -212,23 +214,8 @@ class DwmScheduler {
         continue;
       }
 
-      // Countdown with active window
-      if (rule.type === 'Countdown') {
-        const windowStart     = Number(rule.windowStart ?? -1);
-        const windowEnd       = Number(rule.windowEnd   ?? -1);
-        if (windowStart < 0 || !(rule.windowDays?.length)) continue;
-
-        const countdownAction = Number(rule.countdownAction ?? 1);
-        for (const dayId of rule.windowDays) {
-          for (const td of (rule.targetDevices ?? [])) {
-            if (!td.host || !td.port) continue;
-            schedule.push({ ruleId: rule.id, ruleName: rule.name,
-              targetHost: td.host, targetPort: td.port,
-              dayId: Number(dayId), targetSecs: windowStart, action: countdownAction });
-          }
-        }
-        continue;
-      }
+      // Countdown — handled entirely by the health-monitor state-change poll
+      if (rule.type === 'Countdown') continue;
 
       // Schedule / time-based
       const startSecs   = resolveSecs(Number(rule.startTime ?? -1), rule.startType, rule.startOffset, todaySun);
@@ -393,6 +380,8 @@ class DwmScheduler {
     for (const t of this._timers) clearTimeout(t);
     this._timers = [];
     if (this._tickTimer) { clearTimeout(this._tickTimer); this._tickTimer = null; }
+    for (const { timer } of this._countdownTimers.values()) clearTimeout(timer);
+    this._countdownTimers.clear();
   }
 
   _scheduleUpcoming() {
@@ -527,8 +516,9 @@ class DwmScheduler {
     // Build device map: all targets + trigger source devices
     const deviceMap     = new Map(); // 'host:port' → { host, port, name }
     const allRules      = this._store.getDwmRules();
-    const alwaysOnSet   = new Set(); // keys with an active AlwaysOn rule
-    const triggerSrcSet = new Set(); // keys that are trigger source devices
+    const alwaysOnSet    = new Set(); // keys with an active AlwaysOn rule
+    const triggerSrcSet  = new Set(); // keys that are trigger source devices
+    const countdownDevMap = new Map(); // deviceKey → [{rule, td}]
 
     const addDev = (td) => {
       if (!td?.host || !td?.port) return;
@@ -548,7 +538,12 @@ class DwmScheduler {
       }
       for (const td of (rule.targetDevices ?? [])) {
         const k = addDev(td);
-        if (k && rule.type === 'AlwaysOn') alwaysOnSet.add(k);
+        if (!k) continue;
+        if (rule.type === 'AlwaysOn') alwaysOnSet.add(k);
+        if (rule.type === 'Countdown') {
+          if (!countdownDevMap.has(k)) countdownDevMap.set(k, []);
+          countdownDevMap.get(k).push({ rule, td });
+        }
       }
     }
 
@@ -589,6 +584,47 @@ class DwmScheduler {
           this._triggerStates.set(key, isOn);
           if (prevState !== undefined && prevState !== isOn) {
             await this._fireTriggerRules(key, isOn);
+          }
+        }
+
+        // ── Countdown — fire only when state matches configured condition ──
+        if (countdownDevMap.has(key)) {
+          const prevState = this._countdownStates.get(key);
+          this._countdownStates.set(key, isOn);
+          if (prevState !== undefined && prevState !== isOn) {
+            for (const { rule, td } of countdownDevMap.get(key)) {
+              const condition  = rule.countdownAction ?? 'on_to_off';
+              const triggered  = condition === 'on_to_off' ? isOn : !isOn;
+              if (!triggered) continue;  // state doesn't match this rule's condition
+
+              const timerKey  = `${key}-${rule.id}`;
+              // Cancel any pending timer for this device+rule
+              const existing  = this._countdownTimers.get(timerKey);
+              if (existing) { clearTimeout(existing.timer); this._countdownTimers.delete(timerKey); }
+
+              const wantOn     = condition === 'off_to_on';  // on_to_off → turn OFF; off_to_on → turn ON
+              const durationMs = (Number(rule.countdownTime) || 60) * 1000;
+              const label      = wantOn ? 'ON' : 'OFF';
+              const mins       = Math.round(durationMs / 60000);
+              this._emit({ success: true,
+                msg: `"${rule.name}" countdown started — will turn ${label} in ${mins} min (${td.host})`,
+                entry: { action: wantOn ? 1 : 0 } });
+
+              const timer = setTimeout(async () => {
+                this._countdownTimers.delete(timerKey);
+                try {
+                  await this._wemo.setBinaryState(td.host, td.port, wantOn);
+                  this._emit({ success: true,
+                    msg: `"${rule.name}" countdown elapsed → ${label} (${td.host}) ✓`,
+                    entry: { action: wantOn ? 1 : 0 } });
+                } catch (e2) {
+                  this._emit({ success: false,
+                    msg: `"${rule.name}" countdown elapsed → ${label} FAILED: ${e2.message}`,
+                    entry: { action: wantOn ? 1 : 0 } });
+                }
+              }, durationMs);
+              this._countdownTimers.set(timerKey, { timer, wantOn });
+            }
           }
         }
 

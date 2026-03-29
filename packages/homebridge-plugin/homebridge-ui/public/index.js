@@ -196,8 +196,8 @@ function dwmRuleSummary(r) {
   }
   if (r.type === 'Countdown') {
     const mins   = r.countdownTime ? Math.round(r.countdownTime / 60) : null;
-    const action = r.countdownAction === 0 ? 'Turn OFF' : 'Turn ON';
-    return mins ? `⏱ ${mins} min · ${action}` : '—';
+    const cond = r.countdownAction === 'off_to_on' ? 'OFF→ON' : 'ON→OFF';
+    return mins ? `⏱ ${mins} min · ${cond}` : '—';
   }
   const days = dayLabel(r.days);
   const devs = (r.targetDevices ?? []).map((td) => esc(td.name ?? td.host)).join(', ') || 'no targets';
@@ -443,7 +443,7 @@ function openDwmEdit(id) {
     document.getElementById('dwm-end-action').value   = String(r.endAction   ?? -1);
     document.getElementById('dwm-countdown-mins').value =
       r.countdownTime ? String(Math.round(r.countdownTime / 60)) : '';
-    document.getElementById('dwm-countdown-action').value = String(r.countdownAction ?? 1);
+    document.getElementById('dwm-countdown-action').value = r.countdownAction ?? 'on_to_off';
 
     _selectedDwmDays = new Set((r.days ?? []).map(Number));
 
@@ -477,7 +477,7 @@ function openDwmEdit(id) {
     document.getElementById('dwm-start-action').value = '1';
     document.getElementById('dwm-end-action').value   = '-1';
     document.getElementById('dwm-countdown-mins').value    = '';
-    document.getElementById('dwm-countdown-action').value  = '1';
+    document.getElementById('dwm-countdown-action').value  = 'on_to_off';
     document.getElementById('dwm-trigger-src').value       = '';
     document.getElementById('dwm-trigger-event').value  = 'any';
     document.getElementById('dwm-trigger-action').value = 'on';
@@ -608,7 +608,7 @@ document.getElementById('dwm-form-save-btn').addEventListener('click', async () 
     const mins = Number(document.getElementById('dwm-countdown-mins').value);
     if (!mins || mins < 1) { showModalError('Enter countdown duration in minutes'); return; }
     rule.countdownTime    = mins * 60;
-    rule.countdownAction  = Number(document.getElementById('dwm-countdown-action').value);
+    rule.countdownAction  = document.getElementById('dwm-countdown-action').value;
   } else {
     const startType   = document.getElementById('dwm-start-type').value;
     const startOffset = parseInt(document.getElementById('dwm-start-offset').value ?? '0', 10) || 0;

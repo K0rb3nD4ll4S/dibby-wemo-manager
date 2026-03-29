@@ -399,10 +399,10 @@
           <input type="number" id="dwm-countdown-mins" min="1" max="1440" placeholder="60" />
         </div>
         <div class="form-group">
-          <label>Action when timer fires</label>
+          <label>Condition</label>
           <select id="dwm-countdown-action">
-            <option value="1">Turn ON</option>
-            <option value="0">Turn OFF</option>
+            <option value="on_to_off">If device turns ON → auto-OFF after duration</option>
+            <option value="off_to_on">If device turns OFF → auto-ON after duration</option>
           </select>
         </div>
       </div>
