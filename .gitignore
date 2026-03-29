@@ -8,6 +8,7 @@ dist/
 out/
 build/
 *.blockmap
+*.tgz
 builder-debug.yml
 builder-effective-config.yaml
 

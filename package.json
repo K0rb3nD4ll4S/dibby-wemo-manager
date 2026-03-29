@@ -1,0 +1,14 @@
+{
+  "name": "wemo-manager",
+  "version": "2.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=apps/desktop",
+    "build": "npm run build --workspace=apps/desktop",
+    "install:all": "npm install"
+  }
+}
