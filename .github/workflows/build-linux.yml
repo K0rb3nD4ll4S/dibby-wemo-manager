@@ -72,6 +72,20 @@ jobs:
         run: node scripts/bundle-standalone.js
         working-directory: apps/desktop
 
+      - name: Pre-build binary diagnostics
+        run: |
+          BINARY="$(pwd)/node_modules/app-builder-bin/linux/x64/app-builder"
+          echo "=== Absolute path: $BINARY ==="
+          ls -la "$BINARY" || echo "MISSING"
+          echo "=== file output ==="
+          file "$BINARY" || true
+          echo "=== ldd output ==="
+          ldd "$BINARY" || true
+          echo "=== Execute test ==="
+          "$BINARY" --version && echo "EXECUTE OK" || echo "EXECUTE FAILED (exit $?)"
+          echo "=== Checking from apps/desktop context ==="
+          ls -la "apps/desktop/node_modules/app-builder-bin/linux/x64/app-builder" 2>/dev/null || echo "NOT in apps/desktop"
+
       - name: Build Linux x64 packages
         run: npx electron-builder --linux --x64
         working-directory: apps/desktop
