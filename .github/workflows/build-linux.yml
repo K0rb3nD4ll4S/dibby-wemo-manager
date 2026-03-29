@@ -41,6 +41,7 @@ jobs:
             tar -xzf /tmp/app-builder.tar.gz -C "$(dirname $BINARY)"
           fi
           chmod +x "$BINARY"
+          echo "Binary: $GITHUB_WORKSPACE/$BINARY"
           "$BINARY" --version
 
       - name: Vite build
@@ -51,29 +52,13 @@ jobs:
         run: node scripts/bundle-standalone.js
         working-directory: apps/desktop
 
-      - name: Diagnose app-builder path from desktop context
-        run: |
-          node -e "
-            const p = require('./node_modules/app-builder-bin');
-            console.log('appBuilderPath:', p.appBuilderPath);
-            const fs = require('fs');
-            const exists = fs.existsSync(p.appBuilderPath);
-            console.log('file exists:', exists);
-            if (exists) {
-              const stat = fs.statSync(p.appBuilderPath);
-              console.log('mode:', stat.mode.toString(8));
-              console.log('size:', stat.size);
-            }
-          "
-          find /home/runner/work -name "app-builder" -not -path "*/proc/*" 2>/dev/null
-        working-directory: apps/desktop
-
       - name: Build Linux x64 packages
         run: npx electron-builder --linux --x64
         working-directory: apps/desktop
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          CUSTOM_APP_BUILDER_PATH: ${{ github.workspace }}/node_modules/app-builder-bin/linux/x64/app-builder
 
       - name: Build Linux arm64 packages
         run: npx electron-builder --linux --arm64
@@ -81,6 +66,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          CUSTOM_APP_BUILDER_PATH: ${{ github.workspace }}/node_modules/app-builder-bin/linux/x64/app-builder
 
       - name: List build output
         run: ls -lh apps/desktop/dist/
