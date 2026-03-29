@@ -219,20 +219,12 @@ class DwmScheduler {
         if (windowStart < 0 || !(rule.windowDays?.length)) continue;
 
         const countdownAction = Number(rule.countdownAction ?? 1);
-        const countdownEnd    = countdownAction === 1 ? 0 : 1;   // opposite of start
-        const crossesMidnight = windowEnd >= 0 && windowEnd < windowStart;
         for (const dayId of rule.windowDays) {
           for (const td of (rule.targetDevices ?? [])) {
             if (!td.host || !td.port) continue;
             schedule.push({ ruleId: rule.id, ruleName: rule.name,
               targetHost: td.host, targetPort: td.port,
               dayId: Number(dayId), targetSecs: windowStart, action: countdownAction });
-            if (windowEnd >= 0) {
-              const offDayId = crossesMidnight ? (Number(dayId) % 7) + 1 : Number(dayId);
-              schedule.push({ ruleId: rule.id + '-wend', ruleName: rule.name,
-                targetHost: td.host, targetPort: td.port,
-                dayId: offDayId, targetSecs: windowEnd, action: countdownEnd });
-            }
           }
         }
         continue;

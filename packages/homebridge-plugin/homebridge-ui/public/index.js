@@ -196,7 +196,7 @@ function dwmRuleSummary(r) {
   }
   if (r.type === 'Countdown') {
     const mins   = r.countdownTime ? Math.round(r.countdownTime / 60) : null;
-    const action = r.countdownAction === 0 ? 'OFF → auto-ON' : 'ON → auto-OFF';
+    const action = r.countdownAction === 0 ? 'Turn OFF' : 'Turn ON';
     return mins ? `⏱ ${mins} min · ${action}` : '—';
   }
   const days = dayLabel(r.days);
