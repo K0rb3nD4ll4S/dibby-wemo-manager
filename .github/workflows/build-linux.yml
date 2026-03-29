@@ -29,6 +29,20 @@ jobs:
       - name: Install workspace dependencies
         run: npm install --legacy-peer-deps
 
+      - name: Ensure app-builder binary
+        run: |
+          BINARY="node_modules/app-builder-bin/linux/x64/app-builder"
+          if [ ! -f "$BINARY" ]; then
+            VERSION=$(node -e "console.log(require('./node_modules/app-builder-bin/package.json').version)")
+            echo "Downloading app-builder $VERSION"
+            mkdir -p "$(dirname $BINARY)"
+            curl -fL "https://github.com/develar/app-builder/releases/download/v${VERSION}/app-builder_${VERSION}_linux_amd64.tar.gz" \
+              -o /tmp/app-builder.tar.gz
+            tar -xzf /tmp/app-builder.tar.gz -C "$(dirname $BINARY)"
+          fi
+          chmod +x "$BINARY"
+          "$BINARY" --version
+
       - name: Vite build
         run: npx electron-vite build
         working-directory: apps/desktop
