@@ -1,0 +1,19 @@
+{
+  "name": "dibby-wemo-android",
+  "version": "2.0.0",
+  "description": "Dibby Wemo Manager – Android companion app",
+  "private": true,
+  "scripts": {
+    "sync": "cap sync",
+    "open": "cap open android",
+    "build:apk": "cap sync && cd android && ./gradlew assembleDebug",
+    "build:release": "cap sync && cd android && ./gradlew assembleRelease"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/core": "^6.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0"
+  }
+}

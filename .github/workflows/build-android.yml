@@ -1,0 +1,78 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag (e.g. 2.0.0)'
+        required: false
+        default: '2.0.0'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platform tools
+        run: |
+          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Install Capacitor dependencies
+        working-directory: apps/android
+        run: npm install
+
+      - name: Add Android platform
+        working-directory: apps/android
+        run: npx cap add android || echo "Android platform already exists"
+
+      - name: Sync Capacitor
+        working-directory: apps/android
+        run: npx cap sync android
+
+      - name: Make gradlew executable
+        working-directory: apps/android/android
+        run: chmod +x gradlew
+
+      - name: Build debug APK
+        working-directory: apps/android/android
+        run: ./gradlew assembleDebug
+
+      - name: Rename APK
+        run: |
+          VERSION="${{ github.event.inputs.tag }}"
+          cp apps/android/android/app/build/outputs/apk/debug/app-debug.apk \
+             "dibby-wemo-$VERSION-android.apk"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dibby-wemo-android-apk
+          path: dibby-wemo-*.apk
+          retention-days: 30
+
+      - name: Upload to GitHub Release
+        if: github.event.inputs.tag != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.event.inputs.tag }}
+          files: dibby-wemo-*.apk
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

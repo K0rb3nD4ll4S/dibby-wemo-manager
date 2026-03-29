@@ -1,0 +1,22 @@
+{
+  "appId": "com.dibby.wemo",
+  "appName": "Dibby Wemo",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "launchShowDuration": 1000,
+      "backgroundColor": "#0d1b27",
+      "androidSplashResourceName": "splash",
+      "showSpinner": false
+    }
+  }
+}

@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Dibby Wemo</title>
+<style>
+  :root {
+    --bg:      #f0f4f8;
+    --card:    #ffffff;
+    --border:  #dde3ea;
+    --text:    #1a2533;
+    --text2:   #546878;
+    --accent:  #00a9d5;
+    --on:      #22c55e;
+    --off:     #94a3b8;
+    --danger:  #ef4444;
+    --nav-bg:  #ffffff;
+    --radius:  14px;
+    --shadow:  0 2px 12px rgba(0,0,0,.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:     #0d1b27;
+      --card:   #1a2e40;
+      --border: #263647;
+      --text:   #e2eaf2;
+      --text2:  #7fa8c8;
+      --nav-bg: #142030;
+      --shadow: 0 2px 12px rgba(0,0,0,.3);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         background: var(--bg); color: var(--text); min-height: 100vh;
+         display: flex; flex-direction: column; }
+
+  /* ── Setup overlay ── */
+  #setup-overlay {
+    display: none;
+    position: fixed; inset: 0; background: var(--bg);
+    z-index: 9999; align-items: center; justify-content: center;
+    padding: 28px 20px;
+  }
+  #setup-overlay.visible { display: flex; }
+  .setup-box {
+    background: var(--card); border-radius: 20px; padding: 30px 24px;
+    width: 100%; max-width: 420px; box-shadow: var(--shadow);
+    text-align: center;
+  }
+  .setup-logo { font-size: 56px; margin-bottom: 12px; }
+  .setup-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .setup-sub { font-size: 13px; color: var(--text2); margin-bottom: 24px; line-height: 1.5; }
+  .setup-field { text-align: left; margin-bottom: 14px; }
+  .setup-label { display: block; font-size: 11px; font-weight: 700; color: var(--text2);
+                 text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+  .setup-input { width: 100%; background: var(--bg); border: 1.5px solid var(--border);
+    color: var(--text); padding: 12px 14px; border-radius: 12px; font-size: 16px; }
+  .setup-input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  .setup-hint { font-size: 11px; color: var(--text2); margin-top: 5px; line-height: 1.4; }
+  .setup-btn { width: 100%; margin-top: 6px; background: var(--accent); color: #fff;
+               border: none; border-radius: 12px; padding: 15px; font-size: 16px;
+               font-weight: 700; cursor: pointer; transition: opacity .15s; }
+  .setup-btn:active { opacity: .8; }
+  .setup-error { color: var(--danger); font-size: 13px; margin-top: 10px; min-height: 18px; }
+
+  /* ── Nav bar ── */
+  #nav { position: fixed; bottom: 0; left: 0; right: 0;
+         background: var(--nav-bg); border-top: 1px solid var(--border);
+         display: flex; z-index: 100; }
+  .nav-btn { flex: 1; padding: 10px 4px 14px; border: none; background: none;
+             cursor: pointer; color: var(--text2); font-size: 10px; font-weight: 600;
+             display: flex; flex-direction: column; align-items: center; gap: 3px;
+             letter-spacing: .04em; text-transform: uppercase; transition: color .15s; }
+  .nav-btn .icon { font-size: 22px; line-height: 1; }
+  .nav-btn.active { color: var(--accent); }
+
+  /* ── Pages ── */
+  #main { flex: 1; overflow-y: auto; padding: 16px 14px 90px; }
+  .page { display: none; }
+  .page.active { display: block; }
+  h2 { font-size: 20px; font-weight: 700; margin-bottom: 14px; }
+
+  /* ── Cards ── */
+  .card { background: var(--card); border-radius: var(--radius);
+          box-shadow: var(--shadow); margin-bottom: 10px;
+          padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+  .card-body { flex: 1; min-width: 0; }
+  .card-name { font-weight: 600; font-size: 15px; white-space: nowrap;
+               overflow: hidden; text-overflow: ellipsis; }
+  .card-meta { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  /* ── Toggle switch ── */
+  .toggle { position: relative; width: 52px; height: 30px; flex-shrink: 0; cursor: pointer; }
+  .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .track { position: absolute; inset: 0; border-radius: 15px;
+           background: var(--off); transition: background .2s; }
+  .thumb { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px;
+           border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.2);
+           transition: transform .2s; }
+  .toggle input:checked + .track { background: var(--on); }
+  .toggle input:checked ~ .thumb { transform: translateX(22px); }
+  .toggle.busy .thumb::after {
+    content: ''; position: absolute; inset: 3px; border-radius: 50%;
+    border: 2px solid transparent; border-top-color: var(--accent);
+    animation: spin .6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Status badge ── */
+  .badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px;
+           border-radius: 5px; letter-spacing: .04em; }
+  .badge-on  { background: rgba(34,197,94,.15); color: #16a34a; }
+  .badge-off { background: rgba(148,163,184,.15); color: var(--text2); }
+  .badge-disabled { background: rgba(239,68,68,.1); color: var(--danger); }
+  .badge-away { background: rgba(245,158,11,.15); color: #b45309; }
+
+  /* ── Toolbar ── */
+  .toolbar { display: flex; gap: 8px; margin-bottom: 14px; align-items: center; flex-wrap: wrap; }
+  .btn { border: none; border-radius: 10px; padding: 9px 16px; font-size: 13px;
+         font-weight: 600; cursor: pointer; transition: opacity .15s; }
+  .btn:active { opacity: .7; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-ghost   { background: transparent; color: var(--accent); border: 1px solid var(--border); }
+  .btn-danger  { background: var(--danger); color: #fff; }
+  .btn-sm      { padding: 5px 10px; font-size: 12px; border-radius: 8px; }
+  .btn:disabled { opacity: .4; cursor: default; }
+
+  /* ── Empty state ── */
+  .empty { text-align: center; padding: 60px 20px; color: var(--text2); }
+  .empty .icon { font-size: 48px; margin-bottom: 12px; }
+  .empty p { font-size: 14px; line-height: 1.6; }
+
+  /* ── Toast ── */
+  #toasts { position: fixed; top: 16px; right: 16px; left: 16px; z-index: 999;
+            display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+  .toast { background: var(--card); border: 1px solid var(--border);
+           border-radius: 10px; padding: 10px 14px; font-size: 13px; font-weight: 500;
+           box-shadow: var(--shadow); animation: slideIn .2s ease; pointer-events: auto; }
+  .toast-success { border-left: 3px solid var(--on); }
+  .toast-error   { border-left: 3px solid var(--danger); }
+  .toast-info    { border-left: 3px solid var(--accent); }
+  @keyframes slideIn { from { transform: translateY(-8px); opacity: 0; } to { opacity: 1; } }
+
+  /* ── Status page ── */
+  #status-indicator { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--off); }
+  .dot.running { background: var(--on); box-shadow: 0 0 6px var(--on); }
+  #log { background: var(--card); border-radius: var(--radius); padding: 12px;
+         font-family: monospace; font-size: 12px; color: var(--text2);
+         max-height: 55vh; overflow-y: auto; }
+  .log-entry { padding: 4px 0; border-bottom: 1px solid var(--border); line-height: 1.5; }
+  .log-entry:last-child { border-bottom: none; }
+  .log-ok   { color: var(--on); }
+  .log-fail { color: var(--danger); }
+
+  /* ── Header banner ── */
+  .page-header { font-size: 13px; color: var(--text2); margin-bottom: 12px;
+                 display: flex; align-items: center; gap: 6px; }
+  .page-header .ws-dot { width: 7px; height: 7px; border-radius: 50%;
+                          background: var(--off); display: inline-block; transition: background .3s; }
+  .page-header .ws-dot.connected { background: var(--on); }
+
+  /* ── Rule card ── */
+  .rule-card { flex-wrap: wrap; align-items: flex-start; }
+  .rule-card .card-body { min-width: 180px; }
+  .rule-devices { margin-top: 6px; display: flex; gap: 4px; flex-wrap: wrap; }
+  .dev-chip { font-size: 11px; background: var(--bg); border: 1px solid var(--border);
+              border-radius: 5px; padding: 2px 7px; color: var(--text2); }
+  .rule-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+  .icon-btn { background: none; border: 1px solid var(--border); border-radius: 8px;
+              padding: 5px 8px; font-size: 15px; cursor: pointer; color: var(--text2);
+              transition: all .15s; line-height: 1; }
+  .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .icon-btn.del:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* ── Modal ── */
+  .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55);
+                    z-index: 200; align-items: flex-end; justify-content: center; }
+  .modal-backdrop.open { display: flex; }
+  .modal { background: var(--card); border-radius: var(--radius) var(--radius) 0 0;
+           width: 100%; max-width: 540px; max-height: 92vh; overflow-y: auto;
+           padding: 20px 18px 32px; animation: slideUp .22s ease; }
+  @keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { opacity: 1; } }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .modal-title { font-size: 17px; font-weight: 700; }
+  .modal-close { background: none; border: none; font-size: 22px; color: var(--text2);
+                 cursor: pointer; padding: 2px 6px; line-height: 1; }
+  .form-group { margin-bottom: 14px; }
+  .form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text2);
+                text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+  .form-input, .form-select { width: 100%; background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); padding: 10px 12px; border-radius: 10px; font-size: 14px;
+    appearance: none; -webkit-appearance: none; }
+  .form-input:focus, .form-select:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  .form-row { display: flex; gap: 10px; }
+  .form-row .form-group { flex: 1; }
+
+  /* Day picker */
+  .day-picker { display: flex; gap: 6px; flex-wrap: wrap; }
+  .day-pill { padding: 6px 11px; border-radius: 20px; border: 1.5px solid var(--border);
+              background: var(--bg); color: var(--text2); font-size: 13px; font-weight: 600;
+              cursor: pointer; transition: all .15s; user-select: none; }
+  .day-pill.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* Device checkboxes */
+  .dev-check-list { display: flex; flex-direction: column; gap: 6px; max-height: 160px;
+                    overflow-y: auto; border: 1px solid var(--border); border-radius: 10px;
+                    padding: 8px 10px; background: var(--bg); }
+  .dev-check-item { display: flex; align-items: center; gap: 8px; font-size: 14px;
+                    cursor: pointer; padding: 2px 0; }
+  .dev-check-item input { width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent); }
+
+  /* Modal footer */
+  .modal-footer { display: flex; gap: 10px; margin-top: 20px; }
+  .modal-footer .btn { flex: 1; padding: 13px; font-size: 15px; }
+
+  /* Delete confirm */
+  .confirm-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55);
+                      z-index: 300; align-items: center; justify-content: center; padding: 20px; }
+  .confirm-backdrop.open { display: flex; }
+  .confirm-box { background: var(--card); border-radius: var(--radius); padding: 22px 20px;
+                 width: 100%; max-width: 340px; text-align: center; }
+  .confirm-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+  .confirm-msg   { font-size: 13px; color: var(--text2); margin-bottom: 20px; line-height: 1.5; }
+  .confirm-btns  { display: flex; gap: 10px; }
+  .confirm-btns .btn { flex: 1; padding: 11px; }
+</style>
+</head>
+<body>
+
+<!-- ── Server Setup Overlay ── -->
+<div id="setup-overlay">
+  <div class="setup-box">
+    <div class="setup-logo">💡</div>
+    <div class="setup-title">Dibby Wemo</div>
+    <div class="setup-sub">
+      Enter the IP address of your PC running the<br>
+      <strong>Dibby Wemo Manager</strong> desktop app.<br>
+      Both devices must be on the same Wi-Fi network.
+    </div>
+    <div class="setup-field">
+      <label class="setup-label" for="setup-ip">PC IP Address</label>
+      <input class="setup-input" id="setup-ip" type="text"
+             inputmode="decimal" placeholder="192.168.1.100"
+             autocomplete="off" autocorrect="off" spellcheck="false">
+      <div class="setup-hint">
+        Find this in the DWM tray icon tooltip or the More → Server card.
+      </div>
+    </div>
+    <div class="setup-field">
+      <label class="setup-label" for="setup-port">Port (default 3456)</label>
+      <input class="setup-input" id="setup-port" type="number"
+             inputmode="numeric" placeholder="3456" value="3456">
+    </div>
+    <div class="setup-error" id="setup-error"></div>
+    <button class="setup-btn" id="setup-connect-btn" onclick="setupConnect()">Connect</button>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<!-- Pages -->
+<div id="main">
+  <div id="page-devices" class="page active">
+    <div class="toolbar">
+      <h2>Devices</h2>
+      <button class="btn btn-primary" id="btn-discover" onclick="discoverDevices()">⟳ Scan</button>
+    </div>
+    <div id="page-header-devices" class="page-header">
+      <span class="ws-dot" id="ws-dot-d"></span>
+      <span id="ws-label-d">Connecting…</span>
+    </div>
+    <div id="devices-list"><div class="empty"><div class="icon">📡</div><p>Tap <strong>Scan</strong> to discover devices.</p></div></div>
+  </div>
+
+  <div id="page-rules" class="page">
+    <div class="toolbar">
+      <h2>DWM Rules</h2>
+      <div style="flex:1"></div>
+      <button class="btn btn-ghost btn-sm" onclick="loadRules()">⟳</button>
+      <button class="btn btn-primary btn-sm" onclick="openRuleModal(null)">＋ Add</button>
+    </div>
+    <div id="rules-list"><div class="empty"><div class="icon">📅</div><p>Loading rules…</p></div></div>
+  </div>
+
+  <div id="page-wemo-rules" class="page">
+    <div class="toolbar">
+      <h2>Wemo Rules</h2>
+      <button class="btn btn-ghost" onclick="loadWemoRules()">⟳</button>
+    </div>
+    <div id="wemo-rules-list"><div class="empty"><div class="icon">⚡</div><p>Select a device above to view its rules.</p></div></div>
+  </div>
+
+  <div id="page-status" class="page">
+    <h2>Scheduler</h2>
+    <div id="status-indicator">
+      <span class="dot" id="sched-dot"></span>
+      <span id="sched-label" style="font-size:14px;font-weight:600;">Unknown</span>
+    </div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:10px;">Live event log (via WebSocket)</div>
+    <div id="log"><div style="color:var(--text2);font-size:12px;">Waiting for events…</div></div>
+  </div>
+
+  <div id="page-more" class="page">
+    <h2 style="margin-bottom:16px">More</h2>
+    <div style="background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:12px;display:flex;align-items:center;gap:14px;">
+      <div style="font-size:54px;flex-shrink:0">💡</div>
+      <div>
+        <div style="font-size:16px;font-weight:700;">Dibby Wemo</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px;">Version 2.0 &nbsp;·&nbsp; SRS IT</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px;">Local control only. No cloud required.</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px;">Dedicated to Dibby ❤️</div>
+      </div>
+    </div>
+
+    <!-- Server connection card -->
+    <div style="background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px;margin-bottom:10px;">
+      <div style="font-weight:600;font-size:14px;margin-bottom:10px;">🖥 Desktop Server</div>
+      <table style="font-size:12px;color:var(--text2);width:100%;border-collapse:collapse;line-height:2;">
+        <tr><td style="width:50px;color:var(--text)">Host</td><td id="more-host" style="font-family:monospace;color:var(--accent)">—</td></tr>
+        <tr><td style="color:var(--text)">Port</td><td id="more-port" style="font-family:monospace;">—</td></tr>
+        <tr><td style="color:var(--text)">Status</td><td id="more-status">—</td></tr>
+      </table>
+      <button class="btn btn-ghost btn-sm" style="margin-top:10px;width:100%"
+              onclick="showSetup(true)">⚙ Change Server</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom nav -->
+<nav id="nav">
+  <button class="nav-btn active" onclick="showPage('devices',this)">
+    <span class="icon">💡</span>Devices
+  </button>
+  <button class="nav-btn" onclick="showPage('rules',this)">
+    <span class="icon">📅</span>DWM Rules
+  </button>
+  <button class="nav-btn" onclick="showPage('wemo-rules',this)">
+    <span class="icon">⚡</span>Wemo Rules
+  </button>
+  <button class="nav-btn" onclick="showPage('status',this)">
+    <span class="icon">📊</span>Status
+  </button>
+  <button class="nav-btn" onclick="showPage('more',this)">
+    <span class="icon">⋯</span>More
+  </button>
+</nav>
+
+<!-- ── Rule Modal ── -->
+<div class="modal-backdrop" id="modal-rule" onclick="closeRuleModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-rule-title">Add DWM Rule</span>
+      <button class="modal-close" onclick="closeRuleModal()">✕</button>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Rule Name</label>
+      <input class="form-input" id="f-name" type="text" placeholder="e.g. Evening Lights" />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Type</label>
+      <select class="form-select" id="f-type" onchange="onTypeChange()">
+        <option value="Schedule">Schedule — fixed on/off times</option>
+        <option value="Away">Away Mode — random intervals</option>
+        <option value="Countdown">Countdown — auto-off timer</option>
+        <option value="AlwaysOn">Always On — keep device on at all times</option>
+        <option value="Trigger">Trigger — if device A changes, act on device B</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Target Devices</label>
+      <div class="dev-check-list" id="f-devices">
+        <div style="font-size:13px;color:var(--text2)">Loading devices…</div>
+      </div>
+    </div>
+
+    <div class="form-group" id="fg-days">
+      <label class="form-label">Days</label>
+      <div class="day-picker" id="f-days">
+        <span class="day-pill" data-d="1">Mon</span>
+        <span class="day-pill" data-d="2">Tue</span>
+        <span class="day-pill" data-d="3">Wed</span>
+        <span class="day-pill" data-d="4">Thu</span>
+        <span class="day-pill" data-d="5">Fri</span>
+        <span class="day-pill" data-d="6">Sat</span>
+        <span class="day-pill" data-d="7">Sun</span>
+      </div>
+    </div>
+
+    <div id="fg-times">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Start Time</label>
+          <input class="form-input" id="f-start" type="time" />
+        </div>
+        <div class="form-group" id="fg-end" style="display:none">
+          <label class="form-label">End Time</label>
+          <input class="form-input" id="f-end" type="time" />
+        </div>
+      </div>
+      <div class="form-row" id="fg-actions">
+        <div class="form-group">
+          <label class="form-label">Start Action</label>
+          <select class="form-select" id="f-start-action">
+            <option value="1">Turn ON</option>
+            <option value="0">Turn OFF</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">End Action</label>
+          <select class="form-select" id="f-end-action">
+            <option value="-1">None</option>
+            <option value="0">Turn OFF</option>
+            <option value="1">Turn ON</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div id="fg-countdown" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Countdown Duration (minutes)</label>
+        <input class="form-input" id="f-countdown" type="number" min="1" max="1440" placeholder="60" />
+      </div>
+    </div>
+
+    <div id="fg-trigger" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Trigger Device (source)</label>
+        <select class="form-select" id="f-trigger-device">
+          <option value="">— select device —</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
+          <label class="form-label">When it…</label>
+          <select class="form-select" id="f-trigger-event">
+            <option value="on">Turns ON</option>
+            <option value="off">Turns OFF</option>
+            <option value="any">Changes (either way)</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:1">
+          <label class="form-label">Then…</label>
+          <select class="form-select" id="f-trigger-action">
+            <option value="on">Turn ON</option>
+            <option value="off">Turn OFF</option>
+            <option value="mirror">Mirror (same state)</option>
+            <option value="opposite">Opposite state</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Action Devices (targets)</label>
+        <div class="dev-check-list" id="f-action-devices">
+          <div style="font-size:13px;color:var(--text2)">Loading devices…</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Enabled</label>
+      <label class="toggle" style="width:52px">
+        <input type="checkbox" id="f-enabled" checked>
+        <span class="track"></span>
+        <span class="thumb"></span>
+      </label>
+    </div>
+
+    <div id="modal-rule-error" style="display:none;color:var(--danger);font-size:13px;margin-bottom:10px;"></div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeRuleModal()">Cancel</button>
+      <button class="btn btn-primary" id="btn-save-rule" onclick="saveRule()">Save Rule</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Delete Confirm ── -->
+<div class="confirm-backdrop" id="confirm-delete">
+  <div class="confirm-box">
+    <div class="confirm-title">Delete Rule?</div>
+    <div class="confirm-msg" id="confirm-delete-msg">This cannot be undone.</div>
+    <div class="confirm-btns">
+      <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="btn-confirm-del">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Server config (persisted in localStorage) ──────────────────────────────
+let SERVER_IP   = localStorage.getItem('dwm_ip')   || '';
+let SERVER_PORT = localStorage.getItem('dwm_port')  || '3456';
+
+function getBase() {
+  return SERVER_IP ? `http://${SERVER_IP}:${SERVER_PORT}` : '';
+}
+function getWsUrl() {
+  return SERVER_IP ? `ws://${SERVER_IP}:${SERVER_PORT}` : null;
+}
+
+// ── Setup overlay ──────────────────────────────────────────────────────────
+function showSetup(allowCancel) {
+  const overlay = document.getElementById('setup-overlay');
+  document.getElementById('setup-ip').value   = SERVER_IP;
+  document.getElementById('setup-port').value = SERVER_PORT;
+  document.getElementById('setup-error').textContent = '';
+  overlay.classList.add('visible');
+
+  if (allowCancel) {
+    // Add cancel button if not already present
+    let cancelBtn = document.getElementById('setup-cancel-btn');
+    if (!cancelBtn) {
+      cancelBtn = document.createElement('button');
+      cancelBtn.id = 'setup-cancel-btn';
+      cancelBtn.className = 'setup-btn';
+      cancelBtn.style.cssText = 'margin-top:8px;background:transparent;color:var(--text2);border:1px solid var(--border);';
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.onclick = () => overlay.classList.remove('visible');
+      document.getElementById('setup-connect-btn').after(cancelBtn);
+    }
+  }
+}
+
+async function setupConnect() {
+  const ip   = document.getElementById('setup-ip').value.trim();
+  const port = document.getElementById('setup-port').value.trim() || '3456';
+  const errEl = document.getElementById('setup-error');
+  errEl.textContent = '';
+
+  if (!ip) { errEl.textContent = 'Please enter an IP address.'; return; }
+
+  const btn = document.getElementById('setup-connect-btn');
+  btn.disabled = true; btn.textContent = 'Connecting…';
+
+  try {
+    const res = await fetch(`http://${ip}:${port}/api/devices`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) throw new Error(`Server responded with ${res.status}`);
+
+    // Success — save and boot the app
+    SERVER_IP   = ip;
+    SERVER_PORT = port;
+    localStorage.setItem('dwm_ip',   ip);
+    localStorage.setItem('dwm_port', port);
+    document.getElementById('setup-overlay').classList.remove('visible');
+    boot();
+  } catch (e) {
+    errEl.textContent = `Could not connect: ${e.message || 'Timeout'}. Check the IP and make sure the DWM app is running.`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Connect';
+  }
+}
+
+// ── State ──────────────────────────────────────────────────────────────────
+let ws         = null;
+let devices    = [];
+let rules      = [];
+let wemoRules  = [];
+let wemoDevIdx = 0;
+let _editingRuleId = null;
+
+// ── Routing ────────────────────────────────────────────────────────────────
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach((p) => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach((b) => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'rules')       loadRules();
+  if (name === 'wemo-rules')  loadWemoRules();
+  if (name === 'status')      updateSchedStatus();
+  if (name === 'more')        updateMoreCard();
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+// ── API ────────────────────────────────────────────────────────────────────
+async function api(method, path, body) {
+  const base = getBase();
+  if (!base) throw new Error('No server configured');
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body !== undefined) opts.body = JSON.stringify(body);
+  const res = await fetch(base + path, opts);
+  if (!res.ok) {
+    const txt = await res.text().catch(() => res.statusText);
+    throw new Error(txt || `HTTP ${res.status}`);
+  }
+  const ct = res.headers.get('content-type') || '';
+  return ct.includes('json') ? res.json() : res.text();
+}
+
+// ── WebSocket ──────────────────────────────────────────────────────────────
+function connectWS() {
+  const url = getWsUrl();
+  if (!url) return;
+  ws = new WebSocket(url);
+  ws.onopen = () => {
+    document.querySelectorAll('.ws-dot').forEach((d) => d.classList.add('connected'));
+    document.querySelectorAll('[id^="ws-label"]').forEach((l) => l.textContent = 'Connected');
+  };
+  ws.onclose = () => {
+    document.querySelectorAll('.ws-dot').forEach((d) => d.classList.remove('connected'));
+    document.querySelectorAll('[id^="ws-label"]').forEach((l) => l.textContent = 'Reconnecting…');
+    setTimeout(connectWS, 4000);
+  };
+  ws.onmessage = (e) => {
+    try {
+      const { type, data } = JSON.parse(e.data);
+      if (type === 'scheduler-fired')  appendLog(data);
+      if (type === 'scheduler-status') applySchedStatus(data);
+      if (type === 'scheduler-health') appendLog({ success: data.online, msg: `[health] ${data.msg}` });
+    } catch {}
+  };
+}
+
+// ── More / Server card ─────────────────────────────────────────────────────
+function updateMoreCard() {
+  document.getElementById('more-host').textContent = SERVER_IP || '—';
+  document.getElementById('more-port').textContent = SERVER_PORT || '—';
+  const statusEl = document.getElementById('more-status');
+  if (!SERVER_IP) { statusEl.textContent = 'Not configured'; return; }
+  statusEl.textContent = '…';
+  api('GET', '/api/devices')
+    .then(() => { statusEl.innerHTML = '<span style="color:var(--on)">● Connected</span>'; })
+    .catch(() => { statusEl.innerHTML = '<span style="color:var(--danger)">● Unreachable</span>'; });
+}
+
+// ── Devices ────────────────────────────────────────────────────────────────
+async function loadDevices() {
+  try {
+    devices = await api('GET', '/api/devices');
+    renderDevices();
+  } catch (e) {
+    toast('Could not load devices: ' + e.message, 'error');
+  }
+}
+
+async function discoverDevices() {
+  const btn = document.getElementById('btn-discover');
+  btn.disabled = true; btn.textContent = '⟳ Scanning…';
+  const list = document.getElementById('devices-list');
+  list.innerHTML = `<div class="empty"><div class="icon">📡</div><p>Scanning network…</p></div>`;
+  try {
+    devices = await api('POST', '/api/devices/discover');
+    renderDevices();
+    toast(`Found ${devices.length} device(s)`, 'success');
+  } catch (e) {
+    toast('Scan failed: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '⟳ Scan';
+  }
+}
+
+function renderDevices() {
+  const el = document.getElementById('devices-list');
+  if (!devices.length) {
+    el.innerHTML = `<div class="empty"><div class="icon">📡</div><p>No devices found.<br>Tap <strong>Scan</strong> to search.</p></div>`;
+    return;
+  }
+  el.innerHTML = devices.map((d, i) => {
+    const name = d.friendlyName || d.name || d.host;
+    return `
+      <div class="card" id="dev-${i}">
+        <div style="font-size:24px;flex-shrink:0">💡</div>
+        <div class="card-body">
+          <div class="card-name">${esc(name)}</div>
+          <div class="card-meta">${esc(d.host)}:${d.port}
+            ${d.productModel ? ' · ' + esc(d.productModel) : ''}
+          </div>
+        </div>
+        <label class="toggle" id="dtog-${i}" onclick="toggleDevice(${i},event)">
+          <input type="checkbox" id="dchk-${i}">
+          <span class="track"></span>
+          <span class="thumb"></span>
+        </label>
+      </div>`;
+  }).join('');
+  devices.forEach((d, i) => {
+    api('GET', `/api/devices/${d.host}/${d.port}/state`)
+      .then((on) => { const c = document.getElementById('dchk-'+i); if (c) c.checked = !!on; })
+      .catch(() => {});
+  });
+}
+
+async function toggleDevice(i, e) {
+  e.preventDefault();
+  const dev = devices[i];
+  const chk = document.getElementById('dchk-' + i);
+  const tog = document.getElementById('dtog-' + i);
+  if (!dev || !chk || !tog) return;
+  const newState = !chk.checked;
+  tog.classList.add('busy');
+  try {
+    await api('POST', `/api/devices/${dev.host}/${dev.port}/state`, { on: newState });
+    chk.checked = newState;
+  } catch (err) {
+    toast(`Failed: ${err.message}`, 'error');
+  } finally {
+    tog.classList.remove('busy');
+  }
+}
+
+// ── Rules list ─────────────────────────────────────────────────────────────
+async function loadRules() {
+  try {
+    rules = await api('GET', '/api/dwm-rules');
+    renderRules();
+  } catch (e) {
+    toast('Could not load rules: ' + e.message, 'error');
+  }
+}
+
+function ruleSummary(r) {
+  const DAY = {1:'Mon',2:'Tue',3:'Wed',4:'Thu',5:'Fri',6:'Sat',7:'Sun'};
+  const days = (r.days || []).map((d) => DAY[d]).join(' ') || '—';
+  const secs = (s) => {
+    if (s === -2) return '🌅';
+    if (s === -3) return '🌇';
+    if (!s && s !== 0) return '—';
+    return `${String(Math.floor(Math.abs(s)/3600)%24).padStart(2,'0')}:${String(Math.floor((Math.abs(s)%3600)/60)).padStart(2,'0')}`;
+  };
+  if (r.type === 'AlwaysOn')  return 'Enforced ON every 10 s';
+  if (r.type === 'Trigger') {
+    const evtLabel = {on:'turns ON', off:'turns OFF', any:'changes'}[r.triggerEvent] ?? r.triggerEvent;
+    const actLabel = {on:'→ ON', off:'→ OFF', mirror:'→ mirror', opposite:'→ opposite'}[r.action] ?? r.action;
+    const srcName  = r.triggerDevice?.name ?? r.triggerDevice?.host ?? '?';
+    return `If ${esc(srcName)} ${evtLabel} ${actLabel}`;
+  }
+  if (r.type === 'Countdown') {
+    const m = r.countdownTime ? Math.round(r.countdownTime / 60) : 0;
+    return m >= 60 ? `${Math.floor(m/60)}h${m%60||''}m auto-off` : `${m}m auto-off`;
+  }
+  if (r.type === 'Away') return `${days} · ${secs(r.startTime)}–${secs(r.endTime)}`;
+  const end = r.endTime > 0 || r.endTime === -2 || r.endTime === -3;
+  return end ? `${days} · ${secs(r.startTime)} → ${secs(r.endTime)}` : `${days} · ${secs(r.startTime)}`;
+}
+
+function renderRules() {
+  const el = document.getElementById('rules-list');
+  if (!rules.length) {
+    el.innerHTML = `<div class="empty"><div class="icon">📅</div><p>No DWM rules yet.<br>Tap <strong>＋ Add</strong> to create one.</p></div>`;
+    return;
+  }
+  el.innerHTML = rules.map((r, i) => {
+    const icon = {Schedule:'📅',Away:'🏠',Countdown:'⏱',AlwaysOn:'🔒',Trigger:'⚡'}[r.type] || '📅';
+    const devChips = (r.targetDevices || []).map((td) =>
+      `<span class="dev-chip">📍 ${esc(td.name || td.host)}</span>`).join('');
+    return `
+      <div class="card rule-card" id="rule-${i}">
+        <div style="font-size:22px;flex-shrink:0">${icon}</div>
+        <div class="card-body">
+          <div class="card-name">${esc(r.name)}</div>
+          <div class="card-meta">
+            <span class="badge badge-${r.type === 'Away' ? 'away' : 'off'}" style="margin-right:5px">${r.type}</span>
+            ${esc(ruleSummary(r))}
+            ${!r.enabled ? '<span class="badge badge-disabled" style="margin-left:5px">Disabled</span>' : ''}
+          </div>
+          ${devChips ? `<div class="rule-devices">${devChips}</div>` : ''}
+        </div>
+        <div class="rule-actions">
+          <label class="toggle" id="rtog-${i}" onclick="toggleRule(${i},event)">
+            <input type="checkbox" id="rchk-${i}" ${r.enabled ? 'checked' : ''}>
+            <span class="track"></span>
+            <span class="thumb"></span>
+          </label>
+          <button class="icon-btn" onclick="openRuleModal(${i})" title="Edit">✏️</button>
+          <button class="icon-btn del" onclick="confirmDeleteRule(${i})" title="Delete">🗑</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function toggleRule(i, e) {
+  e.preventDefault();
+  const rule = rules[i];
+  const chk  = document.getElementById('rchk-' + i);
+  const tog  = document.getElementById('rtog-' + i);
+  if (!rule || !chk || !tog) return;
+  const enabled = !chk.checked;
+  tog.classList.add('busy');
+  try {
+    await api('PUT', `/api/dwm-rules/${rule.id}`, { ...rule, enabled });
+    rules[i] = { ...rule, enabled };
+    chk.checked = enabled;
+    toast(`"${rule.name}" ${enabled ? 'enabled' : 'disabled'}`, 'info');
+    renderRules();
+  } catch (err) {
+    toast(`Failed: ${err.message}`, 'error');
+    tog.classList.remove('busy');
+  }
+}
+
+// ── Rule Modal ─────────────────────────────────────────────────────────────
+function secsToHHMM(s) {
+  if (!s && s !== 0) return '';
+  const h = Math.floor(Math.abs(s) / 3600) % 24;
+  const m = Math.floor((Math.abs(s) % 3600) / 60);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+function hhmmToSecs(str) {
+  if (!str) return -1;
+  const [h, m] = str.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return -1;
+  return h * 3600 + m * 60;
+}
+
+function onTypeChange() {
+  const t = document.getElementById('f-type').value;
+  const isTrigger   = t === 'Trigger';
+  const isAlwaysOn  = t === 'AlwaysOn';
+  const isCountdown = t === 'Countdown';
+  const isSchedule  = t === 'Schedule';
+  const noTime      = isCountdown || isAlwaysOn || isTrigger;
+
+  document.getElementById('fg-countdown').style.display = isCountdown ? '' : 'none';
+  document.getElementById('fg-trigger').style.display   = isTrigger   ? '' : 'none';
+  document.getElementById('fg-times').style.display     = noTime      ? 'none' : '';
+  document.getElementById('fg-end').style.display       = !isSchedule ? '' : '';
+  document.getElementById('fg-actions').style.display   = isSchedule  ? '' : 'none';
+  document.getElementById('fg-days').style.display      = noTime      ? 'none' : '';
+  document.getElementById('f-devices').closest('.form-group').style.display = isTrigger ? 'none' : '';
+  if (isTrigger) populateTriggerDeviceSelect();
+}
+
+function populateDeviceChecks(selectedUdns) {
+  const container = document.getElementById('f-devices');
+  const list = devices.filter((d) => d.host);
+  if (!list.length) {
+    container.innerHTML = `<div style="font-size:13px;color:var(--text2)">No devices found — go to Devices tab and scan first.</div>`;
+    return;
+  }
+  container.innerHTML = list.map((d) => {
+    const key  = d.udn || `${d.host}:${d.port}`;
+    const name = d.friendlyName || d.name || d.host;
+    const chk  = selectedUdns.includes(key) ? 'checked' : '';
+    return `<label class="dev-check-item">
+      <input type="checkbox" value="${esc(key)}" data-host="${esc(d.host)}" data-port="${d.port}" data-name="${esc(name)}" ${chk}>
+      ${esc(name)} <span style="font-size:11px;color:var(--text2);margin-left:4px">${esc(d.host)}</span>
+    </label>`;
+  }).join('');
+}
+
+function populateTriggerDeviceSelect(selectedKey) {
+  const sel  = document.getElementById('f-trigger-device');
+  const list = devices.filter((d) => d.host);
+  sel.innerHTML = '<option value="">— select device —</option>' +
+    list.map((d) => {
+      const key  = d.udn || `${d.host}:${d.port}`;
+      const name = d.friendlyName || d.name || d.host;
+      const sel  = key === selectedKey ? 'selected' : '';
+      return `<option value="${esc(key)}" data-host="${esc(d.host)}" data-port="${d.port}" data-name="${esc(name)}" ${sel}>${esc(name)}</option>`;
+    }).join('');
+}
+
+function populateActionDeviceChecks(selectedKeys) {
+  const container = document.getElementById('f-action-devices');
+  const list = devices.filter((d) => d.host);
+  if (!list.length) {
+    container.innerHTML = `<div style="font-size:13px;color:var(--text2)">No devices — scan first.</div>`;
+    return;
+  }
+  container.innerHTML = list.map((d) => {
+    const key  = d.udn || `${d.host}:${d.port}`;
+    const name = d.friendlyName || d.name || d.host;
+    const chk  = selectedKeys.includes(key) ? 'checked' : '';
+    return `<label class="dev-check-item">
+      <input type="checkbox" value="${esc(key)}" data-host="${esc(d.host)}" data-port="${d.port}" data-name="${esc(name)}" ${chk}>
+      ${esc(name)} <span style="font-size:11px;color:var(--text2);margin-left:4px">${esc(d.host)}</span>
+    </label>`;
+  }).join('');
+}
+
+function openRuleModal(idx) {
+  _editingRuleId = null;
+  const rule = idx !== null ? rules[idx] : null;
+  document.getElementById('modal-rule-title').textContent = rule ? 'Edit Rule' : 'Add DWM Rule';
+  document.getElementById('modal-rule-error').style.display = 'none';
+  document.getElementById('f-name').value    = rule?.name    || '';
+  document.getElementById('f-type').value    = rule?.type    || 'Schedule';
+  document.getElementById('f-enabled').checked = rule ? !!rule.enabled : true;
+
+  const days = rule?.days || [];
+  document.querySelectorAll('.day-pill').forEach((p) => {
+    p.classList.toggle('on', days.includes(Number(p.dataset.d)));
+    p.onclick = () => p.classList.toggle('on');
+  });
+
+  document.getElementById('f-start').value = secsToHHMM(rule?.startTime);
+  document.getElementById('f-end').value   = secsToHHMM(rule?.endTime > 0 ? rule.endTime : null);
+  document.getElementById('f-start-action').value = String(rule?.startAction ?? 1);
+  document.getElementById('f-end-action').value   = String(rule?.endAction   ?? -1);
+
+  if (rule?.type === 'Countdown' && rule.countdownTime) {
+    document.getElementById('f-countdown').value = Math.round(rule.countdownTime / 60);
+  } else {
+    document.getElementById('f-countdown').value = '';
+  }
+
+  const selUdns = (rule?.targetDevices || []).map((td) => td.udn || `${td.host}:${td.port}`);
+  populateDeviceChecks(selUdns);
+
+  if (rule?.type === 'Trigger') {
+    const srcKey = rule.triggerDevice
+      ? (rule.triggerDevice.udn || `${rule.triggerDevice.host}:${rule.triggerDevice.port}`)
+      : '';
+    populateTriggerDeviceSelect(srcKey);
+    document.getElementById('f-trigger-event').value  = rule.triggerEvent  ?? 'on';
+    document.getElementById('f-trigger-action').value = rule.action        ?? 'on';
+    const actionKeys = (rule.actionDevices || []).map((d) => d.udn || `${d.host}:${d.port}`);
+    populateActionDeviceChecks(actionKeys);
+  } else {
+    populateTriggerDeviceSelect('');
+    populateActionDeviceChecks([]);
+  }
+
+  onTypeChange();
+  if (rule) _editingRuleId = rule.id;
+  document.getElementById('modal-rule').classList.add('open');
+  setTimeout(() => document.getElementById('f-name').focus(), 100);
+}
+
+function closeRuleModal(e) {
+  if (e && e.target !== document.getElementById('modal-rule')) return;
+  document.getElementById('modal-rule').classList.remove('open');
+}
+
+async function saveRule() {
+  const errEl = document.getElementById('modal-rule-error');
+  errEl.style.display = 'none';
+
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { showModalErr('Rule name is required'); return; }
+
+  const type    = document.getElementById('f-type').value;
+  const enabled = document.getElementById('f-enabled').checked;
+
+  const days = [];
+  document.querySelectorAll('.day-pill.on').forEach((p) => days.push(Number(p.dataset.d)));
+
+  const targetDevices = [];
+  document.querySelectorAll('#f-devices input[type=checkbox]:checked').forEach((cb) => {
+    targetDevices.push({ udn: cb.value, host: cb.dataset.host, port: Number(cb.dataset.port), name: cb.dataset.name });
+  });
+  if (!targetDevices.length && type !== 'Trigger') { showModalErr('Select at least one target device'); return; }
+
+  let body = { name, type, enabled, targetDevices };
+
+  if (type === 'Trigger') {
+    const srcOpt = document.getElementById('f-trigger-device');
+    const selOpt = srcOpt.options[srcOpt.selectedIndex];
+    if (!selOpt?.value) { showModalErr('Select a trigger device'); return; }
+    body.triggerDevice = {
+      udn:  selOpt.value,
+      host: selOpt.dataset.host,
+      port: Number(selOpt.dataset.port),
+      name: selOpt.dataset.name,
+    };
+    body.triggerEvent  = document.getElementById('f-trigger-event').value;
+    body.action        = document.getElementById('f-trigger-action').value;
+    body.actionDevices = [];
+    document.querySelectorAll('#f-action-devices input[type=checkbox]:checked').forEach((cb) => {
+      body.actionDevices.push({ udn: cb.value, host: cb.dataset.host, port: Number(cb.dataset.port), name: cb.dataset.name });
+    });
+    if (!body.actionDevices.length) { showModalErr('Select at least one action device'); return; }
+    delete body.targetDevices;
+  } else if (type === 'AlwaysOn') {
+    // no schedule fields
+  } else if (type === 'Countdown') {
+    const mins = Number(document.getElementById('f-countdown').value);
+    if (!mins || mins < 1) { showModalErr('Enter a countdown duration in minutes'); return; }
+    body.countdownTime = mins * 60;
+  } else {
+    const startStr = document.getElementById('f-start').value;
+    if (!startStr) { showModalErr('Start time is required'); return; }
+    if (!days.length) { showModalErr('Select at least one day'); return; }
+    body.days      = days;
+    body.startTime = hhmmToSecs(startStr);
+    body.endTime   = hhmmToSecs(document.getElementById('f-end').value);
+    if (type === 'Schedule') {
+      body.startAction = Number(document.getElementById('f-start-action').value);
+      body.endAction   = Number(document.getElementById('f-end-action').value);
+    }
+  }
+
+  const btn = document.getElementById('btn-save-rule');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    if (_editingRuleId) {
+      await api('PUT', `/api/dwm-rules/${_editingRuleId}`, body);
+      toast(`"${name}" updated`, 'success');
+    } else {
+      await api('POST', '/api/dwm-rules', body);
+      toast(`"${name}" created`, 'success');
+    }
+    document.getElementById('modal-rule').classList.remove('open');
+    await loadRules();
+  } catch (e) {
+    showModalErr(e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save Rule';
+  }
+}
+
+function showModalErr(msg) {
+  const el = document.getElementById('modal-rule-error');
+  el.textContent = '⚠ ' + msg;
+  el.style.display = 'block';
+}
+
+// ── Delete Confirm ─────────────────────────────────────────────────────────
+let _deleteIdx = null;
+
+function confirmDeleteRule(i) {
+  _deleteIdx = i;
+  const rule = rules[i];
+  document.getElementById('confirm-delete-msg').textContent =
+    `Delete "${rule?.name || 'this rule'}"? This cannot be undone.`;
+  document.getElementById('btn-confirm-del').onclick = doDeleteRule;
+  document.getElementById('confirm-delete').classList.add('open');
+}
+
+function closeConfirm() {
+  document.getElementById('confirm-delete').classList.remove('open');
+  _deleteIdx = null;
+}
+
+async function doDeleteRule() {
+  const rule = rules[_deleteIdx];
+  if (!rule) return closeConfirm();
+  try {
+    await api('DELETE', `/api/dwm-rules/${rule.id}`);
+    toast(`"${rule.name}" deleted`, 'success');
+    closeConfirm();
+    await loadRules();
+  } catch (e) {
+    toast('Delete failed: ' + e.message, 'error');
+  }
+}
+
+// ── Wemo Device Rules ──────────────────────────────────────────────────────
+async function loadWemoRules() {
+  const el = document.getElementById('wemo-rules-list');
+  if (!devices.length) {
+    try { devices = await api('GET', '/api/devices'); } catch {}
+  }
+  const savedDevices = devices.filter((d) => d.host);
+  if (!savedDevices.length) {
+    el.innerHTML = `<div class="empty"><div class="icon">⚡</div><p>No devices found.<br>Go to Devices tab and tap Scan first.</p></div>`;
+    return;
+  }
+  const pickerHTML = `
+    <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:12px;">
+      ${savedDevices.map((d, i) => `
+        <button onclick="selectWemoDev(${i})" id="wdev-btn-${i}"
+          style="flex-shrink:0;padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);
+                 background:${i===wemoDevIdx?'var(--accent)':'var(--card)'};
+                 color:${i===wemoDevIdx?'#fff':'var(--text)'};font-size:13px;cursor:pointer;white-space:nowrap;">
+          ${esc(d.friendlyName || d.name || d.host)}
+        </button>`).join('')}
+    </div>
+    <div id="wemo-rules-inner"></div>`;
+  el.innerHTML = pickerHTML;
+  loadWemoDevRules(savedDevices[wemoDevIdx]);
+}
+
+function selectWemoDev(idx) {
+  wemoDevIdx = idx;
+  const savedDevices = devices.filter((d) => d.host);
+  document.querySelectorAll('[id^="wdev-btn-"]').forEach((b, i) => {
+    b.style.background = i === idx ? 'var(--accent)' : 'var(--card)';
+    b.style.color      = i === idx ? '#fff' : 'var(--text)';
+  });
+  loadWemoDevRules(savedDevices[idx]);
+}
+
+async function loadWemoDevRules(device) {
+  const inner = document.getElementById('wemo-rules-inner');
+  if (!inner) return;
+  inner.innerHTML = `<div class="empty"><div class="icon">⏳</div><p>Loading rules from device…</p></div>`;
+  try {
+    const result = await api('GET', `/api/devices/${device.host}/${device.port}/rules`);
+    wemoRules = result.rules || result || [];
+    renderWemoRules(device);
+  } catch (e) {
+    inner.innerHTML = `<div class="empty"><div class="icon">⚠️</div><p>Could not load rules:<br>${esc(e.message)}</p></div>`;
+  }
+}
+
+function renderWemoRules(device) {
+  const inner = document.getElementById('wemo-rules-inner');
+  if (!inner) return;
+  if (!wemoRules.length) {
+    inner.innerHTML = `<div class="empty"><div class="icon">⚡</div><p>No rules on this device.</p></div>`;
+    return;
+  }
+  inner.innerHTML = wemoRules.map((r, i) => `
+    <div class="card rule-card" id="wrule-${i}">
+      <div style="font-size:22px;flex-shrink:0">${{Schedule:'📅',Away:'🏠',Countdown:'⏱'}[r.type]||'⚡'}</div>
+      <div class="card-body">
+        <div class="card-name">${esc(r.name)}</div>
+        <div class="card-meta">
+          <span class="badge badge-off" style="margin-right:5px">${esc(r.type)}</span>
+          ${!r.enabled ? '<span class="badge badge-disabled">Disabled</span>' : ''}
+        </div>
+      </div>
+      <label class="toggle" id="wtog-${i}" onclick="toggleWemoRule(${i},'${device.host}',${device.port},event)">
+        <input type="checkbox" id="wchk-${i}" ${r.enabled ? 'checked' : ''}>
+        <span class="track"></span>
+        <span class="thumb"></span>
+      </label>
+    </div>
+  `).join('');
+}
+
+async function toggleWemoRule(i, host, port, e) {
+  e.preventDefault();
+  const rule = wemoRules[i];
+  const chk  = document.getElementById('wchk-' + i);
+  const tog  = document.getElementById('wtog-' + i);
+  if (!rule || !chk || !tog) return;
+  const enabled = !chk.checked;
+  tog.classList.add('busy');
+  try {
+    await api('PUT', `/api/devices/${host}/${port}/rules/${rule.ruleId}`, { enabled });
+    wemoRules[i] = { ...rule, enabled };
+    chk.checked = enabled;
+    toast(`"${rule.name}" ${enabled ? 'enabled' : 'disabled'}`, 'info');
+    renderWemoRules({ host, port });
+  } catch (err) {
+    toast(`Failed: ${err.message}`, 'error');
+  } finally {
+    tog.classList.remove('busy');
+  }
+}
+
+// ── Scheduler status ───────────────────────────────────────────────────────
+async function updateSchedStatus() {
+  try {
+    const status = await api('GET', '/api/scheduler/status');
+    applySchedStatus(status);
+  } catch {}
+}
+
+function applySchedStatus(status) {
+  const dot   = document.getElementById('sched-dot');
+  const label = document.getElementById('sched-label');
+  if (!dot || !label) return;
+  const running = status?.running ?? false;
+  dot.classList.toggle('running', running);
+  label.textContent = running ? '🟢 Scheduler Running' : '⚫ Scheduler Stopped';
+}
+
+function appendLog(event) {
+  const log = document.getElementById('log');
+  if (!log) return;
+  if (log.querySelector('div[style]')) log.innerHTML = '';
+  const time = new Date().toLocaleTimeString();
+  const ok   = event?.success !== false;
+  const msg  = event?.msg || JSON.stringify(event);
+  const div  = document.createElement('div');
+  div.className = `log-entry ${ok ? 'log-ok' : 'log-fail'}`;
+  div.textContent = `[${time}] ${msg}`;
+  log.insertBefore(div, log.firstChild);
+  while (log.children.length > 100) log.removeChild(log.lastChild);
+}
+
+// ── Util ───────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+function boot() {
+  connectWS();
+  loadDevices();
+}
+
+if (!SERVER_IP) {
+  showSetup(false);
+} else {
+  boot();
+}
+</script>
+</body>
+</html>
