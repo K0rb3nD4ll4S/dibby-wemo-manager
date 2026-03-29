@@ -21,21 +21,28 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install dependencies
-        run: npm install
-
       - name: Install Linux build tools
         run: |
           sudo apt-get update
           sudo apt-get install -y rpm fakeroot dpkg
 
+      - name: Install dependencies (skip Windows-only postinstall scripts)
+        run: npm install --ignore-scripts
+        working-directory: apps/desktop
+
+      - name: Rebuild native modules for Electron
+        run: npx electron-rebuild --version 33.4.11
+        working-directory: apps/desktop
+
       - name: Build Linux packages (x64)
-        run: npm run build:linux --workspace=apps/desktop
+        run: npx electron-vite build && node scripts/bundle-standalone.js && npx electron-builder --linux --x64
+        working-directory: apps/desktop
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Linux packages (arm64)
-        run: npm run build:linux:arm64 --workspace=apps/desktop
+        run: npx electron-builder --linux --arm64
+        working-directory: apps/desktop
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
