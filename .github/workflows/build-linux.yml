@@ -11,6 +11,8 @@ on:
 jobs:
   build-linux:
     runs-on: ubuntu-latest
+    container:
+      image: electronuserland/builder:latest
 
     steps:
       - name: Checkout
@@ -23,22 +25,11 @@ jobs:
 
       - name: Install Linux build tools
         run: |
-          sudo apt-get update
-          sudo apt-get install -y rpm fakeroot dpkg libarchive-tools
+          apt-get update -qq
+          apt-get install -y -qq rpm fakeroot dpkg libarchive-tools
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
-        env:
-          npm_config_node_windows_skip_install: "true"
-
-      - name: Verify app-builder binary
-        run: |
-          BINARY="node_modules/app-builder-bin/linux/x64/app-builder"
-          if [ ! -f "$BINARY" ]; then
-            echo "Binary missing, running postinstall manually..."
-            cd node_modules/app-builder-bin && node postinstall.js || true
-          fi
-          ls -lh $BINARY || echo "WARNING: app-builder binary still missing"
 
       - name: Vite build
         run: npx electron-vite build
