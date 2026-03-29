@@ -186,9 +186,11 @@ class DwmScheduler {
 
       // Away Mode
       if (rule.type === 'Away') {
-        const startSecs = resolveSecs(Number(rule.startTime ?? -1), rule.startType, rule.startOffset, todaySun);
-        const endSecs   = resolveSecs(Number(rule.endTime   ?? -1), rule.endType,   rule.endOffset,   todaySun);
+        const startSecs   = resolveSecs(Number(rule.startTime ?? -1), rule.startType, rule.startOffset, todaySun);
+        const endSecs     = resolveSecs(Number(rule.endTime   ?? -1), rule.endType,   rule.endOffset,   todaySun);
         if (startSecs === null) continue;
+        const awayStartAction = Number(rule.startAction ?? 1);
+        const awayEndAction   = Number(rule.endAction   ?? 0);
 
         for (const dayId of (rule.days ?? [])) {
           const td0 = rule.targetDevices?.[0];
@@ -196,14 +198,14 @@ class DwmScheduler {
             ruleId: rule.id, ruleName: rule.name,
             targetHost: td0?.host ?? '', targetPort: td0?.port ?? 0,
             dayId: Number(dayId), targetSecs: startSecs,
-            action: 1, isAwayStart: true,
+            action: awayStartAction, isAwayStart: true,
           });
           if (endSecs !== null && endSecs >= 0) {
             schedule.push({
               ruleId: rule.id + '-away-end', ruleName: rule.name,
               targetHost: td0?.host ?? '', targetPort: td0?.port ?? 0,
               dayId: Number(dayId), targetSecs: endSecs,
-              action: 0, isAwayEnd: true, awayRuleId: rule.id,
+              action: awayEndAction, isAwayEnd: true, awayRuleId: rule.id,
             });
           }
         }
@@ -212,22 +214,24 @@ class DwmScheduler {
 
       // Countdown with active window
       if (rule.type === 'Countdown') {
-        const windowStart = Number(rule.windowStart ?? -1);
-        const windowEnd   = Number(rule.windowEnd   ?? -1);
+        const windowStart     = Number(rule.windowStart ?? -1);
+        const windowEnd       = Number(rule.windowEnd   ?? -1);
         if (windowStart < 0 || !(rule.windowDays?.length)) continue;
 
+        const countdownAction = Number(rule.countdownAction ?? 1);
+        const countdownEnd    = countdownAction === 1 ? 0 : 1;   // opposite of start
         const crossesMidnight = windowEnd >= 0 && windowEnd < windowStart;
         for (const dayId of rule.windowDays) {
           for (const td of (rule.targetDevices ?? [])) {
             if (!td.host || !td.port) continue;
             schedule.push({ ruleId: rule.id, ruleName: rule.name,
               targetHost: td.host, targetPort: td.port,
-              dayId: Number(dayId), targetSecs: windowStart, action: 1 });
+              dayId: Number(dayId), targetSecs: windowStart, action: countdownAction });
             if (windowEnd >= 0) {
               const offDayId = crossesMidnight ? (Number(dayId) % 7) + 1 : Number(dayId);
               schedule.push({ ruleId: rule.id + '-wend', ruleName: rule.name,
                 targetHost: td.host, targetPort: td.port,
-                dayId: offDayId, targetSecs: windowEnd, action: 0 });
+                dayId: offDayId, targetSecs: windowEnd, action: countdownEnd });
             }
           }
         }
@@ -344,12 +348,14 @@ class DwmScheduler {
     if (loop.timer) clearTimeout(loop.timer);
     this._awayLoops.delete(ruleId);
     if (forceOff) {
+      const endAction = Number(loop.rule.endAction ?? 0);
+      const turnOn    = endAction === 1;
       for (const td of loop.devices) {
-        this._wemo.setBinaryState(td.host, td.port, false).catch(() => {});
+        this._wemo.setBinaryState(td.host, td.port, turnOn).catch(() => {});
       }
       this._emit({ success: true,
-        msg: `"${loop.rule.name}" Away Mode window ended — all devices OFF`,
-        entry: { action: 0 } });
+        msg: `"${loop.rule.name}" Away Mode window ended — all devices ${turnOn ? 'ON' : 'OFF'}`,
+        entry: { action: endAction } });
     }
   }
 

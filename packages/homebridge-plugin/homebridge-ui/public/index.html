@@ -398,6 +398,13 @@
           <label>Countdown Duration (minutes)</label>
           <input type="number" id="dwm-countdown-mins" min="1" max="1440" placeholder="60" />
         </div>
+        <div class="form-group">
+          <label>Action when timer fires</label>
+          <select id="dwm-countdown-action">
+            <option value="1">Turn ON (then auto-OFF after duration)</option>
+            <option value="0">Turn OFF (then auto-ON after duration)</option>
+          </select>
+        </div>
       </div>
 
       <div id="dwm-alwayson-info" style="display:none;margin-bottom:12px;padding:10px;background:rgba(48,209,88,.1);border:1px solid rgba(48,209,88,.3);border-radius:6px;font-size:0.82rem;color:#4ade80">
