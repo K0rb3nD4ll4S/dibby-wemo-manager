@@ -587,15 +587,29 @@ class DwmScheduler {
           }
         }
 
-        // ── Countdown — fire only when state matches configured condition ──
+        // ── Countdown — fire only when state matches condition and within window ──
         if (countdownDevMap.has(key)) {
           const prevState = this._countdownStates.get(key);
           this._countdownStates.set(key, isOn);
           if (prevState !== undefined && prevState !== isOn) {
+            const nowSecs = secondsFromMidnight(new Date());
             for (const { rule, td } of countdownDevMap.get(key)) {
               const condition  = rule.countdownAction ?? 'on_to_off';
               const triggered  = condition === 'on_to_off' ? isOn : !isOn;
               if (!triggered) continue;  // state doesn't match this rule's condition
+
+              // Check active window (if defined)
+              const winStart = Number(rule.windowStart ?? -1);
+              const winEnd   = Number(rule.windowEnd   ?? -1);
+              if (winStart >= 0 && winEnd >= 0) {
+                const crossesMidnight = winEnd < winStart;
+                const inWindow = crossesMidnight
+                  ? (nowSecs >= winStart || nowSecs <= winEnd)
+                  : (nowSecs >= winStart && nowSecs <= winEnd);
+                if (!inWindow) continue;  // outside active window
+              } else if (winStart >= 0) {
+                if (nowSecs < winStart) continue;
+              }
 
               const timerKey  = `${key}-${rule.id}`;
               // Cancel any pending timer for this device+rule
