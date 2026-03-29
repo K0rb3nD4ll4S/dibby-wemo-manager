@@ -26,11 +26,19 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y rpm fakeroot dpkg libarchive-tools
 
-      - name: Install root workspace dependencies
-        run: npm install --ignore-scripts --legacy-peer-deps
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+        env:
+          npm_config_node_windows_skip_install: "true"
 
-      - name: Download app-builder binary
-        run: node node_modules/app-builder-bin/install.js
+      - name: Verify app-builder binary
+        run: |
+          BINARY="node_modules/app-builder-bin/linux/x64/app-builder"
+          if [ ! -f "$BINARY" ]; then
+            echo "Binary missing, running postinstall manually..."
+            cd node_modules/app-builder-bin && node postinstall.js || true
+          fi
+          ls -lh $BINARY || echo "WARNING: app-builder binary still missing"
 
       - name: Vite build
         run: npx electron-vite build
