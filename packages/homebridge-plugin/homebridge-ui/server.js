@@ -45,8 +45,8 @@ class DibbyWemoUiServer extends HomebridgePluginUiServer {
     this.onRequest('/devices/discover', async ({ timeout } = {}) => {
       const ms = typeof timeout === 'number' ? timeout : 10_000;
       const devices = await wemoClient.discoverDevices(ms);
-      // Persist updated list
-      this._store.saveDevices(devices.map((d) => ({
+      // Merge into cached list — previously known devices stay even if not found this scan
+      this._store.mergeDevices(devices.map((d) => ({
         host: d.host,
         port: d.port,
         udn:  d.udn ?? `${d.host}:${d.port}`,
@@ -54,7 +54,8 @@ class DibbyWemoUiServer extends HomebridgePluginUiServer {
         productModel: d.productModel ?? 'Wemo Device',
         firmwareVersion: d.firmwareVersion ?? null,
       })));
-      return devices;
+      // Return the full merged list so the UI shows all known devices
+      return this._store.getDevices();
     });
 
     this.onRequest('/devices/state', async ({ host, port }) => {

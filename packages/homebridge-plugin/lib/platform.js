@@ -114,25 +114,36 @@ class WemoPlatform {
 
     this.log.info(`Found ${discovered.length} Wemo device(s)`);
 
-    // Save discovered device list for the custom UI
-    this._store.saveDevices(discovered.map((d) => ({
+    // Merge discovered devices into the cached list — keep offline devices too
+    const freshForStore = discovered.map((d) => ({
       host: d.host,
       port: d.port,
       udn:  d.udn ?? `${d.host}:${d.port}`,
       friendlyName: d.friendlyName ?? d.host,
       productModel: d.productModel ?? 'Wemo Device',
       firmwareVersion: d.firmwareVersion ?? null,
-    })));
+    }));
+    const allKnown = this._store.mergeDevices(freshForStore);
 
+    // Register newly discovered devices in HomeKit
     for (const device of discovered) {
       this._registerDevice(device, pollInterval);
     }
 
-    // Remove stale accessories (devices no longer discovered)
-    const activeUUIDs = new Set(discovered.map((d) => this._uuidForDevice(d)));
+    // Register previously cached devices that weren't discovered (may be offline)
+    // so HomeKit still knows about them
+    const discoveredUDNs = new Set(discovered.map((d) => d.udn ?? `${d.host}:${d.port}`));
+    for (const cached of allKnown) {
+      if (!discoveredUDNs.has(cached.udn)) {
+        this.log.info(`Device offline/not found during discovery, keeping cached: ${cached.friendlyName}`);
+        this._registerDevice(cached, pollInterval);
+      }
+    }
+
+    // Remove orphaned accessories — those with no device context at all
     for (const [uuid, acc] of this._accessories) {
-      if (!activeUUIDs.has(uuid)) {
-        this.log.info('Removing stale accessory: ' + acc.displayName);
+      if (!acc.context?.device?.host) {
+        this.log.info('Removing orphaned accessory (no device context): ' + acc.displayName);
         this._handlers.get(uuid)?.stopPolling();
         this._handlers.delete(uuid);
         this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [acc]);

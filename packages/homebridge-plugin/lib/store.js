@@ -56,6 +56,33 @@ class DwmStore {
   getDeviceGroups()         { return this._load().deviceGroups ?? []; }
   saveDeviceGroups(groups)  { const d = this._load(); d.deviceGroups = groups; this._save(d); }
 
+  /**
+   * Merge freshly discovered devices into the cached list.
+   * - Existing devices are updated with fresh data (host/port/name/firmware).
+   * - Previously cached devices NOT in the new scan are kept as-is (offline ≠ removed).
+   * - Newly found devices are appended.
+   * Returns the merged list.
+   */
+  mergeDevices(fresh) {
+    const d       = this._load();
+    const cached  = d.devices ?? [];
+    const byUdn   = new Map(cached.map((dev) => [dev.udn, dev]));
+
+    for (const f of fresh) {
+      const udn = f.udn ?? `${f.host}:${f.port}`;
+      if (byUdn.has(udn)) {
+        // Update existing entry with latest network data
+        byUdn.set(udn, { ...byUdn.get(udn), ...f, udn });
+      } else {
+        byUdn.set(udn, { ...f, udn });
+      }
+    }
+
+    d.devices = Array.from(byUdn.values());
+    this._save(d);
+    return d.devices;
+  }
+
   // ── Disabled-rule backups ─────────────────────────────────────────────────
 
   getDisabledRules()                    { return this._load().disabledRules ?? {}; }
