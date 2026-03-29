@@ -48,18 +48,16 @@ jobs:
         working-directory: apps/desktop
 
       - name: Build Linux x64 packages
-        run: npx electron-builder --linux --x64
+        run: npx electron-builder --linux --x64 --publish never
         working-directory: apps/desktop
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
           USE_SYSTEM_APP_BUILDER: "true"
 
       - name: Build Linux arm64 packages
-        run: npx electron-builder --linux --arm64
+        run: npx electron-builder --linux --arm64 --publish never
         working-directory: apps/desktop
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
           USE_SYSTEM_APP_BUILDER: "true"
 
