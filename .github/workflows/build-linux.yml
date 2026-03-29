@@ -26,43 +26,8 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq rpm fakeroot dpkg libarchive-tools
 
-      - name: Install workspace dependencies (root)
+      - name: Install workspace dependencies
         run: npm install --legacy-peer-deps
-
-      - name: Debug app-builder binary
-        run: |
-          echo "=== Checking root node_modules ==="
-          ls node_modules/app-builder-bin/ 2>/dev/null && echo "Found in root" || echo "Not in root"
-          echo "=== Checking apps/desktop node_modules ==="
-          ls apps/desktop/node_modules/app-builder-bin/ 2>/dev/null && echo "Found in desktop" || echo "Not in desktop"
-          echo "=== Finding any app-builder binary ==="
-          find . -name "app-builder" -not -path "*/proc/*" 2>/dev/null | head -10
-          echo "=== app-builder-bin contents (root) ==="
-          ls -la node_modules/app-builder-bin/ 2>/dev/null || true
-          echo "=== app-builder-bin linux dir ==="
-          ls -la node_modules/app-builder-bin/linux/ 2>/dev/null || true
-
-      - name: Verify or download app-builder binary
-        run: |
-          # Try root location first (workspace hoisted)
-          if [ -f "node_modules/app-builder-bin/linux/x64/app-builder" ]; then
-            echo "Binary found at root, making executable"
-            chmod +x node_modules/app-builder-bin/linux/x64/app-builder
-            node_modules/app-builder-bin/linux/x64/app-builder --version
-          else
-            echo "Binary not found — installing app-builder-bin directly"
-            cd node_modules/app-builder-bin && node postinstall.js || true
-            # Fallback: download manually using the version from package.json
-            VERSION=$(node -e "console.log(require('./node_modules/app-builder-bin/package.json').version)")
-            echo "app-builder-bin version: $VERSION"
-            URL="https://github.com/develar/app-builder/releases/download/v${VERSION}/app-builder_${VERSION}_linux_amd64.tar.gz"
-            echo "Downloading from: $URL"
-            mkdir -p node_modules/app-builder-bin/linux/x64
-            curl -L "$URL" -o /tmp/app-builder.tar.gz
-            tar -xzf /tmp/app-builder.tar.gz -C node_modules/app-builder-bin/linux/x64/
-            chmod +x node_modules/app-builder-bin/linux/x64/app-builder
-            node_modules/app-builder-bin/linux/x64/app-builder --version
-          fi
 
       - name: Vite build
         run: npx electron-vite build
@@ -71,20 +36,6 @@ jobs:
       - name: Bundle standalone scheduler
         run: node scripts/bundle-standalone.js
         working-directory: apps/desktop
-
-      - name: Pre-build binary diagnostics
-        run: |
-          BINARY="$(pwd)/node_modules/app-builder-bin/linux/x64/app-builder"
-          echo "=== Absolute path: $BINARY ==="
-          ls -la "$BINARY" || echo "MISSING"
-          echo "=== file output ==="
-          file "$BINARY" || true
-          echo "=== ldd output ==="
-          ldd "$BINARY" || true
-          echo "=== Execute test ==="
-          "$BINARY" --version && echo "EXECUTE OK" || echo "EXECUTE FAILED (exit $?)"
-          echo "=== Checking from apps/desktop context ==="
-          ls -la "apps/desktop/node_modules/app-builder-bin/linux/x64/app-builder" 2>/dev/null || echo "NOT in apps/desktop"
 
       - name: Build Linux x64 packages
         run: npx electron-builder --linux --x64
