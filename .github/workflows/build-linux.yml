@@ -51,6 +51,23 @@ jobs:
         run: node scripts/bundle-standalone.js
         working-directory: apps/desktop
 
+      - name: Diagnose app-builder path from desktop context
+        run: |
+          node -e "
+            const p = require('./node_modules/app-builder-bin');
+            console.log('appBuilderPath:', p.appBuilderPath);
+            const fs = require('fs');
+            const exists = fs.existsSync(p.appBuilderPath);
+            console.log('file exists:', exists);
+            if (exists) {
+              const stat = fs.statSync(p.appBuilderPath);
+              console.log('mode:', stat.mode.toString(8));
+              console.log('size:', stat.size);
+            }
+          "
+          find /home/runner/work -name "app-builder" -not -path "*/proc/*" 2>/dev/null
+        working-directory: apps/desktop
+
       - name: Build Linux x64 packages
         run: npx electron-builder --linux --x64
         working-directory: apps/desktop
