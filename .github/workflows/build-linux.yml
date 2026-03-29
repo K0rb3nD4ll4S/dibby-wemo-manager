@@ -26,18 +26,43 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq rpm fakeroot dpkg libarchive-tools
 
-      - name: Install desktop app dependencies
+      - name: Install workspace dependencies (root)
         run: npm install --legacy-peer-deps
-        working-directory: apps/desktop
 
       - name: Debug app-builder binary
         run: |
-          BINARY="node_modules/app-builder-bin/linux/x64/app-builder"
-          echo "Binary exists:" && ls -lh $BINARY
-          echo "File type:" && file $BINARY
-          echo "Shared libs:" && ldd $BINARY || true
-          echo "Try execute:" && $BINARY --version || true
-        working-directory: apps/desktop
+          echo "=== Checking root node_modules ==="
+          ls node_modules/app-builder-bin/ 2>/dev/null && echo "Found in root" || echo "Not in root"
+          echo "=== Checking apps/desktop node_modules ==="
+          ls apps/desktop/node_modules/app-builder-bin/ 2>/dev/null && echo "Found in desktop" || echo "Not in desktop"
+          echo "=== Finding any app-builder binary ==="
+          find . -name "app-builder" -not -path "*/proc/*" 2>/dev/null | head -10
+          echo "=== app-builder-bin contents (root) ==="
+          ls -la node_modules/app-builder-bin/ 2>/dev/null || true
+          echo "=== app-builder-bin linux dir ==="
+          ls -la node_modules/app-builder-bin/linux/ 2>/dev/null || true
+
+      - name: Verify or download app-builder binary
+        run: |
+          # Try root location first (workspace hoisted)
+          if [ -f "node_modules/app-builder-bin/linux/x64/app-builder" ]; then
+            echo "Binary found at root, making executable"
+            chmod +x node_modules/app-builder-bin/linux/x64/app-builder
+            node_modules/app-builder-bin/linux/x64/app-builder --version
+          else
+            echo "Binary not found — installing app-builder-bin directly"
+            cd node_modules/app-builder-bin && node postinstall.js || true
+            # Fallback: download manually using the version from package.json
+            VERSION=$(node -e "console.log(require('./node_modules/app-builder-bin/package.json').version)")
+            echo "app-builder-bin version: $VERSION"
+            URL="https://github.com/develar/app-builder/releases/download/v${VERSION}/app-builder_${VERSION}_linux_amd64.tar.gz"
+            echo "Downloading from: $URL"
+            mkdir -p node_modules/app-builder-bin/linux/x64
+            curl -L "$URL" -o /tmp/app-builder.tar.gz
+            tar -xzf /tmp/app-builder.tar.gz -C node_modules/app-builder-bin/linux/x64/
+            chmod +x node_modules/app-builder-bin/linux/x64/app-builder
+            node_modules/app-builder-bin/linux/x64/app-builder --version
+          fi
 
       - name: Vite build
         run: npx electron-vite build
