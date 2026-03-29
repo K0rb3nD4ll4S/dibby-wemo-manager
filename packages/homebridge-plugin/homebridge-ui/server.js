@@ -28,6 +28,7 @@ const path       = require('path');
 const DwmStore   = require('../lib/store');
 const wemoClient = require('../lib/wemo-client');
 const axios      = require('axios');
+const { sunTimes: calcSunTimes } = require('../lib/sun');
 
 class DibbyWemoUiServer extends HomebridgePluginUiServer {
   constructor() {
@@ -120,6 +121,13 @@ class DibbyWemoUiServer extends HomebridgePluginUiServer {
     // ── Location ──────────────────────────────────────────────────────────────
     this.onRequest('/location/get', async () => {
       return this._store.getLocation();
+    });
+
+    this.onRequest('/sun-times', async () => {
+      const loc = this._store.getLocation();
+      if (!loc?.lat || !loc?.lng) return { sunrise: null, sunset: null };
+      try { return calcSunTimes(loc.lat, loc.lng); }
+      catch { return { sunrise: null, sunset: null }; }
     });
 
     this.onRequest('/location/set', async (loc) => {

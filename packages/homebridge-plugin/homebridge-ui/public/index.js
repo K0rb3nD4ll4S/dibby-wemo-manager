@@ -12,6 +12,7 @@ let _wemoRules      = null;       // { rules, ruleDevices, targets } for selecte
 let _editingDwmId   = null;       // null = create, string = update
 let _selectedDwmDays = new Set();
 let _pendingLocation = null;      // { lat, lng, label }
+let _todaySunTimes  = null;       // { sunrise, sunset } seconds from midnight
 
 // ---------------------------------------------------------------------------
 // Tabs
@@ -273,6 +274,48 @@ function deleteDwmRule(id) {
   setTimeout(() => row.remove(), 5000);
 }
 
+// ── Sun-time helpers ─────────────────────────────────────────────────────────
+
+function secsToAmPm(secs) {
+  if (secs == null || secs < 0) return '—';
+  const h24 = Math.floor(secs / 3600) % 24;
+  const m   = Math.floor((secs % 3600) / 60);
+  const ap  = h24 < 12 ? 'AM' : 'PM';
+  const h12 = h24 % 12 || 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${ap}`;
+}
+
+function updateSunTypeVisibility() {
+  for (const side of ['start', 'end']) {
+    const type    = document.getElementById(`dwm-${side}-type`)?.value ?? 'fixed';
+    const isSun   = type === 'sunrise' || type === 'sunset';
+    document.getElementById(`dwm-${side}-fixed`).style.display = isSun ? 'none' : '';
+    document.getElementById(`dwm-${side}-sun`).style.display   = isSun ? ''     : 'none';
+    updateSunPreview(side);
+  }
+}
+
+function updateSunPreview(side) {
+  const previewEl = document.getElementById(`dwm-${side}-preview`);
+  if (!previewEl) return;
+  const type   = document.getElementById(`dwm-${side}-type`)?.value;
+  const offset = parseInt(document.getElementById(`dwm-${side}-offset`)?.value ?? '0', 10) || 0;
+  if (!_todaySunTimes || (type !== 'sunrise' && type !== 'sunset')) { previewEl.textContent = ''; return; }
+  const baseSecs = type === 'sunrise' ? _todaySunTimes.sunrise : _todaySunTimes.sunset;
+  if (baseSecs == null) { previewEl.textContent = 'No sun data for location'; return; }
+  const fireSecs = baseSecs + offset * 60;
+  const baseStr  = secsToAmPm(baseSecs);
+  const fireStr  = secsToAmPm(fireSecs);
+  const offStr   = offset !== 0 ? ` (${offset > 0 ? '+' : ''}${offset} min)` : '';
+  previewEl.textContent = `Today's ${type}: ${baseStr} → fires ${fireStr}${offStr}`;
+}
+
+// Wire up type dropdowns and offset inputs for live preview
+['start', 'end'].forEach((side) => {
+  document.getElementById(`dwm-${side}-type`)?.addEventListener('change', updateSunTypeVisibility);
+  document.getElementById(`dwm-${side}-offset`)?.addEventListener('input', () => updateSunPreview(side));
+});
+
 document.getElementById('btn-add-dwm').addEventListener('click', () => openDwmEdit(null));
 
 // ── DWM Inline Form ───────────────────────────────────────────────────────────
@@ -298,8 +341,12 @@ function openDwmEdit(id) {
     document.getElementById('dwm-name').value       = r.name ?? '';
     document.getElementById('dwm-type').value       = r.type ?? 'Schedule';
     document.getElementById('dwm-enabled').checked  = r.enabled !== false;
-    document.getElementById('dwm-start-time').value = secsToHHMM(r.startTime);
-    document.getElementById('dwm-end-time').value   = secsToHHMM(r.endTime);
+    document.getElementById('dwm-start-type').value   = r.startType   || 'fixed';
+    document.getElementById('dwm-start-offset').value = String(r.startOffset ?? 0);
+    document.getElementById('dwm-start-time').value   = (r.startType === 'fixed' && r.startTime >= 0) ? secsToHHMM(r.startTime) : '';
+    document.getElementById('dwm-end-type').value     = r.endType     || 'fixed';
+    document.getElementById('dwm-end-offset').value   = String(r.endOffset   ?? 0);
+    document.getElementById('dwm-end-time').value     = (r.endType === 'fixed' && r.endTime > 0) ? secsToHHMM(r.endTime) : '';
     document.getElementById('dwm-start-action').value = String(r.startAction ?? 1);
     document.getElementById('dwm-end-action').value   = String(r.endAction   ?? -1);
     document.getElementById('dwm-countdown-mins').value =
@@ -325,11 +372,15 @@ function openDwmEdit(id) {
       });
     }
   } else {
-    document.getElementById('dwm-name').value        = '';
-    document.getElementById('dwm-type').value        = 'Schedule';
-    document.getElementById('dwm-enabled').checked   = true;
-    document.getElementById('dwm-start-time').value  = '';
-    document.getElementById('dwm-end-time').value    = '';
+    document.getElementById('dwm-name').value         = '';
+    document.getElementById('dwm-type').value         = 'Schedule';
+    document.getElementById('dwm-enabled').checked    = true;
+    document.getElementById('dwm-start-type').value   = 'fixed';
+    document.getElementById('dwm-start-offset').value = '0';
+    document.getElementById('dwm-start-time').value   = '';
+    document.getElementById('dwm-end-type').value     = 'fixed';
+    document.getElementById('dwm-end-offset').value   = '0';
+    document.getElementById('dwm-end-time').value     = '';
     document.getElementById('dwm-start-action').value = '1';
     document.getElementById('dwm-end-action').value   = '-1';
     document.getElementById('dwm-countdown-mins').value = '';
@@ -342,6 +393,7 @@ function openDwmEdit(id) {
 
   updateDwmDayButtons();
   updateDwmTypeFields();
+  updateSunTypeVisibility();
   document.getElementById('dwm-list-view').style.display  = 'none';
   document.getElementById('dwm-form-panel').style.display = '';
   window.scrollTo(0, 0);
@@ -463,10 +515,30 @@ document.getElementById('dwm-form-save-btn').addEventListener('click', async () 
     if (!mins || mins < 1) { showModalError('Enter countdown duration in minutes'); return; }
     rule.countdownTime = mins * 60;
   } else {
-    const startSecs = hhmmToSecs(document.getElementById('dwm-start-time').value);
-    if (startSecs < 0) { showModalError('Enter a valid start time (HH:MM)'); return; }
+    const startType   = document.getElementById('dwm-start-type').value;
+    const startOffset = parseInt(document.getElementById('dwm-start-offset').value ?? '0', 10) || 0;
+    const endType     = document.getElementById('dwm-end-type').value;
+    const endOffset   = parseInt(document.getElementById('dwm-end-offset').value   ?? '0', 10) || 0;
+
+    let startSecs;
+    if (startType === 'sunrise') { startSecs = -2; }
+    else if (startType === 'sunset') { startSecs = -3; }
+    else {
+      startSecs = hhmmToSecs(document.getElementById('dwm-start-time').value);
+      if (startSecs < 0) { showModalError('Enter a valid start time (e.g. 8:30 PM)'); return; }
+    }
+
+    let endSecs;
+    if (endType === 'sunrise') { endSecs = -2; }
+    else if (endType === 'sunset') { endSecs = -3; }
+    else { endSecs = hhmmToSecs(document.getElementById('dwm-end-time').value); }
+
     rule.startTime    = startSecs;
-    rule.endTime      = hhmmToSecs(document.getElementById('dwm-end-time').value);
+    rule.startType    = startType;
+    rule.startOffset  = startOffset;
+    rule.endTime      = endSecs;
+    rule.endType      = endType;
+    rule.endOffset    = endOffset;
     rule.startAction  = Number(document.getElementById('dwm-start-action').value);
     rule.endAction    = Number(document.getElementById('dwm-end-action').value);
   }
@@ -764,5 +836,7 @@ document.querySelectorAll('.tab-btn').forEach((btn) => {
   await loadDwmRules();
   await loadLocation();
   refreshWemoDeviceSelect();
-  startHeartbeatPolling();   // start immediately (DWM tab is not default, but still useful)
+  startHeartbeatPolling();
+  // Fetch today's sun times in background — used by rule editor previews
+  homebridge.request('/sun-times').then((st) => { _todaySunTimes = st; }).catch(() => {});
 })();

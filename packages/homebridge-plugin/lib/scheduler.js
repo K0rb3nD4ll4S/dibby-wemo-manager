@@ -19,10 +19,36 @@
  *   await scheduler.start();
  */
 
+const { sunTimes: calcSunTimes } = require('./sun');
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Wemo DayID: 1=Mon … 7=Sun.  JS getDay(): 0=Sun … 6=Sat. */
 function jsToWemoDayId(jsDay) { return jsDay === 0 ? 7 : jsDay; }
+
+/**
+ * Resolve a stored startTime/endTime value to actual seconds-from-midnight.
+ * -2 = sunrise sentinel, -3 = sunset sentinel.
+ * offsetMins is added to the sun time (negative = before).
+ * Returns null if unresolvable (no location, polar day/night, or no time set).
+ */
+function resolveSecs(rawSecs, type, offsetMins, todaySun) {
+  const offsetSecs = (offsetMins ?? 0) * 60;
+  if (type === 'sunset'  || rawSecs === -3) {
+    return todaySun?.sunset  != null ? todaySun.sunset  + offsetSecs : null;
+  }
+  if (type === 'sunrise' || rawSecs === -2) {
+    return todaySun?.sunrise != null ? todaySun.sunrise + offsetSecs : null;
+  }
+  return rawSecs >= 0 ? rawSecs : null;
+}
+
+/** Compute today's sunrise/sunset from the store's saved location. Returns null if not set. */
+function getTodaySun(store) {
+  const loc = store.getLocation?.();
+  if (!loc?.lat || !loc?.lng) return null;
+  try { return calcSunTimes(loc.lat, loc.lng); } catch { return null; }
+}
 
 function secondsFromMidnight(date) {
   return date.getHours() * 3600 + date.getMinutes() * 60 + date.getSeconds();
@@ -150,6 +176,7 @@ class DwmScheduler {
   _loadSchedule() {
     const schedule = [];
     const rules    = this._store.getDwmRules();
+    const todaySun = getTodaySun(this._store);
 
     for (const rule of rules) {
       if (!rule.enabled) continue;
@@ -159,9 +186,9 @@ class DwmScheduler {
 
       // Away Mode
       if (rule.type === 'Away') {
-        const startSecs = Number(rule.startTime ?? -1);
-        const endSecs   = Number(rule.endTime   ?? -1);
-        if (startSecs < 0) continue;
+        const startSecs = resolveSecs(Number(rule.startTime ?? -1), rule.startType, rule.startOffset, todaySun);
+        const endSecs   = resolveSecs(Number(rule.endTime   ?? -1), rule.endType,   rule.endOffset,   todaySun);
+        if (startSecs === null) continue;
 
         for (const dayId of (rule.days ?? [])) {
           const td0 = rule.targetDevices?.[0];
@@ -171,7 +198,7 @@ class DwmScheduler {
             dayId: Number(dayId), targetSecs: startSecs,
             action: 1, isAwayStart: true,
           });
-          if (endSecs >= 0) {
+          if (endSecs !== null && endSecs >= 0) {
             schedule.push({
               ruleId: rule.id + '-away-end', ruleName: rule.name,
               targetHost: td0?.host ?? '', targetPort: td0?.port ?? 0,
@@ -208,11 +235,11 @@ class DwmScheduler {
       }
 
       // Schedule / time-based
-      const startSecs   = Number(rule.startTime ?? -1);
-      const endSecs     = Number(rule.endTime   ?? -1);
+      const startSecs   = resolveSecs(Number(rule.startTime ?? -1), rule.startType, rule.startOffset, todaySun);
+      const endSecs     = resolveSecs(Number(rule.endTime   ?? -1), rule.endType,   rule.endOffset,   todaySun);
       const startAction = Number(rule.startAction ?? 1);
       const endAction   = Number(rule.endAction   ?? -1);
-      if (startSecs < 0) continue;
+      if (startSecs === null) continue;
 
       for (const dayId of (rule.days ?? [])) {
         for (const td of (rule.targetDevices ?? [])) {
@@ -222,7 +249,7 @@ class DwmScheduler {
               targetHost: td.host, targetPort: td.port,
               dayId: Number(dayId), targetSecs: startSecs, action: startAction });
           }
-          if (endSecs > 0 && endAction >= 0) {
+          if (endSecs !== null && endSecs > 0 && endAction >= 0) {
             schedule.push({ ruleId: rule.id, ruleName: rule.name,
               targetHost: td.host, targetPort: td.port,
               dayId: Number(dayId), targetSecs: endSecs, action: endAction });
@@ -239,21 +266,22 @@ class DwmScheduler {
 
   _resumeAwayLoops() {
     if (!this._running) return;
-    const now     = new Date();
-    const nowSecs = secondsFromMidnight(now);
-    const todayId = jsToWemoDayId(now.getDay());
-    const rules   = this._store.getDwmRules();
+    const now      = new Date();
+    const nowSecs  = secondsFromMidnight(now);
+    const todayId  = jsToWemoDayId(now.getDay());
+    const rules    = this._store.getDwmRules();
+    const todaySun = getTodaySun(this._store);
 
     for (const rule of rules) {
       if (!rule.enabled || rule.type !== 'Away') continue;
       if (this._awayLoops.has(rule.id)) continue;
 
-      const startSecs = Number(rule.startTime ?? -1);
-      const endSecs   = Number(rule.endTime   ?? -1);
-      if (startSecs < 0) continue;
+      const startSecs = resolveSecs(Number(rule.startTime ?? -1), rule.startType, rule.startOffset, todaySun);
+      const endSecs   = resolveSecs(Number(rule.endTime   ?? -1), rule.endType,   rule.endOffset,   todaySun);
+      if (startSecs === null) continue;
       if (!(rule.days ?? []).includes(todayId)) continue;
 
-      const inWindow = endSecs >= 0
+      const inWindow = endSecs !== null && endSecs >= 0
         ? (startSecs <= endSecs ? (nowSecs >= startSecs && nowSecs < endSecs)
                                 : (nowSecs >= startSecs || nowSecs < endSecs))
         : nowSecs >= startSecs;
@@ -269,7 +297,9 @@ class DwmScheduler {
     const devices = (rule.targetDevices ?? []).filter(td => td.host && td.port);
     if (!devices.length) return;
 
-    const loop = { rule, devices, endSecs: Number(rule.endTime ?? -1), timer: null, isOn: false };
+    const todaySun = getTodaySun(this._store);
+    const resolvedEnd = resolveSecs(Number(rule.endTime ?? -1), rule.endType, rule.endOffset, todaySun);
+    const loop = { rule, devices, endSecs: resolvedEnd ?? -1, timer: null, isOn: false };
     this._awayLoops.set(rule.id, loop);
     this._awayStep(rule.id, true);
   }

@@ -316,11 +316,39 @@
         <div class="flex-row">
           <div class="form-group" style="flex:1">
             <label>Start Time</label>
-            <input type="text" id="dwm-start-time" placeholder="e.g. 8:30 PM" />
+            <select id="dwm-start-type" style="margin-bottom:6px">
+              <option value="fixed">Fixed Time</option>
+              <option value="sunrise">Sunrise</option>
+              <option value="sunset">Sunset</option>
+            </select>
+            <div id="dwm-start-fixed">
+              <input type="text" id="dwm-start-time" placeholder="e.g. 8:30 PM" />
+            </div>
+            <div id="dwm-start-sun" style="display:none">
+              <div style="display:flex;align-items:center;gap:6px">
+                <input type="number" id="dwm-start-offset" placeholder="0" style="width:70px" />
+                <span style="font-size:0.8rem;color:#9ca3af">min (+ after, − before)</span>
+              </div>
+              <div id="dwm-start-preview" style="font-size:0.78rem;color:#4ade80;margin-top:4px"></div>
+            </div>
           </div>
           <div class="form-group" style="flex:1">
             <label>End Time (optional)</label>
-            <input type="text" id="dwm-end-time" placeholder="e.g. 11:00 PM" />
+            <select id="dwm-end-type" style="margin-bottom:6px">
+              <option value="fixed">Fixed Time</option>
+              <option value="sunrise">Sunrise</option>
+              <option value="sunset">Sunset</option>
+            </select>
+            <div id="dwm-end-fixed">
+              <input type="text" id="dwm-end-time" placeholder="e.g. 11:00 PM" />
+            </div>
+            <div id="dwm-end-sun" style="display:none">
+              <div style="display:flex;align-items:center;gap:6px">
+                <input type="number" id="dwm-end-offset" placeholder="0" style="width:70px" />
+                <span style="font-size:0.8rem;color:#9ca3af">min (+ after, − before)</span>
+              </div>
+              <div id="dwm-end-preview" style="font-size:0.78rem;color:#4ade80;margin-top:4px"></div>
+            </div>
           </div>
         </div>
         <div class="flex-row">
