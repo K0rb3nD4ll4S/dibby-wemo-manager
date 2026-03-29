@@ -40,6 +40,7 @@
   "build": {
     "appId": "com.srsit.dibbywemomanager",
     "productName": "Dibby Wemo Manager",
+    "npmRebuild": false,
     "directories": {
       "output": "dist"
     },
