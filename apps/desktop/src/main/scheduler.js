@@ -16,8 +16,9 @@
  * Sun-based times (startTime < 0) are skipped for now.
  */
 
-const wemo  = require('./wemo');
-const store = require('./store');
+const wemo      = require('./wemo');
+const store     = require('./store');
+const { sunTimes: calcSunTimes } = require('./core/sun');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -126,6 +127,29 @@ class LocalScheduler {
     const schedule = [];
     const rules    = store.getDwmRules();
 
+    // Compute today's sunrise/sunset once — used to resolve sun-based start/end times
+    const loc = store.getLocation();
+    const todaySun = (loc?.lat != null && loc?.lng != null)
+      ? calcSunTimes(loc.lat, loc.lng)
+      : null;
+
+    /**
+     * Convert a raw stored time value to seconds-from-midnight.
+     * -2 = sunrise sentinel, -3 = sunset sentinel (set by RuleEditor.jsx saveDwm).
+     * offsetMins is added/subtracted from the sun time (e.g. "30 min before sunset").
+     * Returns null if the time cannot be resolved (no location, polar day/night, or no time set).
+     */
+    const resolveSecs = (rawSecs, type, offsetMins) => {
+      const offsetSecs = (offsetMins ?? 0) * 60;
+      if (type === 'sunset'  || rawSecs === -3) {
+        return todaySun?.sunset  != null ? todaySun.sunset  + offsetSecs : null;
+      }
+      if (type === 'sunrise' || rawSecs === -2) {
+        return todaySun?.sunrise != null ? todaySun.sunrise + offsetSecs : null;
+      }
+      return rawSecs >= 0 ? rawSecs : null;
+    };
+
     for (const rule of rules) {
       if (!rule.enabled) continue;
 
@@ -134,9 +158,9 @@ class LocalScheduler {
 
       // ── Away Mode — handled by the randomisation loop, not pre-computed entries ──
       if (rule.type === 'Away') {
-        const startSecs = Number(rule.startTime ?? -1);
-        const endSecs   = Number(rule.endTime   ?? -1);
-        if (startSecs < 0) continue; // sun-based — skip for now
+        const startSecs = resolveSecs(Number(rule.startTime ?? -1), rule.startType, rule.startOffset);
+        const endSecs   = resolveSecs(Number(rule.endTime   ?? -1), rule.endType,   rule.endOffset);
+        if (startSecs === null) continue; // no location set or polar day/night
 
         for (const dayId of (rule.days ?? [])) {
           const td0 = rule.targetDevices?.[0]; // for status display only
@@ -152,7 +176,7 @@ class LocalScheduler {
             isAwayStart: true,
           });
           // Window-end entry: stops the away loop
-          if (endSecs >= 0) {
+          if (endSecs !== null && endSecs >= 0) {
             schedule.push({
               ruleId:     rule.id + '-away-end',
               ruleName:   rule.name,
@@ -196,11 +220,11 @@ class LocalScheduler {
       }
 
       // ── Schedule / other time-based rules ────────────────────────────────
-      const startSecs   = Number(rule.startTime ?? -1);
-      const endSecs     = Number(rule.endTime   ?? -1);
+      const startSecs   = resolveSecs(Number(rule.startTime ?? -1), rule.startType, rule.startOffset);
+      const endSecs     = resolveSecs(Number(rule.endTime   ?? -1), rule.endType,   rule.endOffset);
       const startAction = Number(rule.startAction ?? 1);
       const endAction   = Number(rule.endAction   ?? -1);
-      if (startSecs < 0) continue;
+      if (startSecs === null) continue; // no location set, polar day/night, or no time defined
 
       for (const dayId of (rule.days ?? [])) {
         for (const td of (rule.targetDevices ?? [])) {
@@ -210,7 +234,7 @@ class LocalScheduler {
               targetHost: td.host, targetPort: td.port,
               dayId: Number(dayId), targetSecs: startSecs, action: startAction });
           }
-          if (endSecs > 0 && endAction >= 0) {
+          if (endSecs !== null && endSecs > 0 && endAction >= 0) {
             schedule.push({ ruleId: rule.id, ruleName: rule.name,
               targetHost: td.host, targetPort: td.port,
               dayId: Number(dayId), targetSecs: endSecs, action: endAction });
