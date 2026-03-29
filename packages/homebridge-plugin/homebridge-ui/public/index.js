@@ -274,6 +274,97 @@ function deleteDwmRule(id) {
   setTimeout(() => row.remove(), 5000);
 }
 
+// ── Export ────────────────────────────────────────────────────────────────────
+
+document.getElementById('btn-export-dwm').addEventListener('click', async () => {
+  try {
+    const rules = await homebridge.request('/rules/export');
+    if (!rules || !rules.length) { showStatus('dwm-rules-status', 'No rules to export.', 'warn'); return; }
+    const blob = new Blob([JSON.stringify(rules, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    a.href     = url;
+    a.download = `dwm-rules-${date}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showStatus('dwm-rules-status', `Exported ${rules.length} rule${rules.length !== 1 ? 's' : ''}.`, 'success');
+  } catch (e) {
+    showStatus('dwm-rules-status', 'Export failed: ' + e.message, 'error');
+  }
+});
+
+// ── Import ────────────────────────────────────────────────────────────────────
+
+let _importRules = [];   // parsed rules waiting for confirmation
+
+document.getElementById('btn-import-dwm').addEventListener('click', () => {
+  document.getElementById('dwm-import-file').value = '';   // reset so same file can be re-selected
+  document.getElementById('dwm-import-file').click();
+});
+
+document.getElementById('dwm-import-file').addEventListener('change', (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const parsed = JSON.parse(ev.target.result);
+      const rules  = Array.isArray(parsed) ? parsed : parsed.rules ?? [];
+      if (!rules.length) throw new Error('No rules found in file');
+
+      _importRules = rules;
+      document.getElementById('dwm-import-title').textContent =
+        `Import ${rules.length} rule${rules.length !== 1 ? 's' : ''} from "${file.name}"`;
+
+      // Build preview list
+      const listEl = document.getElementById('dwm-import-list');
+      listEl.innerHTML = rules.map((r) =>
+        `<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.06)">` +
+        `<span style="color:#e2e8f0">${esc(r.name ?? '(unnamed)')}</span> ` +
+        `<span style="color:#6b7280;font-size:0.75rem">${esc(r.type ?? '')}</span></div>`
+      ).join('');
+
+      document.getElementById('dwm-import-status').textContent = '';
+      document.getElementById('dwm-import-panel').style.display = '';
+      document.getElementById('btn-import-confirm').disabled = false;
+    } catch (err) {
+      showStatus('dwm-rules-status', 'Import failed: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById('btn-import-cancel').addEventListener('click', () => {
+  document.getElementById('dwm-import-panel').style.display = 'none';
+  _importRules = [];
+});
+
+document.getElementById('btn-import-confirm').addEventListener('click', async () => {
+  if (!_importRules.length) return;
+  const mode    = document.querySelector('input[name="dwm-import-mode"]:checked')?.value ?? 'merge';
+  const statusEl = document.getElementById('dwm-import-status');
+  const btn      = document.getElementById('btn-import-confirm');
+  btn.disabled   = true;
+  statusEl.style.color = '#9ca3af';
+  statusEl.textContent = 'Importing…';
+  try {
+    const res = await homebridge.request('/rules/import', { rules: _importRules, mode });
+    document.getElementById('dwm-import-panel').style.display = 'none';
+    _importRules = [];
+    await loadDwmRules();
+    const msg = mode === 'replace'
+      ? `Replaced all rules — imported ${res.imported}.`
+      : `Imported ${res.imported} rule${res.imported !== 1 ? 's' : ''}${res.skipped ? `, skipped ${res.skipped} (name already exists)` : ''}.`;
+    showStatus('dwm-rules-status', msg, 'success');
+  } catch (e) {
+    btn.disabled = false;
+    statusEl.style.color = '#fca5a5';
+    statusEl.textContent = 'Import failed: ' + e.message;
+  }
+});
+
 // ── Sun-time helpers ─────────────────────────────────────────────────────────
 
 function secsToAmPm(secs) {

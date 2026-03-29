@@ -84,6 +84,35 @@ class DibbyWemoUiServer extends HomebridgePluginUiServer {
       return { ok: true };
     });
 
+    this.onRequest('/rules/export', async () => {
+      return this._store.getDwmRules();
+    });
+
+    this.onRequest('/rules/import', async ({ rules, mode }) => {
+      if (!Array.isArray(rules) || rules.length === 0) throw new Error('No valid rules found in import data');
+
+      if (mode === 'replace') {
+        for (const r of this._store.getDwmRules()) this._store.deleteDwmRule(r.id);
+      }
+
+      const existing     = this._store.getDwmRules();
+      const existingNames = new Set(existing.map((r) => (r.name ?? '').toLowerCase()));
+      let imported = 0, skipped = 0;
+
+      for (const rule of rules) {
+        // Strip old identity fields — store will assign fresh id + timestamps
+        const { id: _id, createdAt: _ca, updatedAt: _ua, ...ruleData } = rule;
+        if (mode === 'merge' && existingNames.has((ruleData.name ?? '').toLowerCase())) {
+          skipped++;
+          continue;
+        }
+        this._store.createDwmRule(ruleData);
+        imported++;
+      }
+
+      return { ok: true, imported, skipped };
+    });
+
     // ── Scheduler heartbeat ───────────────────────────────────────────────────
     this.onRequest('/scheduler/status', async () => {
       const hb = this._store.getHeartbeat();
