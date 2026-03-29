@@ -73,11 +73,7 @@
       "createDesktopShortcut": true
     },
     "linux": {
-      "target": [
-        { "target": "AppImage", "arch": ["x64"] },
-        { "target": "deb",      "arch": ["x64"] },
-        { "target": "rpm",      "arch": ["x64"] }
-      ],
+      "target": ["AppImage", "deb", "rpm"],
       "icon": "resources/icon.png",
       "category": "Utility",
       "synopsis": "Belkin Wemo device manager — local control, no cloud required",
