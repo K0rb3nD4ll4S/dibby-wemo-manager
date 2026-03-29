@@ -45,6 +45,16 @@
     "directories": {
       "output": "dist"
     },
+    "mac": {
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] }
+      ],
+      "icon": "resources/icon.png",
+      "category": "public.app-category.utilities"
+    },
+    "dmg": {
+      "title": "Dibby Wemo Manager"
+    },
     "win": {
       "target": [
         {

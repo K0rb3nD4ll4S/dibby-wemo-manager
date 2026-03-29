@@ -1,0 +1,52 @@
+name: Build & Upload macOS Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to upload assets to (e.g. v2.0.0)'
+        required: true
+        default: 'v2.0.0'
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install workspace dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Vite build
+        run: npx electron-vite build
+        working-directory: apps/desktop
+
+      - name: Bundle standalone scheduler
+        run: node scripts/bundle-standalone.js
+        working-directory: apps/desktop
+
+      - name: Build macOS packages
+        run: npx electron-builder --mac --publish never
+        working-directory: apps/desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: List build output
+        run: ls -lh apps/desktop/dist/
+
+      - name: Upload macOS packages to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag }}
+          files: apps/desktop/dist/*.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,14 @@
+{
+  "name": "dibby-wemo-docker",
+  "version": "2.0.0",
+  "description": "Dibby Wemo Manager — headless scheduler + web remote",
+  "main": "server.js",
+  "dependencies": {
+    "adm-zip": "^0.5.14",
+    "axios": "^1.7.0",
+    "sql.js": "^1.12.0",
+    "ws": "^8.18.0",
+    "xml2js": "^0.6.2",
+    "xmlbuilder2": "^4.0.3"
+  }
+}
