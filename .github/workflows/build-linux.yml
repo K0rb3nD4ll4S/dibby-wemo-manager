@@ -31,13 +31,12 @@ jobs:
 
       - name: Install app-builder to system PATH
         run: |
-          VERSION=$(node -e "console.log(require('./node_modules/app-builder-bin/package.json').version)")
-          echo "Downloading app-builder $VERSION"
-          curl -fL "https://github.com/develar/app-builder/releases/download/v${VERSION}/app-builder_${VERSION}_linux_amd64.tar.gz" \
-            -o /tmp/app-builder.tar.gz
-          tar -xzf /tmp/app-builder.tar.gz -C /tmp/
-          chmod +x /tmp/app-builder
-          sudo mv /tmp/app-builder /usr/local/bin/app-builder
+          # The binary is bundled in the npm package for the current platform.
+          # Copy it to /usr/local/bin so USE_SYSTEM_APP_BUILDER=true can find it.
+          BINARY=$(node -e "console.log(require('./node_modules/app-builder-bin').appBuilderPath)")
+          echo "app-builder binary: $BINARY"
+          chmod +x "$BINARY"
+          sudo cp "$BINARY" /usr/local/bin/app-builder
           app-builder --version
 
       - name: Vite build
