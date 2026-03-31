@@ -35,10 +35,12 @@ jobs:
         working-directory: apps/desktop
 
       - name: Build Windows x64 packages
-        run: npx electron-builder --win --x64 --publish never
+        run: npx electron-builder --win --x64 --publish never --config.win.certificateFile="" --config.win.certificatePassword=""
         working-directory: apps/desktop
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          CSC_LINK: ""
+          WIN_CSC_LINK: ""
 
       - name: List build output
         run: dir apps\desktop\dist\
