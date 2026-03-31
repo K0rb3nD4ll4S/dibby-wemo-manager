@@ -20,6 +20,14 @@
   },
   "author": "SRS IT",
   "license": "MIT",
+  "homepage": "https://github.com/K0rb3nD4ll4S/dibby-wemo-manager#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/K0rb3nD4ll4S/dibby-wemo-manager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/K0rb3nD4ll4S/dibby-wemo-manager/issues"
+  },
   "dependencies": {
     "adm-zip": "^0.5.14",
     "axios": "^1.7.0",

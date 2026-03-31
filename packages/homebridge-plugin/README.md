@@ -220,3 +220,7 @@ No data is sent outside your local network.
 ## License
 
 MIT
+
+---
+
+*Dedicated to Dibby ❤️ — built with love, and always being improved.*
