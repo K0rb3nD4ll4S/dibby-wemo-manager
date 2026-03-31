@@ -114,6 +114,7 @@ class LocalScheduler {
   reload() {
     if (!this._running) return;
     this._stopAllAwayLoops(false);
+    this._countdownStates.clear();
     this._loadSchedule();
     this._resumeAwayLoops();
     const status = this._buildStatus();
@@ -512,7 +513,7 @@ class LocalScheduler {
         if (countdownDevMap.has(key)) {
           const prevState = this._countdownStates.get(key);
           this._countdownStates.set(key, isOn);
-          if (prevState !== undefined && prevState !== isOn) {
+          if (prevState !== isOn) {
             const nowSecs = secondsFromMidnight(new Date());
             for (const { rule, td } of countdownDevMap.get(key)) {
               const condition = rule.countdownAction ?? 'on_to_off';
