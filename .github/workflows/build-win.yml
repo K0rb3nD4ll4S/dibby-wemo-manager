@@ -1,0 +1,53 @@
+name: Build & Upload Windows Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to upload assets to (e.g. v2.0.1)'
+        required: true
+        default: 'v2.0.1'
+
+jobs:
+  build-win:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install workspace dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Vite build
+        run: npx electron-vite build
+        working-directory: apps/desktop
+
+      - name: Bundle standalone scheduler
+        run: node scripts/bundle-standalone.js
+        working-directory: apps/desktop
+
+      - name: Build Windows x64 packages
+        run: npx electron-builder --win --x64 --publish never
+        working-directory: apps/desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: List build output
+        run: dir apps\desktop\dist\
+
+      - name: Upload Windows packages to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag }}
+          files: |
+            apps/desktop/dist/*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
