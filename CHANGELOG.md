@@ -4,6 +4,40 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.5] — 2026-04-01
+
+### New Feature — MQTT Bridge
+
+New `packages/mqtt-bridge` workspace package: a lightweight Node.js service that bridges all Wemo devices to any MQTT broker, with Home Assistant MQTT Auto-Discovery built in.
+
+**What it does:**
+- Discovers Wemo devices via SSDP (+ optional manual device list)
+- Publishes `ON`/`OFF` state to `dibby-wemo/{device}/state` on every change
+- Subscribes to `dibby-wemo/{device}/set` for remote control
+- Publishes `online`/`offline` availability per device and bridge LWT
+- Registers all devices with Home Assistant automatically via `homeassistant/switch/{device}/config`
+- Re-scans for new devices every 2 minutes
+
+**Ships with:**
+- `Dockerfile` — `ghcr.io/k0rb3nd4ll4s/dibby-wemo-mqtt:latest` (linux/amd64 + arm64)
+- `docker-compose.yml` — one `docker compose up` starts both Mosquitto broker + bridge
+- `mosquitto.conf` — minimal broker config included
+- `build-mqtt.yml` — GitHub Actions workflow for multi-platform Docker build
+
+**Works with:** Home Assistant, Node-RED, openHAB, Hubitat, Domoticz, and any MQTT-capable platform simultaneously.
+
+**Usage:**
+```bash
+cd packages/mqtt-bridge
+docker compose up -d
+```
+
+### Affected packages
+- `@wemo-manager/mqtt-bridge` → **2.0.0** (new)
+- Docker image: `ghcr.io/k0rb3nd4ll4s/dibby-wemo-mqtt:2.0.0`
+
+---
+
 ## [2.0.4] — 2026-04-01
 
 ### Fixes & CI

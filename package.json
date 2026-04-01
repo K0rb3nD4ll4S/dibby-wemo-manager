@@ -4,7 +4,8 @@
   "private": true,
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/*",
+    "packages/mqtt-bridge"
   ],
   "scripts": {
     "dev": "npm run dev --workspace=apps/desktop",

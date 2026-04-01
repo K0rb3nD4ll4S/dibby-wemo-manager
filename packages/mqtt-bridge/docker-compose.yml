@@ -1,0 +1,48 @@
+services:
+
+  # ── Mosquitto MQTT Broker ────────────────────────────────────────────────────
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: dibby-mosquitto
+    ports:
+      - "1883:1883"   # MQTT
+      - "9001:9001"   # WebSocket (optional, for browser clients)
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mosquitto_pub", "-h", "localhost", "-t", "healthcheck", "-m", "ping", "-q", "1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── Dibby Wemo MQTT Bridge ───────────────────────────────────────────────────
+  mqtt-bridge:
+    image: ghcr.io/k0rb3nd4ll4s/dibby-wemo-mqtt:latest
+    container_name: dibby-wemo-mqtt
+    # network_mode: host is required on Linux for SSDP multicast discovery.
+    # Remove and use MANUAL_DEVICES if running on macOS Docker Desktop.
+    network_mode: host
+    environment:
+      MQTT_HOST: "127.0.0.1"
+      MQTT_PORT: "1883"
+      POLL_INTERVAL: "10"
+      DISCOVERY_INTERVAL: "120"
+      HA_DISCOVERY: "true"
+      HA_DISCOVERY_PREFIX: "homeassistant"
+      MQTT_TOPIC_PREFIX: "dibby-wemo"
+      # Optional: set if broker has auth
+      # MQTT_USERNAME: ""
+      # MQTT_PASSWORD: ""
+      # Optional: add devices that don't respond to SSDP
+      # MANUAL_DEVICES: '[{"host":"192.168.1.100","port":49153}]'
+    restart: unless-stopped
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+
+volumes:
+  mosquitto_data:
+  mosquitto_log:
