@@ -1,0 +1,34 @@
+<script type="text/javascript">
+  RED.nodes.registerType('wemo-config', {
+    category: 'config',
+    defaults: {
+      name: { value: '' },
+      host: { value: '', required: true },
+      port: { value: 49153, required: true, validate: RED.validators.number() }
+    },
+    label: function () {
+      return this.name || this.host || 'Wemo Device';
+    }
+  });
+</script>
+
+<script type="text/html" data-template-name="wemo-config">
+  <div class="form-row">
+    <label for="node-config-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-config-input-name" placeholder="e.g. Staircase Light">
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-host"><i class="fa fa-globe"></i> IP Address</label>
+    <input type="text" id="node-config-input-host" placeholder="192.168.1.100">
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-port"><i class="fa fa-plug"></i> Port</label>
+    <input type="number" id="node-config-input-port" placeholder="49153" style="width:100px">
+  </div>
+</script>
+
+<script type="text/html" data-help-name="wemo-config">
+  <p>Shared connection settings for a Belkin Wemo device.</p>
+  <p>The <b>IP Address</b> and <b>Port</b> can be found using the <code>wemo-discover</code> node
+  or in your router's DHCP client list. Wemo devices typically use port <code>49153</code>.</p>
+</script>

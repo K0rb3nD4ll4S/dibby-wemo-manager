@@ -5,7 +5,8 @@
   "workspaces": [
     "packages/*",
     "apps/*",
-    "packages/mqtt-bridge"
+    "packages/mqtt-bridge",
+    "packages/node-red-contrib"
   ],
   "scripts": {
     "dev": "npm run dev --workspace=apps/desktop",

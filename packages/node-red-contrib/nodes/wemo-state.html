@@ -1,0 +1,63 @@
+<script type="text/javascript">
+  RED.nodes.registerType('wemo-state', {
+    category: 'Wemo',
+    color: '#46b6e0',
+    defaults: {
+      name:       { value: '' },
+      device:     { value: '', type: 'wemo-config', required: true },
+      interval:   { value: 10, validate: RED.validators.number() },
+      onlyChange: { value: true }
+    },
+    inputs:  0,
+    outputs: 1,
+    icon: 'switch.svg',
+    label: function () {
+      const dev = RED.nodes.node(this.device);
+      return this.name || (dev ? dev.label() + ' state' : 'wemo-state');
+    },
+    paletteLabel: 'wemo state'
+  });
+</script>
+
+<script type="text/html" data-template-name="wemo-state">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="optional label">
+  </div>
+  <div class="form-row">
+    <label for="node-input-device"><i class="fa fa-plug"></i> Device</label>
+    <input type="text" id="node-input-device">
+  </div>
+  <div class="form-row">
+    <label for="node-input-interval"><i class="fa fa-clock-o"></i> Poll interval</label>
+    <input type="number" id="node-input-interval" style="width:80px" min="1"> seconds
+  </div>
+  <div class="form-row">
+    <label for="node-input-onlyChange"><i class="fa fa-filter"></i> Emit</label>
+    <select id="node-input-onlyChange" style="width:220px">
+      <option value="true">Only on state change</option>
+      <option value="false">Every poll</option>
+    </select>
+  </div>
+</script>
+
+<script type="text/html" data-help-name="wemo-state">
+  <p>Polls a Belkin Wemo device on a fixed interval and emits a message when the state changes (or on every poll).</p>
+
+  <h3>Output</h3>
+  <dl class="message-properties">
+    <dt>payload <span class="property-type">string</span></dt>
+    <dd><code>ON</code> or <code>OFF</code></dd>
+    <dt>topic <span class="property-type">string</span></dt>
+    <dd>Device friendly name</dd>
+    <dt>device <span class="property-type">object</span></dt>
+    <dd><code>{ host, port, name }</code></dd>
+  </dl>
+
+  <h3>Status</h3>
+  <p>
+    <span style="color:green">&#9679; ON</span> —
+    <span style="color:grey">&#9675; OFF</span> —
+    <span style="color:red">&#9675; unreachable</span>
+  </p>
+</script>

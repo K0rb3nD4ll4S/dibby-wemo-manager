@@ -1,0 +1,59 @@
+<script type="text/javascript">
+  RED.nodes.registerType('wemo-control', {
+    category: 'Wemo',
+    color: '#46b6e0',
+    defaults: {
+      name:   { value: '' },
+      device: { value: '', type: 'wemo-config', required: true }
+    },
+    inputs:  1,
+    outputs: 1,
+    icon: 'switch.svg',
+    label: function () {
+      const dev = RED.nodes.node(this.device);
+      return this.name || (dev ? dev.label() : 'wemo-control');
+    },
+    paletteLabel: 'wemo control'
+  });
+</script>
+
+<script type="text/html" data-template-name="wemo-control">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="optional label">
+  </div>
+  <div class="form-row">
+    <label for="node-input-device"><i class="fa fa-plug"></i> Device</label>
+    <input type="text" id="node-input-device">
+  </div>
+</script>
+
+<script type="text/html" data-help-name="wemo-control">
+  <p>Send an ON or OFF command to a Belkin Wemo device and receive the confirmed state.</p>
+
+  <h3>Input</h3>
+  <dl class="message-properties">
+    <dt>payload <span class="property-type">string | boolean | number</span></dt>
+    <dd>
+      <code>ON</code> / <code>OFF</code>,
+      <code>true</code> / <code>false</code>,
+      <code>1</code> / <code>0</code>, or
+      <code>toggle</code>
+    </dd>
+  </dl>
+
+  <h3>Output</h3>
+  <dl class="message-properties">
+    <dt>payload <span class="property-type">string</span></dt>
+    <dd>Confirmed state: <code>ON</code> or <code>OFF</code></dd>
+    <dt>topic <span class="property-type">string</span></dt>
+    <dd>Device friendly name</dd>
+  </dl>
+
+  <h3>Status</h3>
+  <p>
+    <span style="color:green">&#9679; ON</span> —
+    <span style="color:grey">&#9675; OFF</span> —
+    <span style="color:red">&#9675; error/unreachable</span>
+  </p>
+</script>

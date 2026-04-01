@@ -4,6 +4,31 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.6] — 2026-04-01
+
+### New Feature — Node-RED Contrib Package
+
+New `node-red-contrib-dibby-wemo` package published to npm — drag-and-drop Wemo nodes for Node-RED flows. Auto-indexed at flows.nodered.org.
+
+**Four nodes included:**
+
+| Node | Description |
+|------|-------------|
+| `wemo-config` | Shared config node — device IP + port |
+| `wemo-control` | Send ON/OFF/toggle → get confirmed state back |
+| `wemo-state` | Poll device state on interval → emit on change |
+| `wemo-discover` | Trigger SSDP scan → one msg per device found |
+
+**Install in Node-RED:**
+```
+Palette Manager → search: node-red-contrib-dibby-wemo → Install
+```
+
+### Affected packages
+- `node-red-contrib-dibby-wemo` → **2.0.0** (new, npm)
+
+---
+
 ## [2.0.5] — 2026-04-01
 
 ### New Feature — MQTT Bridge

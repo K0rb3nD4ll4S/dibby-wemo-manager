@@ -1,0 +1,54 @@
+<script type="text/javascript">
+  RED.nodes.registerType('wemo-discover', {
+    category: 'Wemo',
+    color: '#46b6e0',
+    defaults: {
+      name:    { value: '' },
+      timeout: { value: 8, validate: RED.validators.number() }
+    },
+    inputs:  1,
+    outputs: 1,
+    icon: 'switch.svg',
+    label: function () {
+      return this.name || 'wemo-discover';
+    },
+    paletteLabel: 'wemo discover'
+  });
+</script>
+
+<script type="text/html" data-template-name="wemo-discover">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="optional label">
+  </div>
+  <div class="form-row">
+    <label for="node-input-timeout"><i class="fa fa-clock-o"></i> Timeout</label>
+    <input type="number" id="node-input-timeout" style="width:80px" min="2"> seconds
+  </div>
+</script>
+
+<script type="text/html" data-help-name="wemo-discover">
+  <p>Runs SSDP discovery on your local network and emits one message per Wemo device found.
+  Trigger with any input message (e.g. an <code>inject</code> node on deploy).</p>
+
+  <h3>Input</h3>
+  <p>Any message triggers a scan.</p>
+
+  <h3>Output</h3>
+  <p>One message per discovered device:</p>
+  <dl class="message-properties">
+    <dt>payload <span class="property-type">object</span></dt>
+    <dd>
+      <code>{ host, port, friendlyName, udn, productModel, firmwareVersion }</code>
+    </dd>
+    <dt>topic <span class="property-type">string</span></dt>
+    <dd>Device friendly name</dd>
+  </dl>
+
+  <h3>Tips</h3>
+  <ul>
+    <li>Use the <code>host</code> and <code>port</code> values to populate a <b>wemo-config</b> node.</li>
+    <li>SSDP requires the Node-RED host to be on the same network segment as the Wemo devices.</li>
+    <li>If running in Docker, use <code>--network host</code> for SSDP to work.</li>
+  </ul>
+</script>

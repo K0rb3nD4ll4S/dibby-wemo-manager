@@ -1,0 +1,42 @@
+{
+  "name": "node-red-contrib-dibby-wemo",
+  "version": "2.0.0",
+  "description": "Node-RED nodes for local Belkin Wemo device control — no cloud required",
+  "main": "nodes/wemo-control.js",
+  "keywords": [
+    "node-red",
+    "wemo",
+    "belkin",
+    "homeautomation",
+    "smart-home",
+    "switch",
+    "local",
+    "upnp"
+  ],
+  "node-red": {
+    "version": ">=2.0.0",
+    "nodes": {
+      "wemo-config":   "nodes/wemo-config.js",
+      "wemo-control":  "nodes/wemo-control.js",
+      "wemo-state":    "nodes/wemo-state.js",
+      "wemo-discover": "nodes/wemo-discover.js"
+    }
+  },
+  "author": "SRS IT",
+  "license": "MIT",
+  "homepage": "https://github.com/K0rb3nD4ll4S/dibby-wemo-manager#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/K0rb3nD4ll4S/dibby-wemo-manager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/K0rb3nD4ll4S/dibby-wemo-manager/issues"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.14",
+    "axios": "^1.7.0",
+    "sql.js": "^1.12.0",
+    "xml2js": "^0.6.2",
+    "xmlbuilder2": "^4.0.3"
+  }
+}
