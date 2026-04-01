@@ -276,9 +276,13 @@ class DwmScheduler:
                     self._load_schedule()
 
                 self._schedule_upcoming()
-                self._write_heartbeat()
             except Exception as e:
-                self._log.error("[DWM] Tick error: %s", e)
+                self._log.error("[DWM] Tick error (scheduler still running): %s", e)
+            # Write heartbeat unconditionally so HA shows healthy even if tick throws
+            try:
+                self._write_heartbeat()
+            except Exception:
+                pass
 
             await asyncio.sleep(TICK_S)
 
