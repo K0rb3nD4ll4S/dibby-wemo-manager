@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from . import wemo_client
-from .const import DEFAULT_POLL_INTERVAL_S, DOMAIN
+from .const import CONF_HEARTBEAT_INTERVAL, DEFAULT_POLL_INTERVAL_S, HEARTBEAT_S, DOMAIN
 from .scheduler import DwmScheduler
 from .store import DwmStore
 
@@ -25,6 +25,7 @@ class WemoCoordinator(DataUpdateCoordinator):
         store: DwmStore,
         devices: list[dict],
         poll_interval_s: int = DEFAULT_POLL_INTERVAL_S,
+        heartbeat_s: int = HEARTBEAT_S,
     ) -> None:
         super().__init__(
             hass,
@@ -34,7 +35,8 @@ class WemoCoordinator(DataUpdateCoordinator):
         )
         self._store = store
         self._devices = devices
-        self.scheduler = DwmScheduler(store, wemo_client, hass, _LOGGER)
+        self.scheduler = DwmScheduler(store, wemo_client, hass, _LOGGER,
+                                      heartbeat_s=heartbeat_s)
         self.scheduler.on_fire(self._on_scheduler_fire)
         self.scheduler.on_health(self._on_device_health)
 

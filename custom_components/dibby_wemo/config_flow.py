@@ -14,10 +14,12 @@ from homeassistant.data_entry_flow import FlowResult
 from . import wemo_client
 from .const import (
     CONF_DISCOVERY_TIMEOUT,
+    CONF_HEARTBEAT_INTERVAL,
     CONF_MANUAL_DEVICES,
     CONF_POLL_INTERVAL,
     DEFAULT_DISCOVERY_TIMEOUT_S,
     DEFAULT_POLL_INTERVAL_S,
+    HEARTBEAT_S,
     DOMAIN,
 )
 
@@ -30,6 +32,9 @@ STEP_USER_SCHEMA = vol.Schema(
         ),
         vol.Optional(CONF_POLL_INTERVAL, default=DEFAULT_POLL_INTERVAL_S): vol.All(
             int, vol.Range(min=10, max=300)
+        ),
+        vol.Optional(CONF_HEARTBEAT_INTERVAL, default=HEARTBEAT_S): vol.All(
+            int, vol.Range(min=1, max=300)
         ),
     }
 )
@@ -124,6 +129,10 @@ class DibbyWemoOptionsFlow(config_entries.OptionsFlow):
                     CONF_POLL_INTERVAL,
                     default=self._entry.data.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL_S),
                 ): vol.All(int, vol.Range(min=10, max=300)),
+                vol.Optional(
+                    CONF_HEARTBEAT_INTERVAL,
+                    default=self._entry.data.get(CONF_HEARTBEAT_INTERVAL, HEARTBEAT_S),
+                ): vol.All(int, vol.Range(min=1, max=300)),
             }
         )
         return self.async_show_form(step_id="init", data_schema=schema)

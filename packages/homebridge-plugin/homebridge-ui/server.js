@@ -119,8 +119,9 @@ class DibbyWemoUiServer extends HomebridgePluginUiServer {
       const hb = this._store.getHeartbeat();
       if (!hb) return { running: false, stale: false, ts: null };
       const ageMs = Date.now() - new Date(hb.ts).getTime();
-      // stale if no heartbeat for > 90 seconds (3 missed ticks)
-      return { ...hb, stale: ageMs > 90_000 };
+      // stale if no heartbeat for > 3× the configured interval + 5 s grace period
+      const intervalMs = (hb.heartbeatInterval ?? 1) * 1000;
+      return { ...hb, stale: ageMs > intervalMs * 3 + 5000 };
     });
 
     // ── Native Wemo Device Rules ──────────────────────────────────────────────

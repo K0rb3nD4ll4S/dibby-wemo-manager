@@ -32,6 +32,13 @@
         "minimum": 10,
         "description": "How often to poll device state for HomeKit updates"
       },
+      "heartbeatInterval": {
+        "title": "Scheduler Heartbeat Interval (seconds)",
+        "type": "integer",
+        "default": 1,
+        "minimum": 1,
+        "description": "How often the scheduler writes its status heartbeat. Lower values make the status indicator respond faster. Default: 1 second."
+      },
       "manualDevices": {
         "title": "Manual Devices",
         "type": "array",

@@ -1,0 +1,374 @@
+﻿2026-03-29T01:35:16.3344427Z Current runner version: '2.333.0'
+2026-03-29T01:35:16.3378707Z ##[group]Runner Image Provisioner
+2026-03-29T01:35:16.3379954Z Hosted Compute Agent
+2026-03-29T01:35:16.3380982Z Version: 20260213.493
+2026-03-29T01:35:16.3382109Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+2026-03-29T01:35:16.3383367Z Build Date: 2026-02-13T00:28:41Z
+2026-03-29T01:35:16.3384506Z Worker ID: {fec1efe9-7132-438b-8620-e67e45ec9e73}
+2026-03-29T01:35:16.3385691Z Azure Region: centralus
+2026-03-29T01:35:16.3386673Z ##[endgroup]
+2026-03-29T01:35:16.3389102Z ##[group]Operating System
+2026-03-29T01:35:16.3390025Z Ubuntu
+2026-03-29T01:35:16.3390656Z 22.04.5
+2026-03-29T01:35:16.3391513Z LTS
+2026-03-29T01:35:16.3392182Z ##[endgroup]
+2026-03-29T01:35:16.3392914Z ##[group]Runner Image
+2026-03-29T01:35:16.3393850Z Image: ubuntu-22.04
+2026-03-29T01:35:16.3394614Z Version: 20260322.68.1
+2026-03-29T01:35:16.3396522Z Included Software: https://github.com/actions/runner-images/blob/ubuntu22/20260322.68/images/ubuntu/Ubuntu2204-Readme.md
+2026-03-29T01:35:16.3399082Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu22%2F20260322.68
+2026-03-29T01:35:16.3400529Z ##[endgroup]
+2026-03-29T01:35:16.3402280Z ##[group]GITHUB_TOKEN Permissions
+2026-03-29T01:35:16.3405081Z Contents: read
+2026-03-29T01:35:16.3406087Z Metadata: read
+2026-03-29T01:35:16.3407036Z Packages: read
+2026-03-29T01:35:16.3407889Z ##[endgroup]
+2026-03-29T01:35:16.3410909Z Secret source: Actions
+2026-03-29T01:35:16.3412409Z Prepare workflow directory
+2026-03-29T01:35:16.3763738Z Prepare all required actions
+2026-03-29T01:35:16.3801387Z Getting action download info
+2026-03-29T01:35:21.6835861Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+2026-03-29T01:35:21.8432942Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+2026-03-29T01:35:22.0002684Z Download action repository 'softprops/action-gh-release@v2' (SHA:153bb8e04406b158c6c84fc1615b65b24149a1fe)
+2026-03-29T01:35:22.5206712Z Complete job name: build-linux
+2026-03-29T01:35:22.6115612Z ##[group]Run actions/checkout@v4
+2026-03-29T01:35:22.6117123Z with:
+2026-03-29T01:35:22.6117961Z   repository: K0rb3nD4ll4S/dibby-wemo-manager
+2026-03-29T01:35:22.6119308Z   token: ***
+2026-03-29T01:35:22.6120028Z   ssh-strict: true
+2026-03-29T01:35:22.6120811Z   ssh-user: git
+2026-03-29T01:35:22.6121583Z   persist-credentials: true
+2026-03-29T01:35:22.6122462Z   clean: true
+2026-03-29T01:35:22.6123271Z   sparse-checkout-cone-mode: true
+2026-03-29T01:35:22.6124226Z   fetch-depth: 1
+2026-03-29T01:35:22.6124980Z   fetch-tags: false
+2026-03-29T01:35:22.6125807Z   show-progress: true
+2026-03-29T01:35:22.6126641Z   lfs: false
+2026-03-29T01:35:22.6127540Z   submodules: false
+2026-03-29T01:35:22.6128390Z   set-safe-directory: true
+2026-03-29T01:35:22.6129531Z ##[endgroup]
+2026-03-29T01:35:22.7218461Z Syncing repository: K0rb3nD4ll4S/dibby-wemo-manager
+2026-03-29T01:35:22.7221406Z ##[group]Getting Git version info
+2026-03-29T01:35:22.7223017Z Working directory is '/home/runner/work/dibby-wemo-manager/dibby-wemo-manager'
+2026-03-29T01:35:22.7225169Z [command]/usr/bin/git version
+2026-03-29T01:35:22.7284529Z git version 2.53.0
+2026-03-29T01:35:22.7311561Z ##[endgroup]
+2026-03-29T01:35:22.7326481Z Temporarily overriding HOME='/home/runner/work/_temp/caa3231c-a472-4d87-8f67-4adce2a72ec1' before making global git config changes
+2026-03-29T01:35:22.7329434Z Adding repository directory to the temporary git global config as a safe directory
+2026-03-29T01:35:22.7340007Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/dibby-wemo-manager/dibby-wemo-manager
+2026-03-29T01:35:22.7375822Z Deleting the contents of '/home/runner/work/dibby-wemo-manager/dibby-wemo-manager'
+2026-03-29T01:35:22.7379245Z ##[group]Initializing the repository
+2026-03-29T01:35:22.7383860Z [command]/usr/bin/git init /home/runner/work/dibby-wemo-manager/dibby-wemo-manager
+2026-03-29T01:35:22.7513506Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-03-29T01:35:22.7517156Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-03-29T01:35:22.7519667Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-03-29T01:35:22.7521013Z hint: call:
+2026-03-29T01:35:22.7521640Z hint:
+2026-03-29T01:35:22.7522739Z hint: 	git config --global init.defaultBranch <name>
+2026-03-29T01:35:22.7524342Z hint:
+2026-03-29T01:35:22.7525357Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-03-29T01:35:22.7527266Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-03-29T01:35:22.7528801Z hint:
+2026-03-29T01:35:22.7529827Z hint: 	git branch -m <name>
+2026-03-29T01:35:22.7530639Z hint:
+2026-03-29T01:35:22.7531724Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-03-29T01:35:22.7533825Z Initialized empty Git repository in /home/runner/work/dibby-wemo-manager/dibby-wemo-manager/.git/
+2026-03-29T01:35:22.7537305Z [command]/usr/bin/git remote add origin https://github.com/K0rb3nD4ll4S/dibby-wemo-manager
+2026-03-29T01:35:22.7564945Z ##[endgroup]
+2026-03-29T01:35:22.7566205Z ##[group]Disabling automatic garbage collection
+2026-03-29T01:35:22.7568546Z [command]/usr/bin/git config --local gc.auto 0
+2026-03-29T01:35:22.7597988Z ##[endgroup]
+2026-03-29T01:35:22.7599166Z ##[group]Setting up auth
+2026-03-29T01:35:22.7604302Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-03-29T01:35:22.7635922Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-03-29T01:35:22.7972400Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-03-29T01:35:22.8005375Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-03-29T01:35:22.8229488Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-03-29T01:35:22.8258814Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-03-29T01:35:22.8488423Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-03-29T01:35:22.8522018Z ##[endgroup]
+2026-03-29T01:35:22.8524240Z ##[group]Fetching the repository
+2026-03-29T01:35:22.8533651Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +2f9f68eca702835b788c60a38fcdf0f87dd89e93:refs/remotes/origin/main
+2026-03-29T01:35:23.2006013Z From https://github.com/K0rb3nD4ll4S/dibby-wemo-manager
+2026-03-29T01:35:23.2008846Z  * [new ref]         2f9f68eca702835b788c60a38fcdf0f87dd89e93 -> origin/main
+2026-03-29T01:35:23.2038386Z ##[endgroup]
+2026-03-29T01:35:23.2038963Z ##[group]Determining the checkout info
+2026-03-29T01:35:23.2040910Z ##[endgroup]
+2026-03-29T01:35:23.2045672Z [command]/usr/bin/git sparse-checkout disable
+2026-03-29T01:35:23.2086266Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-03-29T01:35:23.2112016Z ##[group]Checking out the ref
+2026-03-29T01:35:23.2115994Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2026-03-29T01:35:23.2235437Z Switched to a new branch 'main'
+2026-03-29T01:35:23.2239071Z branch 'main' set up to track 'origin/main'.
+2026-03-29T01:35:23.2245279Z ##[endgroup]
+2026-03-29T01:35:23.2279306Z [command]/usr/bin/git log -1 --format=%H
+2026-03-29T01:35:23.2300769Z 2f9f68eca702835b788c60a38fcdf0f87dd89e93
+2026-03-29T01:35:23.2531751Z ##[group]Run actions/setup-node@v4
+2026-03-29T01:35:23.2532140Z with:
+2026-03-29T01:35:23.2532392Z   node-version: 20
+2026-03-29T01:35:23.2532673Z   always-auth: false
+2026-03-29T01:35:23.2532952Z   check-latest: false
+2026-03-29T01:35:23.2533574Z   token: ***
+2026-03-29T01:35:23.2533832Z ##[endgroup]
+2026-03-29T01:35:23.5427318Z Found in cache @ /opt/hostedtoolcache/node/20.20.1/x64
+2026-03-29T01:35:23.5434585Z ##[group]Environment details
+2026-03-29T01:35:27.6933911Z node: v20.20.1
+2026-03-29T01:35:27.6935366Z npm: 10.8.2
+2026-03-29T01:35:27.6935705Z yarn: 1.22.22
+2026-03-29T01:35:27.6938822Z ##[endgroup]
+2026-03-29T01:35:27.7050565Z ##[group]Run sudo apt-get update -qq
+2026-03-29T01:35:27.7050963Z [36;1msudo apt-get update -qq[0m
+2026-03-29T01:35:27.7051374Z [36;1msudo apt-get install -y -qq rpm fakeroot dpkg libarchive-tools[0m
+2026-03-29T01:35:27.7185055Z shell: /usr/bin/bash -e {0}
+2026-03-29T01:35:27.7185354Z ##[endgroup]
+2026-03-29T01:35:40.7596076Z Selecting previously unselected package libarchive-tools.
+2026-03-29T01:35:40.7919960Z (Reading database ... 
+2026-03-29T01:35:40.7920575Z (Reading database ... 5%
+2026-03-29T01:35:40.7920959Z (Reading database ... 10%
+2026-03-29T01:35:40.7921319Z (Reading database ... 15%
+2026-03-29T01:35:40.7921706Z (Reading database ... 20%
+2026-03-29T01:35:40.7922088Z (Reading database ... 25%
+2026-03-29T01:35:40.7922449Z (Reading database ... 30%
+2026-03-29T01:35:40.7922783Z (Reading database ... 35%
+2026-03-29T01:35:40.7923109Z (Reading database ... 40%
+2026-03-29T01:35:40.7923425Z (Reading database ... 45%
+2026-03-29T01:35:40.7923751Z (Reading database ... 50%
+2026-03-29T01:35:40.8554838Z (Reading database ... 55%
+2026-03-29T01:35:40.8982799Z (Reading database ... 60%
+2026-03-29T01:35:40.9663138Z (Reading database ... 65%
+2026-03-29T01:35:41.1459879Z (Reading database ... 70%
+2026-03-29T01:35:41.3487742Z (Reading database ... 75%
+2026-03-29T01:35:41.6439026Z (Reading database ... 80%
+2026-03-29T01:35:41.8967919Z (Reading database ... 85%
+2026-03-29T01:35:42.4533221Z (Reading database ... 90%
+2026-03-29T01:35:42.7050042Z (Reading database ... 95%
+2026-03-29T01:35:42.7051030Z (Reading database ... 100%
+2026-03-29T01:35:42.7052287Z (Reading database ... 285874 files and directories currently installed.)
+2026-03-29T01:35:42.7143662Z Preparing to unpack .../libarchive-tools_3.6.0-1ubuntu1.5_amd64.deb ...
+2026-03-29T01:35:42.7176220Z Unpacking libarchive-tools (3.6.0-1ubuntu1.5) ...
+2026-03-29T01:35:42.7749175Z Setting up libarchive-tools (3.6.0-1ubuntu1.5) ...
+2026-03-29T01:35:42.7780904Z Processing triggers for man-db (2.10.2-1) ...
+2026-03-29T01:35:42.7805138Z Not building database; man-db/auto-update is not 'true'.
+2026-03-29T01:35:43.3216594Z 
+2026-03-29T01:35:43.3217697Z Running kernel seems to be up-to-date.
+2026-03-29T01:35:43.3219509Z 
+2026-03-29T01:35:43.3220096Z No services need to be restarted.
+2026-03-29T01:35:43.3220425Z 
+2026-03-29T01:35:43.3220685Z No containers need to be restarted.
+2026-03-29T01:35:43.3220986Z 
+2026-03-29T01:35:43.3221269Z No user sessions are running outdated binaries.
+2026-03-29T01:35:43.3221611Z 
+2026-03-29T01:35:43.3222074Z No VM guests are running outdated hypervisor (qemu) binaries on this host.
+2026-03-29T01:35:44.5085578Z ##[group]Run npm install --legacy-peer-deps
+2026-03-29T01:35:44.5085963Z [36;1mnpm install --legacy-peer-deps[0m
+2026-03-29T01:35:44.5141858Z shell: /usr/bin/bash -e {0}
+2026-03-29T01:35:44.5142097Z ##[endgroup]
+2026-03-29T01:35:49.0819517Z npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+2026-03-29T01:35:49.2858562Z npm warn deprecated q@1.1.2: You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now. Thank you literally everyone for joining me in this bet against the odds. Be excellent to each other.
+2026-03-29T01:35:49.2860387Z npm warn deprecated
+2026-03-29T01:35:49.2860948Z npm warn deprecated (For a CapTP with native promises, see @endo/eventual-send and @endo/captp)
+2026-03-29T01:35:49.3364283Z npm warn deprecated npmlog@6.0.2: This package is no longer supported.
+2026-03-29T01:35:49.5783250Z npm warn deprecated tar@6.2.1: Old versions of tar are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+2026-03-29T01:35:49.5824129Z npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+2026-03-29T01:35:49.7138004Z npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+2026-03-29T01:35:49.9635950Z npm warn deprecated gauge@4.0.4: This package is no longer supported.
+2026-03-29T01:35:50.2379081Z npm warn deprecated are-we-there-yet@3.0.1: This package is no longer supported.
+2026-03-29T01:35:50.3015644Z npm warn deprecated boolean@3.2.0: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+2026-03-29T01:35:50.4067435Z npm warn deprecated @npmcli/move-file@2.0.1: This functionality has been moved to @npmcli/fs
+2026-03-29T01:35:50.9284265Z npm warn deprecated glob@8.1.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+2026-03-29T01:35:51.4943022Z npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+2026-03-29T01:35:57.4811187Z 
+2026-03-29T01:35:57.4812039Z added 505 packages, and audited 509 packages in 13s
+2026-03-29T01:35:57.4812542Z 
+2026-03-29T01:35:57.4812765Z 72 packages are looking for funding
+2026-03-29T01:35:57.4813152Z   run `npm fund` for details
+2026-03-29T01:35:57.5177955Z 
+2026-03-29T01:35:57.5178574Z 15 vulnerabilities (2 low, 5 moderate, 8 high)
+2026-03-29T01:35:57.5179091Z 
+2026-03-29T01:35:57.5179481Z To address issues that do not require attention, run:
+2026-03-29T01:35:57.5180047Z   npm audit fix
+2026-03-29T01:35:57.5180274Z 
+2026-03-29T01:35:57.5180658Z To address all issues (including breaking changes), run:
+2026-03-29T01:35:57.5181261Z   npm audit fix --force
+2026-03-29T01:35:57.5181507Z 
+2026-03-29T01:35:57.5181710Z Run `npm audit` for details.
+2026-03-29T01:35:57.5476078Z ##[group]Run echo "=== Checking root node_modules ==="
+2026-03-29T01:35:57.5476486Z [36;1mecho "=== Checking root node_modules ==="[0m
+2026-03-29T01:35:57.5477223Z [36;1mls node_modules/app-builder-bin/ 2>/dev/null && echo "Found in root" || echo "Not in root"[0m
+2026-03-29T01:35:57.5477731Z [36;1mecho "=== Checking apps/desktop node_modules ==="[0m
+2026-03-29T01:35:57.5478285Z [36;1mls apps/desktop/node_modules/app-builder-bin/ 2>/dev/null && echo "Found in desktop" || echo "Not in desktop"[0m
+2026-03-29T01:35:57.5478812Z [36;1mecho "=== Finding any app-builder binary ==="[0m
+2026-03-29T01:35:57.5479214Z [36;1mfind . -name "app-builder" -not -path "*/proc/*" 2>/dev/null | head -10[0m
+2026-03-29T01:35:57.5479626Z [36;1mecho "=== app-builder-bin contents (root) ==="[0m
+2026-03-29T01:35:57.5479991Z [36;1mls -la node_modules/app-builder-bin/ 2>/dev/null || true[0m
+2026-03-29T01:35:57.5480335Z [36;1mecho "=== app-builder-bin linux dir ==="[0m
+2026-03-29T01:35:57.5480716Z [36;1mls -la node_modules/app-builder-bin/linux/ 2>/dev/null || true[0m
+2026-03-29T01:35:57.5539198Z shell: /usr/bin/bash -e {0}
+2026-03-29T01:35:57.5539446Z ##[endgroup]
+2026-03-29T01:35:57.5615668Z === Checking root node_modules ===
+2026-03-29T01:35:57.5628147Z LICENSE
+2026-03-29T01:35:57.5628480Z index.d.ts
+2026-03-29T01:35:57.5628778Z index.js
+2026-03-29T01:35:57.5629048Z linux
+2026-03-29T01:35:57.5629517Z mac
+2026-03-29T01:35:57.5629693Z package.json
+2026-03-29T01:35:57.5630004Z readme.md
+2026-03-29T01:35:57.5630298Z win
+2026-03-29T01:35:57.5630577Z Found in root
+2026-03-29T01:35:57.5631016Z === Checking apps/desktop node_modules ===
+2026-03-29T01:35:57.5643322Z Not in desktop
+2026-03-29T01:35:57.5643786Z === Finding any app-builder binary ===
+2026-03-29T01:35:57.6077831Z ./node_modules/app-builder-bin/linux/riscv64/app-builder
+2026-03-29T01:35:57.6078621Z ./node_modules/app-builder-bin/linux/loong64/app-builder
+2026-03-29T01:35:57.6079336Z ./node_modules/app-builder-bin/linux/x64/app-builder
+2026-03-29T01:35:57.6080075Z ./node_modules/app-builder-bin/linux/ia32/app-builder
+2026-03-29T01:35:57.6080858Z ./node_modules/app-builder-bin/linux/arm64/app-builder
+2026-03-29T01:35:57.6081356Z ./node_modules/app-builder-bin/linux/arm/app-builder
+2026-03-29T01:35:57.6081729Z === app-builder-bin contents (root) ===
+2026-03-29T01:35:57.6094191Z total 48
+2026-03-29T01:35:57.6094703Z drwxr-xr-x   5 runner runner  4096 Mar 29 01:35 .
+2026-03-29T01:35:57.6095367Z drwxr-xr-x 357 runner runner 12288 Mar 29 01:35 ..
+2026-03-29T01:35:57.6096025Z -rw-r--r--   1 runner runner  1076 Mar 29 01:35 LICENSE
+2026-03-29T01:35:57.6096712Z -rw-r--r--   1 runner runner    35 Mar 29 01:35 index.d.ts
+2026-03-29T01:35:57.6097542Z -rw-r--r--   1 runner runner   641 Mar 29 01:35 index.js
+2026-03-29T01:35:57.6098177Z drwxr-xr-x   8 runner runner  4096 Mar 29 01:35 linux
+2026-03-29T01:35:57.6098804Z drwxr-xr-x   2 runner runner  4096 Mar 29 01:35 mac
+2026-03-29T01:35:57.6099345Z -rw-r--r--   1 runner runner  1284 Mar 29 01:35 package.json
+2026-03-29T01:35:57.6099780Z -rw-r--r--   1 runner runner  3043 Mar 29 01:35 readme.md
+2026-03-29T01:35:57.6100160Z drwxr-xr-x   5 runner runner  4096 Mar 29 01:35 win
+2026-03-29T01:35:57.6100495Z === app-builder-bin linux dir ===
+2026-03-29T01:35:57.6109525Z total 32
+2026-03-29T01:35:57.6109995Z drwxr-xr-x 8 runner runner 4096 Mar 29 01:35 .
+2026-03-29T01:35:57.6110610Z drwxr-xr-x 5 runner runner 4096 Mar 29 01:35 ..
+2026-03-29T01:35:57.6111234Z drwxr-xr-x 2 runner runner 4096 Mar 29 01:35 arm
+2026-03-29T01:35:57.6111849Z drwxr-xr-x 2 runner runner 4096 Mar 29 01:35 arm64
+2026-03-29T01:35:57.6112463Z drwxr-xr-x 2 runner runner 4096 Mar 29 01:35 ia32
+2026-03-29T01:35:57.6113097Z drwxr-xr-x 2 runner runner 4096 Mar 29 01:35 loong64
+2026-03-29T01:35:57.6113734Z drwxr-xr-x 2 runner runner 4096 Mar 29 01:35 riscv64
+2026-03-29T01:35:57.6114346Z drwxr-xr-x 2 runner runner 4096 Mar 29 01:35 x64
+2026-03-29T01:35:57.6145719Z ##[group]Run # Try root location first (workspace hoisted)
+2026-03-29T01:35:57.6146402Z [36;1m# Try root location first (workspace hoisted)[0m
+2026-03-29T01:35:57.6147307Z [36;1mif [ -f "node_modules/app-builder-bin/linux/x64/app-builder" ]; then[0m
+2026-03-29T01:35:57.6148004Z [36;1m  echo "Binary found at root, making executable"[0m
+2026-03-29T01:35:57.6148645Z [36;1m  chmod +x node_modules/app-builder-bin/linux/x64/app-builder[0m
+2026-03-29T01:35:57.6149385Z [36;1m  node_modules/app-builder-bin/linux/x64/app-builder --version[0m
+2026-03-29T01:35:57.6149958Z [36;1melse[0m
+2026-03-29T01:35:57.6150418Z [36;1m  echo "Binary not found — installing app-builder-bin directly"[0m
+2026-03-29T01:35:57.6151154Z [36;1m  cd node_modules/app-builder-bin && node postinstall.js || true[0m
+2026-03-29T01:35:57.6151928Z [36;1m  # Fallback: download manually using the version from package.json[0m
+2026-03-29T01:35:57.6152925Z [36;1m  VERSION=$(node -e "console.log(require('./node_modules/app-builder-bin/package.json').version)")[0m
+2026-03-29T01:35:57.6153772Z [36;1m  echo "app-builder-bin version: $VERSION"[0m
+2026-03-29T01:35:57.6154749Z [36;1m  URL="https://github.com/develar/app-builder/releases/download/v${VERSION}/app-builder_${VERSION}_linux_amd64.tar.gz"[0m
+2026-03-29T01:35:57.6155692Z [36;1m  echo "Downloading from: $URL"[0m
+2026-03-29T01:35:57.6156203Z [36;1m  mkdir -p node_modules/app-builder-bin/linux/x64[0m
+2026-03-29T01:35:57.6156915Z [36;1m  curl -L "$URL" -o /tmp/app-builder.tar.gz[0m
+2026-03-29T01:35:57.6157871Z [36;1m  tar -xzf /tmp/app-builder.tar.gz -C node_modules/app-builder-bin/linux/x64/[0m
+2026-03-29T01:35:57.6158693Z [36;1m  chmod +x node_modules/app-builder-bin/linux/x64/app-builder[0m
+2026-03-29T01:35:57.6159423Z [36;1m  node_modules/app-builder-bin/linux/x64/app-builder --version[0m
+2026-03-29T01:35:57.6159983Z [36;1mfi[0m
+2026-03-29T01:35:57.6229524Z shell: /usr/bin/bash -e {0}
+2026-03-29T01:35:57.6229901Z ##[endgroup]
+2026-03-29T01:35:57.6321747Z Binary found at root, making executable
+2026-03-29T01:35:57.6383143Z 3.5.10
+2026-03-29T01:35:57.6413973Z ##[group]Run npx electron-vite build
+2026-03-29T01:35:57.6414268Z [36;1mnpx electron-vite build[0m
+2026-03-29T01:35:57.6464694Z shell: /usr/bin/bash -e {0}
+2026-03-29T01:35:57.6464946Z ##[endgroup]
+2026-03-29T01:35:58.2248600Z [33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+2026-03-29T01:35:58.4444699Z [36mvite v5.4.21 [32mbuilding SSR bundle for production...[36m[39m
+2026-03-29T01:35:58.5057435Z transforming...
+2026-03-29T01:35:58.7259776Z [32m✓[39m 16 modules transformed.
+2026-03-29T01:35:58.7790114Z rendering chunks...
+2026-03-29T01:35:58.7961389Z [2mout/main/[22m[36mservice-manager-sync.js  [39m[1m[2m 0.61 kB[22m[1m[22m
+2026-03-29T01:35:58.7962579Z [2mout/main/[22m[36mipc/wifi.ipc.js          [39m[1m[2m 0.69 kB[22m[1m[22m
+2026-03-29T01:35:58.7965054Z [2mout/main/[22m[36mipc/scheduler.ipc.js     [39m[1m[2m 0.98 kB[22m[1m[22m
+2026-03-29T01:35:58.7966371Z [2mout/main/[22m[36mcore/types.js            [39m[1m[2m 1.96 kB[22m[1m[22m
+2026-03-29T01:35:58.7967698Z [2mout/main/[22m[36mcore/sun.js              [39m[1m[2m 2.03 kB[22m[1m[22m
+2026-03-29T01:35:58.7968816Z [2mout/main/[22m[36mipc/rules.ipc.js         [39m[1m[2m 2.18 kB[22m[1m[22m
+2026-03-29T01:35:58.7970013Z [2mout/main/[22m[36mipc/devices.ipc.js       [39m[1m[2m 2.51 kB[22m[1m[22m
+2026-03-29T01:35:58.7972093Z [2mout/main/[22m[36mfirewall.js              [39m[1m[2m 2.69 kB[22m[1m[22m
+2026-03-29T01:35:58.7974703Z [2mout/main/[22m[36mstore.js                 [39m[1m[2m 2.90 kB[22m[1m[22m
+2026-03-29T01:35:58.7975897Z [2mout/main/[22m[36mservice-manager.js       [39m[1m[2m 3.05 kB[22m[1m[22m
+2026-03-29T01:35:58.7977325Z [2mout/main/[22m[36mipc/system.ipc.js        [39m[1m[2m 3.76 kB[22m[1m[22m
+2026-03-29T01:35:58.7978519Z [2mout/main/[22m[36mindex.js                 [39m[1m[2m 8.54 kB[22m[1m[22m
+2026-03-29T01:35:58.7979639Z [2mout/main/[22m[36mweb-server.js            [39m[1m[2m 8.91 kB[22m[1m[22m
+2026-03-29T01:35:58.7980814Z [2mout/main/[22m[36mscheduler-standalone.js  [39m[1m[2m12.05 kB[22m[1m[22m
+2026-03-29T01:35:58.7981947Z [2mout/main/[22m[36mscheduler.js             [39m[1m[2m22.74 kB[22m[1m[22m
+2026-03-29T01:35:58.7982993Z [2mout/main/[22m[36mwemo.js                  [39m[1m[2m39.90 kB[22m[1m[22m
+2026-03-29T01:35:58.7983734Z [32m✓ built in 313ms[39m
+2026-03-29T01:35:58.8000400Z [36mvite v5.4.21 [32mbuilding SSR bundle for production...[36m[39m
+2026-03-29T01:35:58.8016427Z transforming...
+2026-03-29T01:35:58.8089918Z [32m✓[39m 1 modules transformed.
+2026-03-29T01:35:58.8111955Z rendering chunks...
+2026-03-29T01:35:58.8127970Z [2mout/preload/[22m[36mindex.js  [39m[1m[2m4.38 kB[22m[1m[22m
+2026-03-29T01:35:58.8132178Z [32m✓ built in 12ms[39m
+2026-03-29T01:35:58.8153510Z [36mvite v5.4.21 [32mbuilding for production...[36m[39m
+2026-03-29T01:35:58.8318114Z transforming...
+2026-03-29T01:35:59.6179750Z [32m✓[39m 56 modules transformed.
+2026-03-29T01:35:59.7403417Z rendering chunks...
+2026-03-29T01:35:59.7463932Z [2m../../out/renderer/[22m[32mindex.html                 [39m[1m[2m  0.56 kB[22m[1m[22m
+2026-03-29T01:35:59.7465324Z [2m../../out/renderer/[22m[2massets/[22m[35mindex-C3MgGFwT.css  [39m[1m[2m 13.15 kB[22m[1m[22m
+2026-03-29T01:35:59.7466728Z [2m../../out/renderer/[22m[2massets/[22m[36mindex-OJEU-f9U.js   [39m[1m[2m362.60 kB[22m[1m[22m
+2026-03-29T01:35:59.7468057Z [32m✓ built in 931ms[39m
+2026-03-29T01:35:59.7725035Z ##[group]Run node scripts/bundle-standalone.js
+2026-03-29T01:35:59.7725404Z [36;1mnode scripts/bundle-standalone.js[0m
+2026-03-29T01:35:59.7782336Z shell: /usr/bin/bash -e {0}
+2026-03-29T01:35:59.7782572Z ##[endgroup]
+2026-03-29T01:35:59.9347543Z [bundle-standalone] ✅  out/main/scheduler-standalone.js written
+2026-03-29T01:35:59.9410338Z ##[group]Run BINARY="$(pwd)/node_modules/app-builder-bin/linux/x64/app-builder"
+2026-03-29T01:35:59.9410986Z [36;1mBINARY="$(pwd)/node_modules/app-builder-bin/linux/x64/app-builder"[0m
+2026-03-29T01:35:59.9411561Z [36;1mecho "=== Absolute path: $BINARY ==="[0m
+2026-03-29T01:35:59.9411883Z [36;1mls -la "$BINARY" || echo "MISSING"[0m
+2026-03-29T01:35:59.9412175Z [36;1mecho "=== file output ==="[0m
+2026-03-29T01:35:59.9412427Z [36;1mfile "$BINARY" || true[0m
+2026-03-29T01:35:59.9412672Z [36;1mecho "=== ldd output ==="[0m
+2026-03-29T01:35:59.9412935Z [36;1mldd "$BINARY" || true[0m
+2026-03-29T01:35:59.9413176Z [36;1mecho "=== Execute test ==="[0m
+2026-03-29T01:35:59.9413540Z [36;1m"$BINARY" --version && echo "EXECUTE OK" || echo "EXECUTE FAILED (exit $?)"[0m
+2026-03-29T01:35:59.9413980Z [36;1mecho "=== Checking from apps/desktop context ==="[0m
+2026-03-29T01:35:59.9414580Z [36;1mls -la "apps/desktop/node_modules/app-builder-bin/linux/x64/app-builder" 2>/dev/null || echo "NOT in apps/desktop"[0m
+2026-03-29T01:35:59.9470845Z shell: /usr/bin/bash -e {0}
+2026-03-29T01:35:59.9471106Z ##[endgroup]
+2026-03-29T01:35:59.9546442Z === Absolute path: /home/runner/work/dibby-wemo-manager/dibby-wemo-manager/node_modules/app-builder-bin/linux/x64/app-builder ===
+2026-03-29T01:35:59.9558960Z -rwxr-xr-x 1 runner runner 18116608 Mar 29 01:35 /home/runner/work/dibby-wemo-manager/dibby-wemo-manager/node_modules/app-builder-bin/linux/x64/app-builder
+2026-03-29T01:35:59.9560346Z === file output ===
+2026-03-29T01:36:00.0514470Z /home/runner/work/dibby-wemo-manager/dibby-wemo-manager/node_modules/app-builder-bin/linux/x64/app-builder: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, Go BuildID=E9ehBSv2hnhbBCc8-2EK/dQSvtkwafbIsa9FzkuRV/loppMYF22vSusAsHaVAw/Q59HO67FF3SWtBknx1hz, stripped
+2026-03-29T01:36:00.0516527Z === ldd output ===
+2026-03-29T01:36:00.0584756Z 	not a dynamic executable
+2026-03-29T01:36:00.0587219Z === Execute test ===
+2026-03-29T01:36:00.0624908Z 3.5.10
+2026-03-29T01:36:00.0630280Z EXECUTE OK
+2026-03-29T01:36:00.0631220Z === Checking from apps/desktop context ===
+2026-03-29T01:36:00.0644470Z NOT in apps/desktop
+2026-03-29T01:36:00.0682341Z ##[group]Run npx electron-builder --linux --x64
+2026-03-29T01:36:00.0682709Z [36;1mnpx electron-builder --linux --x64[0m
+2026-03-29T01:36:00.0738065Z shell: /usr/bin/bash -e {0}
+2026-03-29T01:36:00.0738291Z env:
+2026-03-29T01:36:00.0738837Z   GH_TOKEN: ***
+2026-03-29T01:36:00.0739051Z   CSC_IDENTITY_AUTO_DISCOVERY: false
+2026-03-29T01:36:00.0739297Z ##[endgroup]
+2026-03-29T01:36:00.9749591Z   • electron-builder  version=25.1.8 os=6.8.0-1044-azure
+2026-03-29T01:36:00.9753142Z   • artifacts will be published if draft release exists  reason=CI detected
+2026-03-29T01:36:00.9793201Z   • loaded configuration  file=package.json ("build" field)
+2026-03-29T01:36:01.1014429Z   • installing production dependencies  platform=linux arch=x64 appDir=/home/runner/work/dibby-wemo-manager/dibby-wemo-manager/apps/desktop
+2026-03-29T01:36:02.3014541Z   ⨯ spawn /home/runner/work/dibby-wemo-manager/dibby-wemo-manager/node_modules/app-builder-bin/linux/x64/app-builder ENOENT  failedTask=build stackTrace=Error: spawn /home/runner/work/dibby-wemo-manager/dibby-wemo-manager/node_modules/app-builder-bin/linux/x64/app-builder ENOENT
+2026-03-29T01:36:02.3016367Z     at Process.ChildProcess._handle.onexit (node:internal/child_process:285:19)
+2026-03-29T01:36:02.3017243Z     at onErrorNT (node:internal/child_process:483:16)
+2026-03-29T01:36:02.3017825Z     at processTicksAndRejections (node:internal/process/task_queues:82:21)
+2026-03-29T01:36:02.3208455Z ##[error]Process completed with exit code 1.
+2026-03-29T01:36:02.3324506Z Post job cleanup.
+2026-03-29T01:36:02.4250531Z [command]/usr/bin/git version
+2026-03-29T01:36:02.4285166Z git version 2.53.0
+2026-03-29T01:36:02.4330293Z Temporarily overriding HOME='/home/runner/work/_temp/23bd2dd2-8c8b-412a-8c5b-5b985818e882' before making global git config changes
+2026-03-29T01:36:02.4331813Z Adding repository directory to the temporary git global config as a safe directory
+2026-03-29T01:36:02.4345006Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/dibby-wemo-manager/dibby-wemo-manager
+2026-03-29T01:36:02.4378333Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-03-29T01:36:02.4412002Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-03-29T01:36:02.4643631Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-03-29T01:36:02.4663848Z http.https://github.com/.extraheader
+2026-03-29T01:36:02.4677363Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-03-29T01:36:02.4707487Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-03-29T01:36:02.4927368Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-03-29T01:36:02.4958209Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-03-29T01:36:02.5282278Z Cleaning up orphan processes
+2026-03-29T01:36:02.5559738Z ##[warning]Node.js 20 actions are deprecated. The following actions are running on Node.js 20 and may not work as expected: actions/checkout@v4, actions/setup-node@v4. Actions will be forced to run with Node.js 24 by default starting June 2nd, 2026. Node.js 20 will be removed from the runner on September 16th, 2026. Please check if updated versions of these actions are available that support Node.js 24. To opt into Node.js 24 now, set the FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true environment variable on the runner or in your workflow file. Once Node.js 24 becomes the default, you can temporarily opt out by setting ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

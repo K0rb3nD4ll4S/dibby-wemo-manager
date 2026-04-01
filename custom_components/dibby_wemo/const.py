@@ -44,10 +44,14 @@ WEMO_DAY_SHORT = {
     4: "Thu", 5: "Fri", 6: "Sat", 7: "Sun",
 }
 
+# Heartbeat default interval
+HEARTBEAT_S = 1
+
 # Config entry keys
-CONF_DISCOVERY_TIMEOUT = "discovery_timeout"
-CONF_POLL_INTERVAL     = "poll_interval"
-CONF_MANUAL_DEVICES    = "manual_devices"
+CONF_DISCOVERY_TIMEOUT  = "discovery_timeout"
+CONF_POLL_INTERVAL      = "poll_interval"
+CONF_MANUAL_DEVICES     = "manual_devices"
+CONF_HEARTBEAT_INTERVAL = "heartbeat_interval"
 
 # Store filename inside HA config dir
 STORE_FILENAME = "dibby-wemo.json"

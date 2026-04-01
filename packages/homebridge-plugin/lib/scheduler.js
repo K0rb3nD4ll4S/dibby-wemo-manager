@@ -82,16 +82,18 @@ class DwmScheduler {
    * @param {object}                  deps.wemoClient  - wemo-client module
    * @param {{ info, warn, error }}   deps.log         - Homebridge log object
    */
-  constructor({ store, wemoClient, log }) {
-    this._store      = store;
-    this._wemo       = wemoClient;
-    this._log        = log ?? console;
+  constructor({ store, wemoClient, log, heartbeatMs = 1000 }) {
+    this._store       = store;
+    this._wemo        = wemoClient;
+    this._log         = log ?? console;
+    this._heartbeatMs = Math.max(500, Number(heartbeatMs) || 1000);
 
     this._schedule      = [];          // pre-computed time entries for Schedule/Countdown rules
     this._awayLoops     = new Map();   // ruleId → away-loop state for active Away Mode rules
     this._firedToday    = new Set();   // prevent double-firing within a tick window
     this._timers        = [];
     this._tickTimer     = null;
+    this._heartbeatTimer = null;
     this._running       = false;
     this._lastDate      = null;
     this._onFire        = null;        // ({success, msg, entry}) notification callback
@@ -137,6 +139,7 @@ class DwmScheduler {
     this._catchUpMissedRules();
     this._tick();
     this._startHealthMonitor();
+    this._startHeartbeat();
 
     const status = this._buildStatus();
     this._onStatus?.(status);
@@ -149,6 +152,7 @@ class DwmScheduler {
     this._clearTimers();
     this._stopAllAwayLoops(false);
     this._stopHealthMonitor();
+    this._stopHeartbeat();
     this._schedule      = [];
     this._firedToday    = new Set();
     this._lastDate      = null;
@@ -376,8 +380,6 @@ class DwmScheduler {
       this._log.error?.('[DWM Scheduler] Tick error (scheduler still running): ' + (e?.message ?? String(e)));
     }
 
-    // Write heartbeat unconditionally so the UI stays green even if a tick throws
-    try { this._writeHeartbeat(); } catch { /* non-critical */ }
   }
 
   _clearTimers() {
@@ -386,6 +388,7 @@ class DwmScheduler {
     if (this._tickTimer) { clearTimeout(this._tickTimer); this._tickTimer = null; }
     for (const { timer } of this._countdownTimers.values()) clearTimeout(timer);
     this._countdownTimers.clear();
+    this._stopHeartbeat();
   }
 
   _scheduleUpcoming() {
@@ -747,15 +750,31 @@ class DwmScheduler {
 
   // ── Heartbeat ─────────────────────────────────────────────────────────────
 
+  _startHeartbeat() {
+    this._stopHeartbeat();
+    this._writeHeartbeat(); // write immediately so UI sees "running" right away
+    this._heartbeatTimer = setInterval(() => {
+      try { this._writeHeartbeat(); } catch { /* non-critical */ }
+    }, this._heartbeatMs);
+  }
+
+  _stopHeartbeat() {
+    if (this._heartbeatTimer) {
+      clearInterval(this._heartbeatTimer);
+      this._heartbeatTimer = null;
+    }
+  }
+
   _writeHeartbeat() {
     try {
       const status   = this._buildStatus();
       const lastFire = this._lastFireMsg ?? null;
       this._store.saveHeartbeat({
-        running:      true,
-        startedAt:    this._startedAt?.toISOString() ?? null,
-        totalEntries: status.totalEntries,
-        upcoming:     status.upcoming.slice(0, 3),
+        running:           true,
+        startedAt:         this._startedAt?.toISOString() ?? null,
+        totalEntries:      status.totalEntries,
+        upcoming:          status.upcoming.slice(0, 3),
+        heartbeatInterval: Math.round(this._heartbeatMs / 1000),
         lastFire,
       });
     } catch { /* non-critical */ }

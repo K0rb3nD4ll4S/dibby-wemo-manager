@@ -38,9 +38,10 @@ class WemoPlatform {
 
     // DWM Scheduler
     this._scheduler = new DwmScheduler({
-      store:      this._store,
+      store:        this._store,
       wemoClient,
       log,
+      heartbeatMs:  (config.heartbeatInterval ?? 1) * 1000,
     });
     this._scheduler.onFire(({ success, msg }) => {
       if (success) log.info('[DWM] ' + msg);

@@ -4,6 +4,30 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.7] — 2026-04-01
+
+### New Feature — Configurable Scheduler Heartbeat Interval
+
+The DWM scheduler heartbeat is now decoupled from the 30-second tick and runs on its own independent timer (default: **1 second**). The interval is user-configurable from 1 to 300 seconds. The stale-detection threshold in the UI scales automatically with the configured interval (3× interval + 5 s grace).
+
+**Why this matters:** IFTTT and HomeKit automations triggered by device state changes now reflect scheduler status within 1 second instead of waiting up to 90 seconds for the next tick cycle.
+
+**Homebridge** — add to `config.json` platform block (or set via Homebridge UI):
+```json
+"heartbeatInterval": 1
+```
+
+**Home Assistant** — configurable in the integration Options flow (Settings → Devices & Services → Dibby Wemo → Configure).
+
+### Affected packages
+- `homebridge-dibby-wemo` → **2.0.4** (npm)
+- `custom_components/dibby_wemo` → **2.0.5** (Home Assistant / HACS)
+- Desktop app (Windows / Linux / macOS) → **2.0.2**
+- Android app → **2.0.2**
+- Docker image → `ghcr.io/k0rb3nd4ll4s/dibby-wemo-manager:2.0.2`
+
+---
+
 ## [2.0.6] — 2026-04-01
 
 ### New Feature — Node-RED Contrib Package

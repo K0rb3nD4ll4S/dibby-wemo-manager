@@ -20,7 +20,7 @@ from typing import Any, Callable, Awaitable
 
 from .const import (
     ACTION_ON, ACTION_OFF,
-    HEALTH_POLL_S, TICK_S, CATCHUP_WINDOW_S,
+    HEALTH_POLL_S, HEARTBEAT_S, TICK_S, CATCHUP_WINDOW_S,
     SUN_SUNRISE, SUN_SUNSET,
     WEMO_DAY_NAMES,
 )
@@ -72,11 +72,13 @@ def _today_sun(store) -> tuple | None:
 # ── Scheduler ─────────────────────────────────────────────────────────────────
 
 class DwmScheduler:
-    def __init__(self, store, wemo_client_module, hass=None, logger=None) -> None:
+    def __init__(self, store, wemo_client_module, hass=None, logger=None,
+                 heartbeat_s: int = HEARTBEAT_S) -> None:
         self._store = store
         self._wemo = wemo_client_module
         self._hass = hass
         self._log = logger or _LOGGER
+        self._heartbeat_s = max(1, int(heartbeat_s or HEARTBEAT_S))
 
         self._schedule: list[dict] = []
         self._fired_today: set[str] = set()
@@ -88,6 +90,7 @@ class DwmScheduler:
 
         self._tick_task: asyncio.Task | None = None
         self._health_task: asyncio.Task | None = None
+        self._heartbeat_task: asyncio.Task | None = None
         self._running = False
         self._started_at: datetime | None = None
         self._last_fire: dict | None = None
@@ -121,6 +124,7 @@ class DwmScheduler:
         await self._resume_away_loops()
         self._tick_task = asyncio.ensure_future(self._tick_loop())
         self._health_task = asyncio.ensure_future(self._health_loop())
+        self._heartbeat_task = asyncio.ensure_future(self._heartbeat_loop())
         status = self._build_status()
         self._emit_status(status)
         self._log.info("[DWM] Started — %d schedule entries", len(self._schedule))
@@ -128,7 +132,7 @@ class DwmScheduler:
 
     async def stop(self) -> dict:
         self._running = False
-        for task in [self._tick_task, self._health_task]:
+        for task in [self._tick_task, self._health_task, self._heartbeat_task]:
             if task:
                 task.cancel()
         for loop in self._away_loops.values():
@@ -278,11 +282,6 @@ class DwmScheduler:
                 self._schedule_upcoming()
             except Exception as e:
                 self._log.error("[DWM] Tick error (scheduler still running): %s", e)
-            # Write heartbeat unconditionally so HA shows healthy even if tick throws
-            try:
-                self._write_heartbeat()
-            except Exception:
-                pass
 
             await asyncio.sleep(TICK_S)
 
@@ -657,6 +656,16 @@ class DwmScheduler:
 
     # ── Heartbeat / Status ────────────────────────────────────────────────────
 
+    async def _heartbeat_loop(self) -> None:
+        """Independent heartbeat — writes status every heartbeat_s seconds."""
+        self._write_heartbeat()  # write immediately on start
+        while self._running:
+            await asyncio.sleep(self._heartbeat_s)
+            try:
+                self._write_heartbeat()
+            except Exception:
+                pass
+
     def _write_heartbeat(self) -> None:
         try:
             status = self._build_status()
@@ -665,6 +674,7 @@ class DwmScheduler:
                 "startedAt": self._started_at.isoformat() + "Z" if self._started_at else None,
                 "totalEntries": status["totalEntries"],
                 "upcoming": status["upcoming"][:3],
+                "heartbeatInterval": self._heartbeat_s,
                 "lastFire": self._last_fire,
             })
         except Exception:

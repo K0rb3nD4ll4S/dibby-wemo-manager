@@ -1,0 +1,218 @@
+﻿2026-03-29T01:00:46.4791029Z Current runner version: '2.333.0'
+2026-03-29T01:00:46.4814274Z ##[group]Runner Image Provisioner
+2026-03-29T01:00:46.4815141Z Hosted Compute Agent
+2026-03-29T01:00:46.4815716Z Version: 20260213.493
+2026-03-29T01:00:46.4816355Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+2026-03-29T01:00:46.4816934Z Build Date: 2026-02-13T00:28:41Z
+2026-03-29T01:00:46.4817490Z Worker ID: {2a936631-fea0-4163-85b3-3768d4800cc3}
+2026-03-29T01:00:46.4818149Z Azure Region: centralus
+2026-03-29T01:00:46.4818647Z ##[endgroup]
+2026-03-29T01:00:46.4819952Z ##[group]Operating System
+2026-03-29T01:00:46.4820517Z Ubuntu
+2026-03-29T01:00:46.4820888Z 22.04.5
+2026-03-29T01:00:46.4821288Z LTS
+2026-03-29T01:00:46.4821670Z ##[endgroup]
+2026-03-29T01:00:46.4822107Z ##[group]Runner Image
+2026-03-29T01:00:46.4822590Z Image: ubuntu-22.04
+2026-03-29T01:00:46.4823048Z Version: 20260322.68.1
+2026-03-29T01:00:46.4824092Z Included Software: https://github.com/actions/runner-images/blob/ubuntu22/20260322.68/images/ubuntu/Ubuntu2204-Readme.md
+2026-03-29T01:00:46.4825524Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu22%2F20260322.68
+2026-03-29T01:00:46.4826255Z ##[endgroup]
+2026-03-29T01:00:46.4827205Z ##[group]GITHUB_TOKEN Permissions
+2026-03-29T01:00:46.4829286Z Contents: read
+2026-03-29T01:00:46.4829761Z Metadata: read
+2026-03-29T01:00:46.4830164Z Packages: read
+2026-03-29T01:00:46.4830674Z ##[endgroup]
+2026-03-29T01:00:46.4832807Z Secret source: Actions
+2026-03-29T01:00:46.4833613Z Prepare workflow directory
+2026-03-29T01:00:46.5138066Z Prepare all required actions
+2026-03-29T01:00:46.5177541Z Getting action download info
+2026-03-29T01:00:46.8789604Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+2026-03-29T01:00:46.9929261Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+2026-03-29T01:00:47.1029228Z Download action repository 'softprops/action-gh-release@v2' (SHA:153bb8e04406b158c6c84fc1615b65b24149a1fe)
+2026-03-29T01:00:47.5979885Z Complete job name: build-linux
+2026-03-29T01:00:47.6632354Z ##[group]Run actions/checkout@v4
+2026-03-29T01:00:47.6633229Z with:
+2026-03-29T01:00:47.6633867Z   repository: K0rb3nD4ll4S/dibby-wemo-manager
+2026-03-29T01:00:47.6634914Z   token: ***
+2026-03-29T01:00:47.6635371Z   ssh-strict: true
+2026-03-29T01:00:47.6635918Z   ssh-user: git
+2026-03-29T01:00:47.6636385Z   persist-credentials: true
+2026-03-29T01:00:47.6636923Z   clean: true
+2026-03-29T01:00:47.6637413Z   sparse-checkout-cone-mode: true
+2026-03-29T01:00:47.6638001Z   fetch-depth: 1
+2026-03-29T01:00:47.6638457Z   fetch-tags: false
+2026-03-29T01:00:47.6638967Z   show-progress: true
+2026-03-29T01:00:47.6639491Z   lfs: false
+2026-03-29T01:00:47.6639941Z   submodules: false
+2026-03-29T01:00:47.6640465Z   set-safe-directory: true
+2026-03-29T01:00:47.6641270Z ##[endgroup]
+2026-03-29T01:00:47.7779768Z Syncing repository: K0rb3nD4ll4S/dibby-wemo-manager
+2026-03-29T01:00:47.7781616Z ##[group]Getting Git version info
+2026-03-29T01:00:47.7782482Z Working directory is '/home/runner/work/dibby-wemo-manager/dibby-wemo-manager'
+2026-03-29T01:00:47.7783567Z [command]/usr/bin/git version
+2026-03-29T01:00:47.7820815Z git version 2.53.0
+2026-03-29T01:00:47.7844238Z ##[endgroup]
+2026-03-29T01:00:47.7859532Z Temporarily overriding HOME='/home/runner/work/_temp/196eae60-8f96-4105-a2da-e2a0242496db' before making global git config changes
+2026-03-29T01:00:47.7862449Z Adding repository directory to the temporary git global config as a safe directory
+2026-03-29T01:00:47.7873536Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/dibby-wemo-manager/dibby-wemo-manager
+2026-03-29T01:00:47.7903503Z Deleting the contents of '/home/runner/work/dibby-wemo-manager/dibby-wemo-manager'
+2026-03-29T01:00:47.7906883Z ##[group]Initializing the repository
+2026-03-29T01:00:47.7911911Z [command]/usr/bin/git init /home/runner/work/dibby-wemo-manager/dibby-wemo-manager
+2026-03-29T01:00:47.8001077Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-03-29T01:00:47.8002865Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-03-29T01:00:47.8004301Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-03-29T01:00:47.8005246Z hint: call:
+2026-03-29T01:00:47.8005615Z hint:
+2026-03-29T01:00:47.8006102Z hint: 	git config --global init.defaultBranch <name>
+2026-03-29T01:00:47.8006673Z hint:
+2026-03-29T01:00:47.8007306Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-03-29T01:00:47.8009051Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-03-29T01:00:47.8009927Z hint:
+2026-03-29T01:00:47.8010321Z hint: 	git branch -m <name>
+2026-03-29T01:00:47.8010761Z hint:
+2026-03-29T01:00:47.8011342Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-03-29T01:00:47.8012843Z Initialized empty Git repository in /home/runner/work/dibby-wemo-manager/dibby-wemo-manager/.git/
+2026-03-29T01:00:47.8014603Z [command]/usr/bin/git remote add origin https://github.com/K0rb3nD4ll4S/dibby-wemo-manager
+2026-03-29T01:00:47.8038294Z ##[endgroup]
+2026-03-29T01:00:47.8039039Z ##[group]Disabling automatic garbage collection
+2026-03-29T01:00:47.8041704Z [command]/usr/bin/git config --local gc.auto 0
+2026-03-29T01:00:47.8063531Z ##[endgroup]
+2026-03-29T01:00:47.8064234Z ##[group]Setting up auth
+2026-03-29T01:00:47.8069616Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-03-29T01:00:47.8092573Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-03-29T01:00:47.8357701Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-03-29T01:00:47.8382519Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-03-29T01:00:47.8544111Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-03-29T01:00:47.8568763Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-03-29T01:00:47.8738774Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-03-29T01:00:47.8765389Z ##[endgroup]
+2026-03-29T01:00:47.8766264Z ##[group]Fetching the repository
+2026-03-29T01:00:47.8772955Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +b3af43120dbeeffd4b9cd02cfdd7b59694306d69:refs/remotes/origin/main
+2026-03-29T01:00:48.2349603Z From https://github.com/K0rb3nD4ll4S/dibby-wemo-manager
+2026-03-29T01:00:48.2351729Z  * [new ref]         b3af43120dbeeffd4b9cd02cfdd7b59694306d69 -> origin/main
+2026-03-29T01:00:48.2376593Z ##[endgroup]
+2026-03-29T01:00:48.2377788Z ##[group]Determining the checkout info
+2026-03-29T01:00:48.2379296Z ##[endgroup]
+2026-03-29T01:00:48.2383293Z [command]/usr/bin/git sparse-checkout disable
+2026-03-29T01:00:48.2416355Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-03-29T01:00:48.2437435Z ##[group]Checking out the ref
+2026-03-29T01:00:48.2441090Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2026-03-29T01:00:48.2530309Z Switched to a new branch 'main'
+2026-03-29T01:00:48.2531276Z branch 'main' set up to track 'origin/main'.
+2026-03-29T01:00:48.2536383Z ##[endgroup]
+2026-03-29T01:00:48.2564102Z [command]/usr/bin/git log -1 --format=%H
+2026-03-29T01:00:48.2580947Z b3af43120dbeeffd4b9cd02cfdd7b59694306d69
+2026-03-29T01:00:48.2796947Z ##[group]Run actions/setup-node@v4
+2026-03-29T01:00:48.2797441Z with:
+2026-03-29T01:00:48.2797799Z   node-version: 20
+2026-03-29T01:00:48.2798187Z   always-auth: false
+2026-03-29T01:00:48.2798593Z   check-latest: false
+2026-03-29T01:00:48.2799336Z   token: ***
+2026-03-29T01:00:48.2799710Z ##[endgroup]
+2026-03-29T01:00:48.4427176Z Found in cache @ /opt/hostedtoolcache/node/20.20.1/x64
+2026-03-29T01:00:48.4433059Z ##[group]Environment details
+2026-03-29T01:00:51.6049227Z node: v20.20.1
+2026-03-29T01:00:51.6051097Z npm: 10.8.2
+2026-03-29T01:00:51.6051971Z yarn: 1.22.22
+2026-03-29T01:00:51.6054187Z ##[endgroup]
+2026-03-29T01:00:51.6183449Z ##[group]Run sudo apt-get update -qq
+2026-03-29T01:00:51.6184923Z [36;1msudo apt-get update -qq[0m
+2026-03-29T01:00:51.6186544Z [36;1msudo apt-get install -y -qq rpm fakeroot dpkg libarchive-tools[0m
+2026-03-29T01:00:51.6240407Z shell: /usr/bin/bash -e {0}
+2026-03-29T01:00:51.6241447Z ##[endgroup]
+2026-03-29T01:00:59.3798258Z Selecting previously unselected package libarchive-tools.
+2026-03-29T01:00:59.3992574Z (Reading database ... 
+2026-03-29T01:00:59.3993017Z (Reading database ... 5%
+2026-03-29T01:00:59.3993305Z (Reading database ... 10%
+2026-03-29T01:00:59.3993554Z (Reading database ... 15%
+2026-03-29T01:00:59.3993839Z (Reading database ... 20%
+2026-03-29T01:00:59.3994138Z (Reading database ... 25%
+2026-03-29T01:00:59.3994382Z (Reading database ... 30%
+2026-03-29T01:00:59.3994625Z (Reading database ... 35%
+2026-03-29T01:00:59.3995011Z (Reading database ... 40%
+2026-03-29T01:00:59.3995240Z (Reading database ... 45%
+2026-03-29T01:00:59.3995466Z (Reading database ... 50%
+2026-03-29T01:00:59.4595905Z (Reading database ... 55%
+2026-03-29T01:00:59.4876635Z (Reading database ... 60%
+2026-03-29T01:00:59.5597048Z (Reading database ... 65%
+2026-03-29T01:00:59.7066458Z (Reading database ... 70%
+2026-03-29T01:00:59.8627327Z (Reading database ... 75%
+2026-03-29T01:01:00.0474054Z (Reading database ... 80%
+2026-03-29T01:01:00.2555521Z (Reading database ... 85%
+2026-03-29T01:01:00.4128833Z (Reading database ... 90%
+2026-03-29T01:01:00.6036282Z (Reading database ... 95%
+2026-03-29T01:01:00.6036690Z (Reading database ... 100%
+2026-03-29T01:01:00.6045950Z (Reading database ... 285874 files and directories currently installed.)
+2026-03-29T01:01:00.6132347Z Preparing to unpack .../libarchive-tools_3.6.0-1ubuntu1.5_amd64.deb ...
+2026-03-29T01:01:00.6155951Z Unpacking libarchive-tools (3.6.0-1ubuntu1.5) ...
+2026-03-29T01:01:00.6547441Z Setting up libarchive-tools (3.6.0-1ubuntu1.5) ...
+2026-03-29T01:01:00.6572211Z Processing triggers for man-db (2.10.2-1) ...
+2026-03-29T01:01:00.6592178Z Not building database; man-db/auto-update is not 'true'.
+2026-03-29T01:01:01.0946007Z 
+2026-03-29T01:01:01.0946828Z Running kernel seems to be up-to-date.
+2026-03-29T01:01:01.0947080Z 
+2026-03-29T01:01:01.0947240Z No services need to be restarted.
+2026-03-29T01:01:01.0947394Z 
+2026-03-29T01:01:01.0947516Z No containers need to be restarted.
+2026-03-29T01:01:01.0947677Z 
+2026-03-29T01:01:01.0947826Z No user sessions are running outdated binaries.
+2026-03-29T01:01:01.0948022Z 
+2026-03-29T01:01:01.0948268Z No VM guests are running outdated hypervisor (qemu) binaries on this host.
+2026-03-29T01:01:02.2697400Z ##[group]Run npm install --legacy-peer-deps
+2026-03-29T01:01:02.2697749Z [36;1mnpm install --legacy-peer-deps[0m
+2026-03-29T01:01:02.2729330Z shell: /usr/bin/bash -e {0}
+2026-03-29T01:01:02.2729560Z ##[endgroup]
+2026-03-29T01:01:05.4996694Z npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+2026-03-29T01:01:05.6809617Z npm warn deprecated npmlog@6.0.2: This package is no longer supported.
+2026-03-29T01:01:05.9189858Z npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+2026-03-29T01:01:05.9945064Z npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+2026-03-29T01:01:06.1719550Z npm warn deprecated tar@6.2.1: Old versions of tar are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+2026-03-29T01:01:06.1756640Z npm warn deprecated gauge@4.0.4: This package is no longer supported.
+2026-03-29T01:01:06.4525894Z npm warn deprecated are-we-there-yet@3.0.1: This package is no longer supported.
+2026-03-29T01:01:06.5003731Z npm warn deprecated boolean@3.2.0: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+2026-03-29T01:01:06.6388733Z npm warn deprecated @npmcli/move-file@2.0.1: This functionality has been moved to @npmcli/fs
+2026-03-29T01:01:07.0865842Z npm warn deprecated glob@8.1.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+2026-03-29T01:01:07.4939944Z npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+2026-03-29T01:01:13.3301505Z 
+2026-03-29T01:01:13.3302352Z added 469 packages, and audited 471 packages in 11s
+2026-03-29T01:01:13.3302814Z 
+2026-03-29T01:01:13.3303076Z 72 packages are looking for funding
+2026-03-29T01:01:13.3303569Z   run `npm fund` for details
+2026-03-29T01:01:13.3619800Z 
+2026-03-29T01:01:13.3620563Z 15 vulnerabilities (2 low, 5 moderate, 8 high)
+2026-03-29T01:01:13.3620966Z 
+2026-03-29T01:01:13.3621292Z To address issues that do not require attention, run:
+2026-03-29T01:01:13.3621808Z   npm audit fix
+2026-03-29T01:01:13.3621987Z 
+2026-03-29T01:01:13.3622319Z To address all issues (including breaking changes), run:
+2026-03-29T01:01:13.3622802Z   npm audit fix --force
+2026-03-29T01:01:13.3623035Z 
+2026-03-29T01:01:13.3623208Z Run `npm audit` for details.
+2026-03-29T01:01:13.3776378Z ##[group]Run BINARY="node_modules/app-builder-bin/linux/x64/app-builder"
+2026-03-29T01:01:13.3776874Z [36;1mBINARY="node_modules/app-builder-bin/linux/x64/app-builder"[0m
+2026-03-29T01:01:13.3777211Z [36;1mecho "Binary exists:" && ls -lh $BINARY[0m
+2026-03-29T01:01:13.3777506Z [36;1mecho "File type:" && file $BINARY[0m
+2026-03-29T01:01:13.3777766Z [36;1mecho "Shared libs:" && ldd $BINARY || true[0m
+2026-03-29T01:01:13.3778073Z [36;1mecho "Try execute:" && $BINARY --version || true[0m
+2026-03-29T01:01:13.3809374Z shell: /usr/bin/bash -e {0}
+2026-03-29T01:01:13.3809605Z ##[endgroup]
+2026-03-29T01:01:13.3858110Z Binary exists:
+2026-03-29T01:01:13.3867590Z ls: cannot access 'node_modules/app-builder-bin/linux/x64/app-builder': No such file or directory
+2026-03-29T01:01:13.3879419Z ##[error]Process completed with exit code 2.
+2026-03-29T01:01:13.4002644Z Post job cleanup.
+2026-03-29T01:01:13.4858606Z [command]/usr/bin/git version
+2026-03-29T01:01:13.4889656Z git version 2.53.0
+2026-03-29T01:01:13.4929210Z Temporarily overriding HOME='/home/runner/work/_temp/64a2037c-81fb-4aae-852b-e979453cfe6f' before making global git config changes
+2026-03-29T01:01:13.4930609Z Adding repository directory to the temporary git global config as a safe directory
+2026-03-29T01:01:13.4935645Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/dibby-wemo-manager/dibby-wemo-manager
+2026-03-29T01:01:13.4965577Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-03-29T01:01:13.4992664Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-03-29T01:01:13.5163569Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-03-29T01:01:13.5179902Z http.https://github.com/.extraheader
+2026-03-29T01:01:13.5191162Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-03-29T01:01:13.5215147Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-03-29T01:01:13.5374014Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-03-29T01:01:13.5399245Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-03-29T01:01:13.5650042Z Cleaning up orphan processes
+2026-03-29T01:01:13.5889863Z ##[warning]Node.js 20 actions are deprecated. The following actions are running on Node.js 20 and may not work as expected: actions/checkout@v4, actions/setup-node@v4. Actions will be forced to run with Node.js 24 by default starting June 2nd, 2026. Node.js 20 will be removed from the runner on September 16th, 2026. Please check if updated versions of these actions are available that support Node.js 24. To opt into Node.js 24 now, set the FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true environment variable on the runner or in your workflow file. Once Node.js 24 becomes the default, you can temporarily opt out by setting ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
