@@ -353,6 +353,7 @@ class DwmScheduler {
     if (this._tickTimer) clearTimeout(this._tickTimer);
     this._tickTimer = setTimeout(() => this._tick(), 30_000);
 
+    // Heartbeat always writes — even if schedule loading fails
     try {
       const now   = new Date();
       const today = now.toDateString();
@@ -371,10 +372,12 @@ class DwmScheduler {
       }
 
       this._scheduleUpcoming();
-      this._writeHeartbeat();
     } catch (e) {
-      this._log.error?.('[DWM Scheduler] Tick error (scheduler still running): ' + e.message);
+      this._log.error?.('[DWM Scheduler] Tick error (scheduler still running): ' + (e?.message ?? String(e)));
     }
+
+    // Write heartbeat unconditionally so the UI stays green even if a tick throws
+    try { this._writeHeartbeat(); } catch { /* non-critical */ }
   }
 
   _clearTimers() {
