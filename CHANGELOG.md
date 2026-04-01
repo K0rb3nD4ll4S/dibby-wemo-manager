@@ -4,6 +4,20 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.4] — 2026-04-01
+
+### Fixes & CI
+
+- **manifest.json key order corrected** — `domain` and `name` first, then alphabetical. Required for hassfest validation.
+- **Brand icon added** — `custom_components/dibby_wemo/icon.png` and `brand/icon.png` / `brand/logo.png` added for HACS validation.
+- **HACS Action and hassfest workflows added** — Both CI checks now run on every push and both pass green.
+- **HACS default PR resubmitted** (#6684) — From a feature branch with full checklist and all required links.
+
+### Affected packages
+- `custom_components/dibby_wemo` → **2.0.4** (Home Assistant / HACS)
+
+---
+
 ## [2.0.3] — 2026-04-01
 
 ### Improvements
