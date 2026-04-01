@@ -1,0 +1,80 @@
+name: Validate & Release Home Assistant Integration
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v2.0.1)'
+        required: false
+        default: 'v2.0.1'
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install hassfest dependencies
+        run: pip install homeassistant --quiet
+
+      - name: Validate manifest.json
+        run: |
+          python -c "
+          import json, sys
+          with open('custom_components/dibby_wemo/manifest.json') as f:
+              m = json.load(f)
+          required = ['domain','name','version','documentation','codeowners','iot_class','config_flow']
+          missing = [k for k in required if k not in m]
+          if missing:
+              print('Missing manifest keys:', missing); sys.exit(1)
+          print('manifest.json OK — version', m['version'])
+          "
+
+      - name: Validate strings.json / translations
+        run: |
+          python -c "
+          import json
+          for path in ['custom_components/dibby_wemo/strings.json',
+                       'custom_components/dibby_wemo/translations/en.json']:
+              with open(path) as f:
+                  json.load(f)
+              print(path, 'OK')
+          "
+
+      - name: Check Python syntax
+        run: |
+          python -m py_compile \
+            custom_components/dibby_wemo/__init__.py \
+            custom_components/dibby_wemo/const.py \
+            custom_components/dibby_wemo/coordinator.py \
+            custom_components/dibby_wemo/switch.py \
+            custom_components/dibby_wemo/config_flow.py \
+            custom_components/dibby_wemo/wemo_client.py \
+            custom_components/dibby_wemo/scheduler.py \
+            custom_components/dibby_wemo/store.py \
+            custom_components/dibby_wemo/sun.py
+          echo "All Python files syntax OK"
+
+      - name: Package integration zip
+        run: |
+          cd custom_components
+          zip -r ../dibby-wemo-ha-${{ github.event.inputs.tag }}.zip dibby_wemo/
+          echo "Packaged: $(du -h ../dibby-wemo-ha-${{ github.event.inputs.tag }}.zip | cut -f1)"
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag }}
+          files: dibby-wemo-ha-${{ github.event.inputs.tag }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
