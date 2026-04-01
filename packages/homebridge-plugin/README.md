@@ -58,6 +58,7 @@ Restart Homebridge. All Wemo devices on your network are discovered automaticall
 |---|---|---|---|
 | `discoveryTimeout` | number | `10000` | SSDP discovery window in milliseconds |
 | `pollInterval` | number | `30` | How often (seconds) to poll device state for HomeKit |
+| `heartbeatInterval` | number | `1` | Scheduler heartbeat write interval in seconds (1–300). Lower = faster status response. |
 | `manualDevices` | array | `[]` | Devices to add by IP if SSDP discovery misses them |
 
 ---
@@ -78,7 +79,7 @@ Create and manage automation rules that run inside Homebridge.
 
 **Scheduler status bar** — shown at the top of the tab:
 - 🟢 **Green** — scheduler is running, shows total schedule entries and next upcoming rule
-- 🟠 **Amber** — scheduler may have stopped (no heartbeat for 90+ seconds) — restart Homebridge
+- 🟠 **Amber** — scheduler may have stopped (no heartbeat received) — restart Homebridge
 - 🔴 **Red** — scheduler is not running — check the `DibbyWemo` platform is in `config.json`
 
 **Rule types:**
@@ -161,7 +162,7 @@ The scheduler runs inside the Homebridge process:
 - **65-second look-ahead window** — pre-schedules `setTimeout` callbacks for precise firing
 - **10-minute catch-up** — on restart, fires any rules whose time fell within the last 10 minutes
 - **Health monitor** — polls all referenced devices every 10 seconds for AlwaysOn and Trigger rule enforcement
-- **Heartbeat** — writes scheduler status to the store every tick; the UI reads this to show the status bar
+- **Heartbeat** — writes scheduler status every `heartbeatInterval` seconds (default: 1 s) on an independent timer; the UI reads this to show the status bar
 
 Rules are stored in `<homebridgeStoragePath>/dibby-wemo.json`. The scheduler reloads this file on every tick, so rules created or edited in the UI take effect within 30 seconds without a restart.
 
