@@ -114,6 +114,9 @@ class WemoPlatform {
 
     this.log.info(`Found ${discovered.length} Wemo device(s)`);
 
+    // Sort alphabetically by friendly name so HomeKit registers devices in order
+    discovered.sort((a, b) => (a.friendlyName ?? a.host).localeCompare(b.friendlyName ?? b.host));
+
     // Merge discovered devices into the cached list — keep offline devices too
     const freshForStore = discovered.map((d) => ({
       host: d.host,
@@ -133,7 +136,10 @@ class WemoPlatform {
     // Register previously cached devices that weren't discovered (may be offline)
     // so HomeKit still knows about them
     const discoveredUDNs = new Set(discovered.map((d) => d.udn ?? `${d.host}:${d.port}`));
-    for (const cached of allKnown) {
+    const offlineCached = allKnown
+      .filter((d) => !discoveredUDNs.has(d.udn))
+      .sort((a, b) => (a.friendlyName ?? a.host).localeCompare(b.friendlyName ?? b.host));
+    for (const cached of offlineCached) {
       if (!discoveredUDNs.has(cached.udn)) {
         this.log.info(`Device offline/not found during discovery, keeping cached: ${cached.friendlyName}`);
         this._registerDevice(cached, pollInterval);

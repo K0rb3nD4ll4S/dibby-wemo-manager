@@ -4,6 +4,18 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.3] — 2026-04-01
+
+### Improvements
+
+- **Devices registered in alphabetical order** — Homebridge and Home Assistant now register Wemo devices sorted by friendly name (A→Z). Affects newly added devices; existing devices already in the registry retain their current position unless removed and re-added.
+
+### Affected packages
+- `homebridge-dibby-wemo` → **2.0.3** (npm)
+- `custom_components/dibby_wemo` → **2.0.3** (Home Assistant / HACS)
+
+---
+
 ## [2.0.2] — 2026-04-01
 
 ### Bug Fixes

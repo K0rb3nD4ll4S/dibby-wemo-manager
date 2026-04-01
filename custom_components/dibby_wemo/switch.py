@@ -24,7 +24,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: WemoCoordinator = hass.data[DOMAIN][entry.entry_id]
-    devices = coordinator._devices
+    devices = sorted(coordinator._devices, key=lambda d: (d.get("name") or d.get("friendlyName") or d.get("host", "")).lower())
     async_add_entities(
         WemoSwitch(coordinator, dev) for dev in devices
     )
