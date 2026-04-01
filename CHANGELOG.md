@@ -23,9 +23,9 @@ The DWM scheduler heartbeat is now decoupled from the 30-second tick and runs on
 - `homebridge-dibby-wemo` → **2.0.4** (npm)
 - `custom_components/dibby_wemo` → **2.0.5** (Home Assistant / HACS)
 - `node-red-contrib-dibby-wemo` → **2.0.1** (npm — README added)
-- Desktop app (Windows / Linux / macOS) → **2.0.2**
-- Android app → **2.0.2**
-- Docker image → `ghcr.io/k0rb3nd4ll4s/dibby-wemo-manager:2.0.2`
+- Desktop app (Windows / Linux / macOS) → **2.0.7**
+- Android app → **2.0.7**
+- Docker image → `ghcr.io/k0rb3nd4ll4s/dibby-wemo-manager:2.0.7`
 
 ---
 
