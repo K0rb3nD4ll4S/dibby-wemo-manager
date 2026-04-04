@@ -1,5 +1,7 @@
 # homebridge-dibby-wemo
 
+[![verified-by-homebridge](https://img.shields.io/badge/homebridge-verified-blueviolet?color=%23491F59&style=flat&logoColor=%23FFFFFF&logo=homebridge)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
+
 **Homebridge plugin for local Belkin Wemo control — no cloud required.**
 
 Registers all Wemo devices on your local network as HomeKit switches and provides a full scheduling engine via a custom Homebridge UI panel. All device communication is direct local UPnP/SOAP — no Belkin account needed.
