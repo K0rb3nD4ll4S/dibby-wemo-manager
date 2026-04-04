@@ -47,6 +47,10 @@
     "xmlbuilder2": "^4.0.3",
     "@homebridge/plugin-ui-utils": "^2.2.0"
   },
+  "funding": {
+    "type": "paypal",
+    "url": "https://www.paypal.me/srsitinc"
+  },
   "devDependencies": {
     "homebridge": "^1.8.0"
   }
