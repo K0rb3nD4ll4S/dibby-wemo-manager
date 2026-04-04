@@ -4,6 +4,29 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.9] — 2026-04-04
+
+### Bug Fix — Infinite scroll on Devices and Rules tabs
+
+The Homebridge UI panel no longer scrolls endlessly when there are few or no devices/rules. Removed `min-height: 100vh` from the UI body which was forcing the page to always fill the full viewport height.
+
+### Affected packages
+- `homebridge-dibby-wemo` → **2.0.6** (npm)
+
+---
+
+## [2.0.8] — 2026-04-04
+
+### Homebridge Verified + Donate Button
+
+- Plugin is now **Verified by Homebridge** — badge added to README.
+- Added PayPal **donate button** (`funding` field in `package.json`) — visible on the plugin tile in the Homebridge UI.
+
+### Affected packages
+- `homebridge-dibby-wemo` → **2.0.5** (npm)
+
+---
+
 ## [2.0.7] — 2026-04-01
 
 ### New Feature — Configurable Scheduler Heartbeat Interval
