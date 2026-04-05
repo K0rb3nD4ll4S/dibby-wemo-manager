@@ -1,7 +1,7 @@
 {
   "name": "dibby-wemo-android",
-  "version": "2.0.0",
-  "description": "Dibby Wemo Manager – Android companion app",
+  "version": "2.0.8",
+  "description": "Dibby Wemo Manager \u00e2\u20ac\u201c Android companion app",
   "private": true,
   "scripts": {
     "sync": "cap sync",

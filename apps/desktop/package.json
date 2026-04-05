@@ -1,9 +1,9 @@
 {
   "name": "dibby-wemo-manager",
   "productName": "Dibby Wemo Manager",
-  "version": "2.0.7",
+  "version": "2.0.8",
   "private": true,
-  "description": "Belkin Wemo device manager – local control, no cloud required",
+  "description": "Belkin Wemo device manager \u00e2\u20ac\u201c local control, no cloud required",
   "author": "SRS IT",
   "homepage": "https://github.com/K0rb3nD4ll4S/dibby-wemo-manager",
   "main": "out/main/index.js",
@@ -47,7 +47,13 @@
     },
     "mac": {
       "target": [
-        { "target": "dmg", "arch": ["x64", "arm64"] }
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ],
       "icon": "resources/icon.png",
       "category": "public.app-category.utilities"
@@ -74,7 +80,9 @@
       "signtoolOptions": {
         "certificateFile": "resources/srsit-codesign.pfx",
         "certificatePassword": "SRSITSign2024!",
-        "signingHashAlgorithms": ["sha256"]
+        "signingHashAlgorithms": [
+          "sha256"
+        ]
       }
     },
     "nsis": {
@@ -83,15 +91,28 @@
       "createDesktopShortcut": true
     },
     "linux": {
-      "target": ["AppImage", "deb", "rpm"],
+      "target": [
+        "AppImage",
+        "deb",
+        "rpm"
+      ],
       "icon": "resources/icon.png",
       "category": "Utility",
-      "synopsis": "Belkin Wemo device manager — local control, no cloud required",
+      "synopsis": "Belkin Wemo device manager \u00e2\u20ac\u201d local control, no cloud required",
       "description": "Control Belkin Wemo smart switches and plugs. Set schedules, countdowns and away mode. No Belkin account or internet required.",
       "maintainer": "SRS IT"
     },
     "deb": {
-      "depends": ["libgtk-3-0", "libnotify4", "libnss3", "libxss1", "libxtst6", "xdg-utils", "libatspi2.0-0", "libuuid1"]
+      "depends": [
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libuuid1"
+      ]
     },
     "asarUnpack": [
       "**/node_modules/sql.js/dist/**",

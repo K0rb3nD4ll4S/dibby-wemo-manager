@@ -6,6 +6,23 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ## [2.0.11] — 2026-04-05
 
+### Version sync — all packages bumped to 2.0.8
+
+All packages aligned to v2.0.8. Windows desktop rebuilt and signed. Linux packages built via GitHub Actions. node-red-contrib published to npm.
+
+### Affected packages
+- `homebridge-dibby-wemo` → **2.0.8** (npm)
+- `node-red-contrib-dibby-wemo` → **2.0.8** (npm)
+- Desktop app (Windows) → **2.0.8**
+- Desktop app (Linux — AppImage/deb/rpm) → **2.0.8** (built via GitHub Actions)
+- Android app → **2.0.8**
+- Home Assistant custom component → **2.0.8**
+- Docker / MQTT bridge → **2.0.8**
+
+---
+
+## [2.0.11] — 2026-04-05
+
 ### Feature — Heartbeat, Poll & Discovery settings now in the Settings tab
 
 The **Settings** tab in the Homebridge UI now shows three configurable fields:

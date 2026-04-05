@@ -1,12 +1,14 @@
 {
   "domain": "dibby_wemo",
   "name": "Dibby Wemo",
-  "codeowners": ["@K0rb3nD4ll4S"],
+  "codeowners": [
+    "@K0rb3nD4ll4S"
+  ],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/K0rb3nD4ll4S/dibby-wemo-manager",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/K0rb3nD4ll4S/dibby-wemo-manager/issues",
   "requirements": [],
-  "version": "2.0.5"
+  "version": "2.0.8"
 }
