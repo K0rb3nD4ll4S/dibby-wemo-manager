@@ -37,6 +37,7 @@
         "type": "integer",
         "default": 1,
         "minimum": 1,
+        "maximum": 300,
         "description": "How often the scheduler writes its status heartbeat. Lower values make the status indicator respond faster. Default: 1 second."
       },
       "manualDevices": {

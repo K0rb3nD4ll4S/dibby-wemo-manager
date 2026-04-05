@@ -4,6 +4,17 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.10] — 2026-04-04
+
+### Bug Fix — Heartbeat Interval setting fails to save in Homebridge UI
+
+Added missing `"maximum": 300` to the `heartbeatInterval` field in `config.schema.json`. Homebridge's schema validator requires both `minimum` and `maximum` on integer fields — without `maximum` the config would fail to save when `heartbeatInterval` was manually added.
+
+### Affected packages
+- `homebridge-dibby-wemo` → **2.0.7** (npm)
+
+---
+
 ## [2.0.9] — 2026-04-04
 
 ### Bug Fix — Infinite scroll on Devices and Rules tabs
