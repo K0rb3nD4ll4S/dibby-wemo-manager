@@ -934,6 +934,38 @@ document.querySelectorAll('.tab-btn').forEach((btn) => {
 });
 
 // ---------------------------------------------------------------------------
+// Plugin config (heartbeat / poll / discovery)
+// ---------------------------------------------------------------------------
+
+async function loadPluginConfig() {
+  try {
+    const cfg = await homebridge.request('/config/get');
+    document.getElementById('cfg-heartbeat').value  = cfg.heartbeatInterval  ?? 1;
+    document.getElementById('cfg-poll').value        = cfg.pollInterval       ?? 30;
+    document.getElementById('cfg-discovery').value   = cfg.discoveryTimeout   ?? 10000;
+  } catch { /* non-fatal */ }
+}
+
+document.getElementById('btn-cfg-save').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-cfg-save');
+  const status = document.getElementById('cfg-status');
+  btn.disabled = true;
+  try {
+    await homebridge.request('/config/set', {
+      heartbeatInterval: parseInt(document.getElementById('cfg-heartbeat').value,  10),
+      pollInterval:      parseInt(document.getElementById('cfg-poll').value,        10),
+      discoveryTimeout:  parseInt(document.getElementById('cfg-discovery').value,   10),
+    });
+    status.textContent = 'Saved ✓';
+    setTimeout(() => { status.textContent = ''; }, 2500);
+  } catch (e) {
+    status.textContent = 'Failed: ' + e.message;
+    status.style.color = 'var(--accent)';
+  }
+  btn.disabled = false;
+});
+
+// ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
 
@@ -941,6 +973,7 @@ document.querySelectorAll('.tab-btn').forEach((btn) => {
   await loadDevices();
   await loadDwmRules();
   await loadLocation();
+  await loadPluginConfig();
   refreshWemoDeviceSelect();
   startHeartbeatPolling();
   // Fetch today's sun times in background — used by rule editor previews

@@ -462,7 +462,9 @@
 <!-- ── Settings Tab ─────────────────────────────────────────────────────── -->
 <div id="tab-settings" class="tab-panel">
   <h2 style="margin-bottom:16px">Settings</h2>
-  <div class="card">
+
+  <!-- Location -->
+  <div class="card" style="margin-bottom:12px">
     <h3>Location (for sunrise/sunset rules)</h3>
     <div id="location-current" style="margin-bottom:10px;font-size:0.83rem;color:var(--muted)">Not set</div>
     <div class="form-group">
@@ -472,6 +474,28 @@
     </div>
     <button class="btn btn-ghost btn-sm" id="btn-location-save" disabled>Save Location</button>
     <span id="location-status" style="font-size:0.78rem;color:var(--green);margin-left:8px"></span>
+  </div>
+
+  <!-- Scheduler & Discovery -->
+  <div class="card">
+    <h3 style="margin-bottom:14px">Scheduler &amp; Discovery</h3>
+    <div class="form-group">
+      <label for="cfg-heartbeat">Scheduler Heartbeat Interval (seconds)</label>
+      <input type="number" id="cfg-heartbeat" min="1" max="300" value="1" style="width:120px" />
+      <div style="font-size:0.78rem;color:var(--muted);margin-top:4px">How often the scheduler writes its status. Lower = faster status updates. Default: 1</div>
+    </div>
+    <div class="form-group">
+      <label for="cfg-poll">Device Poll Interval (seconds)</label>
+      <input type="number" id="cfg-poll" min="10" max="300" value="30" style="width:120px" />
+      <div style="font-size:0.78rem;color:var(--muted);margin-top:4px">How often to check device state for HomeKit updates. Default: 30</div>
+    </div>
+    <div class="form-group">
+      <label for="cfg-discovery">Discovery Timeout (milliseconds)</label>
+      <input type="number" id="cfg-discovery" min="3000" max="60000" step="1000" value="10000" style="width:120px" />
+      <div style="font-size:0.78rem;color:var(--muted);margin-top:4px">How long to wait for SSDP discovery responses. Default: 10000</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="btn-cfg-save">Save Settings</button>
+    <span id="cfg-status" style="font-size:0.78rem;color:var(--green);margin-left:8px"></span>
   </div>
 </div>
 

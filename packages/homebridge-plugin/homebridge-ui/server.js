@@ -166,6 +166,28 @@ class DibbyWemoUiServer extends HomebridgePluginUiServer {
       return { ok: true };
     });
 
+    // ── Plugin config (heartbeat, poll, discovery) ────────────────────────────
+    this.onRequest('/config/get', async () => {
+      const cfg = await this.getPluginConfig();
+      const p = cfg?.[0] ?? {};
+      return {
+        heartbeatInterval:  p.heartbeatInterval  ?? 1,
+        pollInterval:       p.pollInterval       ?? 30,
+        discoveryTimeout:   p.discoveryTimeout   ?? 10000,
+      };
+    });
+
+    this.onRequest('/config/set', async ({ heartbeatInterval, pollInterval, discoveryTimeout }) => {
+      const cfg = await this.getPluginConfig();
+      const p = cfg?.[0] ? { ...cfg[0] } : { platform: 'DibbyWemo', name: 'DibbyWemo' };
+      if (heartbeatInterval  != null) p.heartbeatInterval  = parseInt(heartbeatInterval,  10);
+      if (pollInterval       != null) p.pollInterval       = parseInt(pollInterval,       10);
+      if (discoveryTimeout   != null) p.discoveryTimeout   = parseInt(discoveryTimeout,   10);
+      await this.updatePluginConfig([p]);
+      await this.savePluginConfig();
+      return { ok: true };
+    });
+
     this.onRequest('/location/search', async ({ query }) => {
       try {
         const res = await axios.get('https://nominatim.openstreetmap.org/search', {

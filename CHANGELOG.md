@@ -4,6 +4,22 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.11] — 2026-04-05
+
+### Feature — Heartbeat, Poll & Discovery settings now in the Settings tab
+
+The **Settings** tab in the Homebridge UI now shows three configurable fields:
+- **Scheduler Heartbeat Interval** (1–300 s) — how often the scheduler writes its status heartbeat
+- **Device Poll Interval** (10–300 s) — how often device state is polled for HomeKit updates
+- **Discovery Timeout** (3000–60000 ms) — how long to wait for SSDP discovery responses
+
+Changes are saved directly to `config.json` via the **Save Settings** button. No manual JSON editing required.
+
+### Affected packages
+- `homebridge-dibby-wemo` → **2.0.8** (npm)
+
+---
+
 ## [2.0.10] — 2026-04-04
 
 ### Bug Fix — Heartbeat Interval setting fails to save in Homebridge UI
