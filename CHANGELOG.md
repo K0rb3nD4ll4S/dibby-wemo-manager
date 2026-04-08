@@ -4,6 +4,24 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.13] — 2026-04-08
+
+### Bug Fixes & New Features — Homebridge Rules UI
+
+**Bug fixes:**
+- **Rules toggle/edit/delete now work in Homebridge UI** — Inline `onclick`/`onchange` event handlers in dynamically rendered rule cards were silently blocked by the Homebridge UI iframe's Content Security Policy. All rule card buttons (toggle, edit, delete) now use `addEventListener` after rendering, which is CSP-safe.
+- **Wemo device rules delete no longer silently fails** — `confirm()` is blocked in cross-origin iframes and always returns false. The delete button for on-device Wemo rules now uses the same inline confirm row pattern already used by DWM rules.
+
+**New features:**
+- **Delete All DWM Rules** — New "🗑 Delete All" button in the DWM Rules tab header. Shows an inline confirm bar before deleting.
+- **Delete All Wemo Device Rules** — New "🗑 Delete All" button in the Wemo Device Rules tab (shown after a device is selected and rules are loaded). Deletes all firmware rules from the device one-by-one.
+- **Copy Wemo Rules to DWM** — New "📋 Copy to DWM" button in the Wemo Device Rules tab. Converts each on-device firmware Schedule rule to a DWM Schedule rule targeting the same device, then reloads the DWM Rules tab.
+
+### Affected packages
+- `homebridge-dibby-wemo` → **2.0.9** (npm)
+
+---
+
 ## [2.0.12] — 2026-04-08
 
 ### Bug Fix — Windows SSDP Device Discovery

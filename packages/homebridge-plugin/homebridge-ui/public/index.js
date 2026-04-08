@@ -229,15 +229,25 @@ function renderDwmRules() {
         </div>
         <div class="flex-row">
           <label class="toggle" title="${r.enabled ? 'Disable' : 'Enable'} rule">
-            <input type="checkbox" ${r.enabled ? 'checked' : ''} onchange="toggleDwmRule('${r.id}', this.checked)" />
+            <input type="checkbox" class="dwm-toggle" data-id="${r.id}" ${r.enabled ? 'checked' : ''} />
             <span class="slider"></span>
           </label>
-          <button class="btn btn-ghost btn-sm" onclick="openDwmEdit('${r.id}')">Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteDwmRule('${r.id}')">Delete</button>
+          <button class="btn btn-ghost btn-sm dwm-edit-btn" data-id="${r.id}">Edit</button>
+          <button class="btn btn-danger btn-sm dwm-delete-btn" data-id="${r.id}">Delete</button>
         </div>
       </div>
     </div>
   `).join('');
+
+  el.querySelectorAll('.dwm-toggle').forEach((cb) => {
+    cb.addEventListener('change', function () { toggleDwmRule(this.dataset.id, this.checked); });
+  });
+  el.querySelectorAll('.dwm-edit-btn').forEach((btn) => {
+    btn.addEventListener('click', function () { openDwmEdit(this.dataset.id); });
+  });
+  el.querySelectorAll('.dwm-delete-btn').forEach((btn) => {
+    btn.addEventListener('click', function () { deleteDwmRule(this.dataset.id); });
+  });
 }
 
 async function toggleDwmRule(id, enabled) {
@@ -265,17 +275,32 @@ function deleteDwmRule(id) {
     return;
   }
 
-  // Show inline confirm bar
+  // Show inline confirm bar (no inline onclick — use addEventListener)
   const row = document.createElement('div');
   row.className = 'delete-confirm-row';
   row.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:8px;padding:6px 10px;background:rgba(239,68,68,.12);border-radius:6px;font-size:0.8rem';
-  row.innerHTML = '<span style="color:#fca5a5;flex:1">Delete this rule?</span>'
-    + `<button class="btn btn-danger btn-sm" onclick="deleteDwmRule('${id}')">Yes, delete</button>`
-    + '<button class="btn btn-ghost btn-sm" onclick="this.closest(\'.delete-confirm-row\').remove()">Cancel</button>';
+
+  const msg = document.createElement('span');
+  msg.style.cssText = 'color:#fca5a5;flex:1';
+  msg.textContent = 'Delete this rule?';
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.className = 'btn btn-danger btn-sm';
+  confirmBtn.textContent = 'Yes, delete';
+  confirmBtn.addEventListener('click', () => deleteDwmRule(id));
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn btn-ghost btn-sm';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.addEventListener('click', () => row.remove());
+
+  row.appendChild(msg);
+  row.appendChild(confirmBtn);
+  row.appendChild(cancelBtn);
   card.appendChild(row);
 
   // Auto-dismiss after 5 seconds
-  setTimeout(() => row.remove(), 5000);
+  setTimeout(() => { if (row.isConnected) row.remove(); }, 5000);
 }
 
 // ── Export ────────────────────────────────────────────────────────────────────
@@ -412,6 +437,27 @@ function updateSunPreview(side) {
 });
 
 document.getElementById('btn-add-dwm').addEventListener('click', () => openDwmEdit(null));
+
+document.getElementById('btn-dwm-delete-all').addEventListener('click', () => {
+  if (!_dwmRules.length) return;
+  const row = document.getElementById('dwm-delete-all-confirm');
+  row.style.display = row.style.display === 'none' ? '' : 'none';
+});
+
+document.getElementById('dwm-delete-all-yes').addEventListener('click', async () => {
+  document.getElementById('dwm-delete-all-confirm').style.display = 'none';
+  try {
+    await homebridge.request('/rules/delete-all');
+    await loadDwmRules();
+    showStatus('dwm-rules-status', 'All DWM rules deleted.', 'success');
+  } catch (e) {
+    showStatus('dwm-rules-status', 'Delete all failed: ' + e.message, 'error');
+  }
+});
+
+document.getElementById('dwm-delete-all-no').addEventListener('click', () => {
+  document.getElementById('dwm-delete-all-confirm').style.display = 'none';
+});
 
 // ── DWM Inline Form ───────────────────────────────────────────────────────────
 
@@ -684,7 +730,13 @@ function refreshWemoDeviceSelect() {
 
 document.getElementById('wemo-rules-device-select').addEventListener('change', async function () {
   const val = this.value;
-  if (!val) { document.getElementById('wemo-rules-list').innerHTML = ''; return; }
+  if (!val) {
+    document.getElementById('wemo-rules-list').innerHTML = '';
+    document.getElementById('btn-wemo-delete-all').style.display = 'none';
+    document.getElementById('btn-wemo-copy-to-dwm').style.display = 'none';
+    document.getElementById('wemo-delete-all-confirm').style.display = 'none';
+    return;
+  }
   const [host, portStr] = val.split(':');
   const port = Number(portStr);
 
@@ -696,6 +748,8 @@ document.getElementById('wemo-rules-device-select').addEventListener('change', a
     showStatus('wemo-rules-status', '');
     renderWemoRules(host, port);
   } catch (e) {
+    document.getElementById('btn-wemo-delete-all').style.display = 'none';
+    document.getElementById('btn-wemo-copy-to-dwm').style.display = 'none';
     if (String(e.message).includes('FetchRules') || String(e.message).includes('rules1')) {
       showStatus('wemo-rules-status',
         '⚠️ This device does not support the Wemo Rules service (e.g. Dimmer V2 with newer firmware).', 'info');
@@ -705,9 +759,40 @@ document.getElementById('wemo-rules-device-select').addEventListener('change', a
   }
 });
 
+document.getElementById('btn-wemo-delete-all').addEventListener('click', () => {
+  const row = document.getElementById('wemo-delete-all-confirm');
+  row.style.display = row.style.display === 'none' ? '' : 'none';
+});
+
+document.getElementById('wemo-delete-all-yes').addEventListener('click', async () => {
+  document.getElementById('wemo-delete-all-confirm').style.display = 'none';
+  const val = document.getElementById('wemo-rules-device-select').value;
+  if (!val) return;
+  const [host, portStr] = val.split(':');
+  const port = Number(portStr);
+  await deleteAllWemoRules(host, port);
+});
+
+document.getElementById('wemo-delete-all-no').addEventListener('click', () => {
+  document.getElementById('wemo-delete-all-confirm').style.display = 'none';
+});
+
+document.getElementById('btn-wemo-copy-to-dwm').addEventListener('click', async () => {
+  const val = document.getElementById('wemo-rules-device-select').value;
+  if (!val) return;
+  const [host, portStr] = val.split(':');
+  const port = Number(portStr);
+  await copyWemoRulesToDwm(host, port);
+});
+
 function renderWemoRules(host, port) {
   const el = document.getElementById('wemo-rules-list');
-  if (!_wemoRules?.rules?.length) {
+
+  const hasRules = _wemoRules?.rules?.length;
+  document.getElementById('btn-wemo-delete-all').style.display = hasRules ? '' : 'none';
+  document.getElementById('btn-wemo-copy-to-dwm').style.display = hasRules ? '' : 'none';
+
+  if (!hasRules) {
     el.innerHTML = '<div class="empty">No on-device rules found.</div>';
     return;
   }
@@ -718,7 +803,7 @@ function renderWemoRules(host, port) {
     const dayList = [...new Set(devices.map((d) => d.DayID))].sort().map((d) => DAY_NAMES[d] ?? d).join(', ') || '—';
     const startTime = devices[0]?.StartTime >= 0 ? secsToHHMM(devices[0].StartTime) : '—';
 
-    return `<div class="card">
+    return `<div class="card" data-wemo-rule-id="${r.RuleID}">
       <div class="card-header">
         <div>
           <div class="card-title">
@@ -730,14 +815,25 @@ function renderWemoRules(host, port) {
         </div>
         <div class="flex-row">
           <label class="toggle" title="${enabled ? 'Disable' : 'Enable'} on device">
-            <input type="checkbox" ${enabled ? 'checked' : ''} onchange="toggleWemoRule('${esc(host)}',${port},'${r.RuleID}',this.checked)" />
+            <input type="checkbox" class="wemo-toggle" data-rule-id="${r.RuleID}" ${enabled ? 'checked' : ''} />
             <span class="slider"></span>
           </label>
-          <button class="btn btn-danger btn-sm" onclick="deleteWemoRule('${esc(host)}',${port},'${r.RuleID}')">Delete</button>
+          <button class="btn btn-danger btn-sm wemo-delete-btn" data-rule-id="${r.RuleID}">Delete</button>
         </div>
       </div>
     </div>`;
   }).join('');
+
+  el.querySelectorAll('.wemo-toggle').forEach((cb) => {
+    cb.addEventListener('change', function () {
+      toggleWemoRule(host, port, this.dataset.ruleId, this.checked);
+    });
+  });
+  el.querySelectorAll('.wemo-delete-btn').forEach((btn) => {
+    btn.addEventListener('click', function () {
+      deleteWemoRule(host, port, this.dataset.ruleId);
+    });
+  });
 }
 
 async function toggleWemoRule(host, port, ruleId, enabled) {
@@ -745,7 +841,6 @@ async function toggleWemoRule(host, port, ruleId, enabled) {
   try {
     await homebridge.request('/rules/wemo/toggle', { host, port, ruleId, enabled });
     showStatus('wemo-rules-status', 'Rule updated ✓', 'success');
-    // Refresh list
     _wemoRules = await homebridge.request('/rules/wemo/list', { host, port });
     renderWemoRules(host, port);
     setTimeout(() => showStatus('wemo-rules-status', ''), 2500);
@@ -756,18 +851,95 @@ async function toggleWemoRule(host, port, ruleId, enabled) {
   }
 }
 
-async function deleteWemoRule(host, port, ruleId) {
-  if (!confirm('Delete this on-device rule? This cannot be undone.')) return;
-  showStatus('wemo-rules-status', spinner() + ' Deleting…', 'info');
+function deleteWemoRule(host, port, ruleId) {
+  // confirm() is blocked in cross-origin iframes — use inline confirm row
+  const card = document.querySelector(`[data-wemo-rule-id="${ruleId}"]`);
+  if (!card) return;
+
+  const existing = card.querySelector('.delete-confirm-row');
+  if (existing) {
+    existing.remove();
+    showStatus('wemo-rules-status', spinner() + ' Deleting…', 'info');
+    homebridge.request('/rules/wemo/delete', { host, port, ruleId })
+      .then(async () => {
+        showStatus('wemo-rules-status', 'Rule deleted ✓', 'success');
+        _wemoRules = await homebridge.request('/rules/wemo/list', { host, port });
+        renderWemoRules(host, port);
+        setTimeout(() => showStatus('wemo-rules-status', ''), 2500);
+      })
+      .catch((e) => showStatus('wemo-rules-status', 'Delete failed: ' + e.message, 'error'));
+    return;
+  }
+
+  const row = document.createElement('div');
+  row.className = 'delete-confirm-row';
+  row.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:8px;padding:6px 10px;background:rgba(239,68,68,.12);border-radius:6px;font-size:0.8rem';
+
+  const msg = document.createElement('span');
+  msg.style.cssText = 'color:#fca5a5;flex:1';
+  msg.textContent = 'Delete this on-device rule?';
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.className = 'btn btn-danger btn-sm';
+  confirmBtn.textContent = 'Yes, delete';
+  confirmBtn.addEventListener('click', () => deleteWemoRule(host, port, ruleId));
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn btn-ghost btn-sm';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.addEventListener('click', () => row.remove());
+
+  row.appendChild(msg);
+  row.appendChild(confirmBtn);
+  row.appendChild(cancelBtn);
+  card.appendChild(row);
+
+  setTimeout(() => { if (row.isConnected) row.remove(); }, 5000);
+}
+
+async function deleteAllWemoRules(host, port) {
+  if (!_wemoRules?.rules?.length) return;
+  showStatus('wemo-rules-status', spinner() + ' Deleting all on-device rules…', 'info');
   try {
-    await homebridge.request('/rules/wemo/delete', { host, port, ruleId });
-    showStatus('wemo-rules-status', 'Rule deleted ✓', 'success');
+    await homebridge.request('/rules/wemo/delete-all', { host, port });
+    showStatus('wemo-rules-status', 'All on-device rules deleted ✓', 'success');
     _wemoRules = await homebridge.request('/rules/wemo/list', { host, port });
     renderWemoRules(host, port);
     setTimeout(() => showStatus('wemo-rules-status', ''), 2500);
   } catch (e) {
-    showStatus('wemo-rules-status', 'Delete failed: ' + e.message, 'error');
+    showStatus('wemo-rules-status', 'Delete all failed: ' + e.message, 'error');
   }
+}
+
+async function copyWemoRulesToDwm(host, port) {
+  if (!_wemoRules?.rules?.length) {
+    showStatus('wemo-rules-status', 'No Wemo rules to copy.', 'warn');
+    return;
+  }
+  const device = _devices.find((d) => d.host === host && String(d.port) === String(port));
+  const targetDevice = { host, port: Number(port), name: device?.friendlyName ?? host, udn: device?.udn };
+
+  let copied = 0, failed = 0;
+  for (const r of _wemoRules.rules) {
+    const ruleDevs = (_wemoRules.ruleDevices ?? []).filter((rd) => String(rd.RuleID) === String(r.RuleID));
+    if (!ruleDevs.length) continue;
+    const days = [...new Set(ruleDevs.map((d) => Number(d.DayID)))].sort();
+    const rd0 = ruleDevs[0];
+    const startTime = rd0.StartTime ?? 0;
+    const endTime   = rd0.RuleDuration > 0 ? startTime + rd0.RuleDuration : -1;
+    const rule = {
+      name: r.Name, type: 'Schedule', enabled: String(r.State) === '1',
+      days, startTime, endTime,
+      startAction: Number(rd0.StartAction ?? 1), endAction: Number(rd0.EndAction ?? -1),
+      startType: 'fixed', endType: 'fixed', startOffset: 0, endOffset: 0,
+      targetDevices: [targetDevice],
+    };
+    try { await homebridge.request('/rules/create', rule); copied++; }
+    catch { failed++; }
+  }
+  if (copied > 0) await loadDwmRules();
+  const msg = `Copied ${copied} rule${copied !== 1 ? 's' : ''} to DWM${failed ? `, ${failed} failed` : ''}.`;
+  showStatus('wemo-rules-status', msg, copied > 0 ? 'success' : 'error');
 }
 
 // ---------------------------------------------------------------------------

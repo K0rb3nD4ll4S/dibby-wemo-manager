@@ -523,30 +523,37 @@ async function discoverDevices(timeoutMs = 10_000, manualEntries = []) {
     }
   }
 
-  // Subnet probe fallback (when SSDP blocked by firewall)
-  if (found.size === 0 && manualEntries.length === 0) {
+  // Subnet probe fallback (when SSDP blocked by firewall/router)
+  // Runs when SSDP found nothing — scans ALL local private-IP subnets found
+  // on any non-internal adapter (handles 10.x, 172.16-31.x, 192.168.x).
+  if (found.size === 0) {
     try {
       const { networkInterfaces } = require('os');
       const ifaces = networkInterfaces();
-      let localSubnet = null;
+      const subnets = new Set();
       for (const list of Object.values(ifaces)) {
         for (const iface of list) {
-          if (iface.family === 'IPv4' && !iface.internal && iface.address.startsWith('192.168.')) {
-            const parts = iface.address.split('.');
-            localSubnet = `${parts[0]}.${parts[1]}.${parts[2]}`;
-            break;
+          if (iface.family !== 'IPv4' || iface.internal) continue;
+          const a = iface.address;
+          // Only probe RFC-1918 private ranges
+          if (
+            a.startsWith('192.168.') ||
+            a.startsWith('10.')       ||
+            /^172\.(1[6-9]|2\d|3[01])\./.test(a)
+          ) {
+            const parts = a.split('.');
+            subnets.add(`${parts[0]}.${parts[1]}.${parts[2]}`);
           }
         }
-        if (localSubnet) break;
       }
-      if (localSubnet) {
-        console.log(`[wemo] SSDP returned 0 devices — probing subnet ${localSubnet}.0/24`);
+      for (const subnet of subnets) {
+        console.log(`[wemo] SSDP returned 0 devices — probing subnet ${subnet}.0/24`);
         const probePromises = [];
         for (let i = 1; i <= 254; i++) {
-          const host = `${localSubnet}.${i}`;
+          const host = `${subnet}.${i}`;
           probePromises.push((async () => {
             for (const p of [49153, 49152, 49154, 49155]) {
-              const device = await fetchSetupXml(host, p, 800);
+              const device = await fetchSetupXml(host, p, 1200);
               if (device) { found.set(device.udn, device); return; }
             }
           })());

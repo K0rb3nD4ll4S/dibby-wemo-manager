@@ -222,6 +222,7 @@
       <button class="btn btn-ghost btn-sm" id="btn-export-dwm" title="Export all rules to JSON file">⬇ Export</button>
       <button class="btn btn-ghost btn-sm" id="btn-import-dwm" title="Import rules from JSON file">⬆ Import</button>
       <input type="file" id="dwm-import-file" accept=".json" style="display:none" />
+      <button class="btn btn-danger btn-sm" id="btn-dwm-delete-all" title="Delete all DWM rules">🗑 Delete All</button>
       <button class="btn btn-primary" id="btn-add-dwm">+ Add Rule</button>
     </div>
 
@@ -253,6 +254,13 @@
       <span id="hb-next" style="color:#6b7280;font-size:0.75rem"></span>
     </div>
 
+    <div id="dwm-delete-all-confirm" style="display:none;margin-bottom:10px;padding:8px 12px;background:rgba(239,68,68,.12);border-radius:6px;font-size:0.82rem">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="color:#fca5a5;flex:1">Delete ALL DWM rules? This cannot be undone.</span>
+        <button class="btn btn-danger btn-sm" id="dwm-delete-all-yes">Yes, delete all</button>
+        <button class="btn btn-ghost btn-sm" id="dwm-delete-all-no">Cancel</button>
+      </div>
+    </div>
     <div id="dwm-rules-status"></div>
     <div id="dwm-rules-list"><div class="empty">No DWM rules yet.</div></div>
   </div>
@@ -454,6 +462,17 @@
   <div class="form-group">
     <label>Select Device</label>
     <select id="wemo-rules-device-select"><option value="">— choose device —</option></select>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:10px">
+    <button class="btn btn-danger btn-sm" id="btn-wemo-delete-all" style="display:none" title="Delete all on-device rules">🗑 Delete All</button>
+    <button class="btn btn-ghost btn-sm" id="btn-wemo-copy-to-dwm" style="display:none" title="Copy all on-device rules to DWM">📋 Copy to DWM</button>
+  </div>
+  <div id="wemo-delete-all-confirm" style="display:none;padding:8px 12px;background:rgba(239,68,68,.12);border-radius:6px;font-size:0.82rem;margin-bottom:10px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="color:#fca5a5;flex:1">Delete ALL on-device rules? This cannot be undone.</span>
+      <button class="btn btn-danger btn-sm" id="wemo-delete-all-yes">Yes, delete all</button>
+      <button class="btn btn-ghost btn-sm" id="wemo-delete-all-no">Cancel</button>
+    </div>
   </div>
   <div id="wemo-rules-status"></div>
   <div id="wemo-rules-list"></div>

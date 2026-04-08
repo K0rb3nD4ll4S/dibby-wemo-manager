@@ -89,6 +89,11 @@ class DibbyWemoUiServer extends HomebridgePluginUiServer {
       return this._store.getDwmRules();
     });
 
+    this.onRequest('/rules/delete-all', async () => {
+      for (const r of this._store.getDwmRules()) this._store.deleteDwmRule(r.id);
+      return { ok: true };
+    });
+
     this.onRequest('/rules/import', async ({ rules, mode }) => {
       if (!Array.isArray(rules) || rules.length === 0) throw new Error('No valid rules found in import data');
 
@@ -136,6 +141,15 @@ class DibbyWemoUiServer extends HomebridgePluginUiServer {
 
     this.onRequest('/rules/wemo/delete', async ({ host, port, ruleId }) => {
       await wemoClient.deleteRule(host, Number(port), ruleId);
+      return { ok: true };
+    });
+
+    this.onRequest('/rules/wemo/delete-all', async ({ host, port }) => {
+      const data = await wemoClient.fetchRules(host, Number(port));
+      const ids  = (data.rules ?? []).map((r) => r.RuleID);
+      for (const ruleId of ids) {
+        await wemoClient.deleteRule(host, Number(port), ruleId);
+      }
       return { ok: true };
     });
 
