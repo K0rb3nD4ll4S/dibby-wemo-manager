@@ -183,21 +183,21 @@ async function getDeviceInfo(host, port) {
 
 function discoverDevices(timeoutMs = 10_000) {
   return new Promise((resolve) => {
-    const SSDP_ADDR   = '239.255.255.250';
-    const SSDP_PORT   = 1900;
-    const M_SEARCH    = [
+    const SSDP_ADDR = '239.255.255.250';
+    const SSDP_PORT = 1900;
+    const msearchMsg = Buffer.from([
       'M-SEARCH * HTTP/1.1',
       `HOST: ${SSDP_ADDR}:${SSDP_PORT}`,
       'MAN: "ssdp:discover"',
       'MX: 3',
       'ST: urn:Belkin:device:**',
       '', '',
-    ].join('\r\n');
+    ].join('\r\n'));
 
-    const found = new Map();
-    const sock  = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+    const found   = new Map();
+    const sockets = [];
 
-    sock.on('message', async (msg) => {
+    const onMessage = async (msg) => {
       const text     = msg.toString();
       const locMatch = text.match(/LOCATION:\s*(http:\/\/([^:]+):(\d+)\/setup\.xml)/i);
       if (!locMatch) return;
@@ -210,15 +210,35 @@ function discoverDevices(timeoutMs = 10_000) {
         const info = await getDeviceInfo(ip, port);
         found.set(key, { host: ip, port, ...info });
       } catch { /* keep partial entry */ }
-    });
+    };
 
-    sock.bind(() => {
-      const buf = Buffer.from(M_SEARCH);
-      sock.send(buf, 0, buf.length, SSDP_PORT, SSDP_ADDR);
-    });
+    // Enumerate all non-internal IPv4 interfaces and bind one socket per
+    // adapter — on Windows, not specifying the interface causes the OS to
+    // pick the wrong adapter (e.g. VPN instead of WiFi).
+    const { networkInterfaces } = require('os');
+    const ifaces = networkInterfaces();
+    const localAddrs = [];
+    for (const list of Object.values(ifaces)) {
+      for (const iface of list) {
+        if (iface.family === 'IPv4' && !iface.internal) localAddrs.push(iface.address);
+      }
+    }
+    if (localAddrs.length === 0) localAddrs.push('0.0.0.0');
+
+    for (const localAddr of localAddrs) {
+      const sock = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+      sockets.push(sock);
+      sock.on('message', onMessage);
+      sock.on('error', () => { /* ignore per-socket errors */ });
+      sock.bind(0, localAddr, () => {
+        try { sock.addMembership(SSDP_ADDR, localAddr); } catch { /* ok */ }
+        try { sock.setMulticastInterface(localAddr); } catch { /* ok */ }
+        sock.send(msearchMsg, 0, msearchMsg.length, SSDP_PORT, SSDP_ADDR);
+      });
+    }
 
     setTimeout(() => {
-      try { sock.close(); } catch { /* ignore */ }
+      for (const s of sockets) { try { s.close(); } catch { /* ignore */ } }
       resolve(Array.from(found.values()));
     }, timeoutMs);
   });

@@ -4,6 +4,22 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.12] — 2026-04-08
+
+### Bug Fix — Windows SSDP Device Discovery
+
+Fixed device discovery failing on Windows when multiple network adapters are present (WiFi, VPN, Hyper-V virtual adapters, etc.).
+
+**Root cause:** `socket.addMembership()` was called without specifying a local interface, causing the OS to pick the wrong adapter for multicast. M-SEARCH packets went out the wrong interface and Wemo devices never responded.
+
+**Fix:** SSDP discovery now enumerates all non-internal IPv4 interfaces and creates one UDP socket per adapter, each explicitly bound to that interface's IP with `addMembership` and `setMulticastInterface`. Applied to both the desktop app and the Homebridge plugin.
+
+### Affected packages
+- `homebridge-dibby-wemo` → **2.0.8** (npm)
+- Desktop app (Windows) → **2.0.8**
+
+---
+
 ## [2.0.11] — 2026-04-05
 
 ### Version sync — all packages bumped to 2.0.8

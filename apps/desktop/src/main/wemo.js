@@ -448,9 +448,8 @@ async function discoverDevices(timeoutMs = 10_000, manualEntries = []) {
   await new Promise((resolve) => {
     const SSDP_ADDR = '239.255.255.250';
     const SSDP_PORT = 1900;
-    const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
-    _discoverySocket = socket;
     const pending = new Set();
+    const sockets = [];
 
     const handleLocation = async (location) => {
       if (pending.has(location)) return;
@@ -462,7 +461,7 @@ async function discoverDevices(timeoutMs = 10_000, manualEntries = []) {
       } catch { /* ignore */ }
     };
 
-    socket.on('message', (msg) => {
+    const onMessage = (msg) => {
       const text = msg.toString();
       if (!text.includes('HTTP/1.1') && !text.includes('NOTIFY')) return;
       for (const line of text.split('\r\n')) {
@@ -470,17 +469,49 @@ async function discoverDevices(timeoutMs = 10_000, manualEntries = []) {
           handleLocation(line.slice(9).trim()).catch(() => {});
         }
       }
-    });
-    socket.on('error', () => { try { socket.close(); } catch { /* ok */ } resolve(); });
+    };
 
-    socket.bind(0, () => {
-      try { socket.addMembership(SSDP_ADDR); } catch { /* ok */ }
-      const msg = Buffer.from(`M-SEARCH * HTTP/1.1\r\nHOST: ${SSDP_ADDR}:${SSDP_PORT}\r\nMAN: "ssdp:discover"\r\nMX: 3\r\nST: urn:Belkin:device:**\r\n\r\n`);
-      socket.send(msg, SSDP_PORT, SSDP_ADDR);
-      setTimeout(() => { try { socket.send(msg, SSDP_PORT, SSDP_ADDR); } catch { /* ok */ } }, 2000);
-    });
+    const closeAll = () => {
+      for (const s of sockets) { try { s.close(); } catch { /* ok */ } }
+      sockets.length = 0;
+    };
 
-    setTimeout(() => { try { socket.close(); } catch { /* ok */ } resolve(); }, timeoutMs);
+    // Get all non-internal IPv4 interfaces so we send M-SEARCH on every
+    // adapter — critical on Windows where multiple adapters (WiFi, VPN,
+    // virtual) cause the OS to pick the wrong one when no interface is specified.
+    const { networkInterfaces } = require('os');
+    const ifaces = networkInterfaces();
+    const localAddrs = [];
+    for (const list of Object.values(ifaces)) {
+      for (const iface of list) {
+        if (iface.family === 'IPv4' && !iface.internal) localAddrs.push(iface.address);
+      }
+    }
+    if (localAddrs.length === 0) localAddrs.push('0.0.0.0'); // fallback
+
+    let bound = 0;
+    const msearchMsg = Buffer.from(
+      `M-SEARCH * HTTP/1.1\r\nHOST: ${SSDP_ADDR}:${SSDP_PORT}\r\nMAN: "ssdp:discover"\r\nMX: 3\r\nST: urn:Belkin:device:**\r\n\r\n`
+    );
+
+    for (const localAddr of localAddrs) {
+      const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+      sockets.push(socket);
+      socket.on('message', onMessage);
+      socket.on('error', () => { /* ignore per-socket errors */ });
+      socket.bind(0, localAddr, () => {
+        try { socket.addMembership(SSDP_ADDR, localAddr); } catch { /* ok */ }
+        try { socket.setMulticastInterface(localAddr); } catch { /* ok */ }
+        socket.send(msearchMsg, SSDP_PORT, SSDP_ADDR);
+        setTimeout(() => { try { socket.send(msearchMsg, SSDP_PORT, SSDP_ADDR); } catch { /* ok */ } }, 2000);
+        bound++;
+      });
+    }
+
+    // Keep legacy _discoverySocket reference pointing to first socket
+    _discoverySocket = sockets[0] ?? null;
+
+    setTimeout(() => { closeAll(); resolve(); }, timeoutMs);
   });
 
   // Probe manual entries
