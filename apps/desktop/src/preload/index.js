@@ -98,4 +98,11 @@ contextBridge.exposeInMainWorld('wemoAPI', {
     ipcRenderer.on('trigger-discovery', cb);
     return () => ipcRenderer.removeListener('trigger-discovery', cb);
   },
+
+  // WiFi diagnostic log — real-time SOAP send/recv entries from the main process.
+  onWifiLog: (cb) => {
+    const handler = (_e, entry) => cb(entry);
+    ipcRenderer.on('wifi-log', handler);
+    return () => ipcRenderer.removeListener('wifi-log', handler);
+  },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ApList from './ApList';
 import NetworkStatus from './NetworkStatus';
 import useSettingsStore from '../../store/settings';
@@ -9,21 +9,98 @@ const AUTH_TYPES = [
   { value: 'WPA2-PSK', label: 'WPA2 Personal' },
 ];
 
+// ---------------------------------------------------------------------------
+// Log entry row — click to expand/collapse detail
+// ---------------------------------------------------------------------------
+const LOG_COLORS = {
+  send:    'var(--accent)',
+  recv:    '#4ade80',
+  step:    'var(--text3)',
+  error:   '#f87171',
+  success: '#4ade80',
+};
+const LOG_ICONS = { send: '→', recv: '←', step: '⚙', error: '✕', success: '✓' };
+
+function LogEntry({ entry }) {
+  const [open, setOpen] = useState(false);
+  const { type, msg, detail, ts } = entry;
+  const color = LOG_COLORS[type] ?? 'var(--text1)';
+  const icon  = LOG_ICONS[type]  ?? '•';
+  const time  = new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  return (
+    <div style={{ lineHeight: 1.6 }}>
+      <div
+        style={{ display: 'flex', alignItems: 'baseline', gap: 6, cursor: detail ? 'pointer' : 'default', userSelect: 'none' }}
+        onClick={() => detail && setOpen((o) => !o)}
+      >
+        <span style={{ color: 'var(--text3)', fontSize: 10, flexShrink: 0 }}>{time}</span>
+        <span style={{ color, fontWeight: type === 'error' ? 600 : 400 }}>
+          {icon} {msg}
+        </span>
+        {detail && (
+          <span style={{ color: 'var(--text3)', fontSize: 10, marginLeft: 'auto', flexShrink: 0 }}>
+            {open ? '▲' : '▼'}
+          </span>
+        )}
+      </div>
+      {open && detail && (
+        <pre style={{
+          margin: '2px 0 4px 22px',
+          fontSize: 10,
+          color: 'var(--text2)',
+          background: 'var(--bg)',
+          border: '1px solid var(--border)',
+          borderRadius: 4,
+          padding: '6px 8px',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-all',
+          overflowX: 'auto',
+        }}>
+          {detail}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main tab
+// ---------------------------------------------------------------------------
 export default function WiFiTab({ device }) {
   const addToast = useSettingsStore((s) => s.addToast);
 
-  const [networks, setNetworks]   = useState([]);
-  const [scanning, setScanning]   = useState(false);
-  const [ssid, setSsid]           = useState('');
-  const [password, setPassword]   = useState('');
-  const [auth, setAuth]           = useState('WPA2-PSK');
-  const [showPass, setShowPass]   = useState(false);
-  const [connecting, setConnecting] = useState(false);
-  const [connectResult, setConnectResult] = useState(null); // null | 'connecting' | 'success' | 'failed' | 'badpass'
+  const [networks, setNetworks]       = useState([]);
+  const [scanning, setScanning]       = useState(false);
+  const [ssid, setSsid]               = useState('');
+  const [password, setPassword]       = useState('');
+  const [auth, setAuth]               = useState('WPA2-PSK');
+  const [showPass, setShowPass]       = useState(false);
+  const [connecting, setConnecting]   = useState(false);
+  const [connectResult, setConnectResult] = useState(null);
+
+  // WiFi diagnostic log
+  const [wifiLog, setWifiLog]         = useState([]);
+  const logEndRef                     = useRef(null);
+
+  // Subscribe to main-process WiFi log events
+  useEffect(() => {
+    if (!window.wemoAPI?.onWifiLog) return;
+    const off = window.wemoAPI.onWifiLog((entry) => {
+      setWifiLog((prev) => [...prev, entry]);
+    });
+    return () => off();
+  }, []);
+
+  // Auto-scroll to newest entry
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [wifiLog]);
 
   const scan = async () => {
     setScanning(true);
     setNetworks([]);
+    setWifiLog([]);   // fresh log per scan
     try {
       const res = await window.wemoAPI.getApList({ host: device.host, port: device.port });
       setNetworks(res || []);
@@ -40,24 +117,30 @@ export default function WiFiTab({ device }) {
 
     setConnecting(true);
     setConnectResult('connecting');
+    setWifiLog([]);   // fresh log per connect attempt
     try {
       await window.wemoAPI.connectHomeNetwork({
         host: device.host, port: device.port,
         ssid: ssid.trim(), password, auth,
       });
       // Poll network status
+      // Status codes: 1=Connected, 2=Connecting (keep polling), 3=Disconnected/failed, 4=Timeout
       let attempts = 0;
       const poll = async () => {
         try {
           const status = await window.wemoAPI.getNetworkStatus({ host: device.host, port: device.port });
-          // 0=failed, 1=success, 2=badpass, 3=connecting
-          if (status === 1) { setConnectResult('success'); return; }
-          if (status === 2) { setConnectResult('badpass'); return; }
-          if (status === 0) { setConnectResult('failed'); return; }
-          if (attempts++ < 12) setTimeout(poll, 2500);
+          if (status === '1') {
+            // Connected — send CloseSetup to let device finalize and reboot onto the home network
+            try { await window.wemoAPI.closeSetup({ host: device.host, port: device.port }); } catch { /* ignore */ }
+            setConnectResult('success');
+            return;
+          }
+          if (status === '3' || status === '4') { setConnectResult('badpass'); return; }
+          // status 2 = still connecting, status 0 = not started yet — keep polling
+          if (attempts++ < 20) setTimeout(poll, 3000);
           else setConnectResult('failed');
         } catch {
-          if (attempts++ < 12) setTimeout(poll, 2500);
+          if (attempts++ < 20) setTimeout(poll, 3000);
           else setConnectResult('failed');
         }
       };
@@ -143,9 +226,9 @@ export default function WiFiTab({ device }) {
           <div className={`notice notice-${connectResult === 'success' ? 'info' : connectResult === 'connecting' ? 'warn' : 'danger'}`}
             style={{ marginBottom: 10 }}>
             {connectResult === 'connecting' && '⏳ Connecting to network…'}
-            {connectResult === 'success' && '✅ Connected successfully!'}
-            {connectResult === 'failed' && '❌ Connection failed. Check the device and try again.'}
-            {connectResult === 'badpass' && '❌ Incorrect password.'}
+            {connectResult === 'success'    && '✅ Connected successfully!'}
+            {connectResult === 'failed'     && '❌ Connection failed. Check the device and try again.'}
+            {connectResult === 'badpass'    && '❌ Incorrect password.'}
           </div>
         )}
 
@@ -163,6 +246,41 @@ export default function WiFiTab({ device }) {
           <strong>Note:</strong> After connecting to a new network, the device will reboot and may appear offline briefly. Rediscover it after ~30 seconds.
         </div>
       </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Real-time SOAP communication log                                    */}
+      {/* ------------------------------------------------------------------ */}
+      {wifiLog.length > 0 && (
+        <div className="info-section" style={{ marginTop: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div className="info-section-title" style={{ margin: 0 }}>Communication Log</div>
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => setWifiLog([])}
+              style={{ fontSize: 11 }}
+            >
+              Clear
+            </button>
+          </div>
+          <div style={{
+            fontFamily: '"Cascadia Code", "Fira Code", "Consolas", monospace',
+            fontSize: 11,
+            background: 'var(--bg)',
+            border: '1px solid var(--border)',
+            borderRadius: 6,
+            padding: '8px 10px',
+            maxHeight: 280,
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
+            {wifiLog.map((entry, i) => (
+              <LogEntry key={i} entry={entry} />
+            ))}
+            <div ref={logEndRef} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

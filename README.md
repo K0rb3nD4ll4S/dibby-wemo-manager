@@ -34,17 +34,17 @@ dibby-wemo-manager/
 Download the latest installer from [Releases](../../releases):
 
 **Windows:**
-- **`Dibby Wemo Manager Setup 2.0.0.exe`** — NSIS installer (recommended)
-- **`Dibby Wemo Manager 2.0.0.exe`** — Portable single-file executable
+- **`Dibby Wemo Manager Setup 2.0.9.exe`** — NSIS installer (recommended)
+- **`Dibby Wemo Manager 2.0.9.exe`** — Portable single-file executable
 
 **Linux (x64):**
-- **`Dibby Wemo Manager-2.0.0.AppImage`** — Universal AppImage, runs anywhere
-- **`dibby-wemo-manager_2.0.0_amd64.deb`** — Debian / Ubuntu
-- **`dibby-wemo-manager-2.0.0.x86_64.rpm`** — Fedora / RHEL
+- **`Dibby Wemo Manager-2.0.9.AppImage`** — Universal AppImage, runs anywhere
+- **`dibby-wemo-manager_2.0.9_amd64.deb`** — Debian / Ubuntu
+- **`dibby-wemo-manager-2.0.9.x86_64.rpm`** — Fedora / RHEL
 
 **Linux (ARM64 — Raspberry Pi 4/5):**
-- **`Dibby Wemo Manager-2.0.0-arm64.AppImage`**
-- **`dibby-wemo-manager_2.0.0_arm64.deb`**
+- **`Dibby Wemo Manager-2.0.9-arm64.AppImage`**
+- **`dibby-wemo-manager_2.0.9_arm64.deb`**
 
 Run the installer (Windows) or AppImage (Linux). Wemo devices are discovered automatically via SSDP on your local network.
 
@@ -87,6 +87,7 @@ Restart Homebridge. Devices appear in HomeKit automatically.
 - **Background scheduler** — keeps rules firing even when the GUI is closed
   - Windows: native Windows service (`DibbyWemoService`)
   - Linux: background process, runs while app is in system tray
+- **WiFi provisioning** — set up a WeMo device on a new network directly from the app (no Belkin app required); real-time SOAP communication log shown during setup
 - **Web remote** — optional local web interface accessible from your phone
 - **Sunrise/sunset support** — location-aware scheduling via city search
 
@@ -228,14 +229,14 @@ Each [GitHub Release](../../releases) includes:
 
 | File | OS | Description |
 |---|---|---|
-| `Dibby Wemo Manager Setup 2.0.0.exe` | Windows | NSIS installer (recommended) |
-| `Dibby Wemo Manager 2.0.0.exe` | Windows | Portable executable |
-| `Dibby Wemo Manager-2.0.0.AppImage` | Linux x64 | Universal AppImage |
-| `dibby-wemo-manager_2.0.0_amd64.deb` | Linux x64 | Debian / Ubuntu package |
-| `dibby-wemo-manager-2.0.0.x86_64.rpm` | Linux x64 | Fedora / RHEL package |
-| `Dibby Wemo Manager-2.0.0-arm64.AppImage` | Linux ARM64 | Raspberry Pi 4/5 AppImage |
-| `dibby-wemo-manager_2.0.0_arm64.deb` | Linux ARM64 | Raspberry Pi OS package |
-| `homebridge-dibby-wemo-1.0.0.tgz` | Any | Homebridge plugin npm package |
+| `Dibby Wemo Manager Setup 2.0.9.exe` | Windows | NSIS installer (recommended) |
+| `Dibby Wemo Manager 2.0.9.exe` | Windows | Portable executable |
+| `Dibby Wemo Manager-2.0.9.AppImage` | Linux x64 | Universal AppImage |
+| `dibby-wemo-manager_2.0.9_amd64.deb` | Linux x64 | Debian / Ubuntu package |
+| `dibby-wemo-manager-2.0.9.x86_64.rpm` | Linux x64 | Fedora / RHEL package |
+| `Dibby Wemo Manager-2.0.9-arm64.AppImage` | Linux ARM64 | Raspberry Pi 4/5 AppImage |
+| `dibby-wemo-manager_2.0.9_arm64.deb` | Linux ARM64 | Raspberry Pi OS package |
+| `homebridge-dibby-wemo-2.0.9.tgz` | Any | Homebridge plugin npm package |
 
 ---
 
