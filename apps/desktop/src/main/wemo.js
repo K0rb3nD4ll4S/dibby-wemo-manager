@@ -5,6 +5,7 @@
  * Runs in the Electron main process (Node.js).
  */
 
+const crypto = require('crypto');
 const dgram  = require('dgram');
 const path   = require('path');
 const http   = require('http');
@@ -17,6 +18,24 @@ const { namesToDayNumbers, timeToSecs } = require('./core/types');
 
 // Wemo devices close the socket immediately after each response.
 const NO_KEEPALIVE = new http.Agent({ keepAlive: false });
+
+// ---------------------------------------------------------------------------
+// WiFi diagnostic logger — emits real-time entries to the renderer UI.
+// Set via setWifiLogger() from wifi.ipc.js after BrowserWindow is ready.
+// ---------------------------------------------------------------------------
+let _wifiLogFn = null;
+exports.setWifiLogger = (fn) => { _wifiLogFn = fn; };
+
+function wlog(type, msg, detail) {
+  if (_wifiLogFn) _wifiLogFn({ type, msg, detail: detail ?? null, ts: Date.now() });
+}
+
+function maskPwd(val) {
+  const s = String(val ?? '');
+  if (s.length === 0) return '(empty)';
+  if (s.length <= 8) return '****';
+  return `${s.slice(0, 3)}…${s.slice(-2)} [${s.length} chars]`;
+}
 
 // Map our UI rule types → firmware-expected type strings (confirmed from real device DB)
 const RULE_TYPE_TO_DEVICE = {
@@ -111,35 +130,82 @@ async function getSql() {
 
 const WEMO_PORTS = [49153, 49152, 49154, 49155, 49156];
 
-async function soapRequest(host, port, controlURL, serviceType, action, args = {}, timeoutMs = 10_000) {
+async function soapRequest(host, port, controlURL, serviceType, action, args = {}, timeoutMs = 10_000, rawBody = null) {
   const url  = `http://${host}:${port}${controlURL}`;
-  const root = create({ version: '1.0', encoding: 'utf-8' })
-    .ele('s:Envelope', { 'xmlns:s': 'http://schemas.xmlsoap.org/soap/envelope/', 's:encodingStyle': 'http://schemas.xmlsoap.org/soap/encoding/' })
-    .ele('s:Body')
-    .ele(`u:${action}`, { [`xmlns:u`]: serviceType });
-  for (const [k, v] of Object.entries(args)) root.ele(k).txt(v);
-  const xml = root.doc().end({ headless: false });
+  // isWifi is evaluated at call-time — WIFI_URL / META_URL are module-level consts set before any call.
+  const isWifi = (controlURL === WIFI_URL || controlURL === META_URL);
 
-  const res = await axios.post(url, xml, {
-    headers: {
-      'Content-Type': 'text/xml; charset="utf-8"',
-      'SOAPACTION': `"${serviceType}#${action}"`,
-      'Connection': 'close',
-    },
-    httpAgent: NO_KEEPALIVE,
-    timeout: timeoutMs,
-  });
+  let xml;
+  if (rawBody !== null) {
+    xml = rawBody;
+  } else {
+    const root = create({ version: '1.0', encoding: 'utf-8' })
+      .ele('s:Envelope', { 'xmlns:s': 'http://schemas.xmlsoap.org/soap/envelope/', 's:encodingStyle': 'http://schemas.xmlsoap.org/soap/encoding/' })
+      .ele('s:Body')
+      .ele(`u:${action}`, { [`xmlns:u`]: serviceType });
+    for (const [k, v] of Object.entries(args)) root.ele(k).txt(v);
+    xml = root.doc().end({ headless: false });
+  }
+
+  // Log the outgoing SOAP request for WiFi-related actions.
+  if (isWifi) {
+    let detail = null;
+    if (rawBody !== null) {
+      // Show inner body only (strip envelope/body wrapper).
+      detail = rawBody
+        .replace(/^[\s\S]*?<u:[^>]+>/m, '')
+        .replace(/<\/u:[^>]+>[\s\S]*$/m, '')
+        .trim() || null;
+    } else if (Object.keys(args).length > 0) {
+      detail = Object.entries(args)
+        .map(([k, v]) => `  <${k}>${k === 'password' ? maskPwd(v) : String(v ?? '')}</${k}>`)
+        .join('\n');
+    }
+    wlog('send', `→ ${action}  [${host}:${port}]`, detail);
+  }
+
+  let res;
+  try {
+    res = await axios.post(url, xml, {
+      headers: {
+        'Content-Type': 'text/xml; charset="utf-8"',
+        'SOAPACTION': `"${serviceType}#${action}"`,
+        'Connection': 'close',
+      },
+      httpAgent: NO_KEEPALIVE,
+      timeout: timeoutMs,
+    });
+  } catch (err) {
+    if (isWifi) {
+      const code = err.response ? `HTTP ${err.response.status}` : (err.code ?? err.message);
+      const body = err.response?.data ? String(err.response.data).slice(0, 400) : null;
+      wlog('error', `✕ ${action} — ${code}`, body);
+    }
+    throw err;
+  }
+
   const parsed = await parseStringPromise(res.data, { explicitArray: false, ignoreAttrs: true });
   const body = parsed['s:Envelope']['s:Body'];
-  return body[`u:${action}Response`] ?? body;
+  const result = body[`u:${action}Response`] ?? body;
+
+  // Log the response.
+  if (isWifi) {
+    const entries = Object.entries(result ?? {});
+    const detail = entries.length
+      ? entries.map(([k, v]) => `  ${k}: ${String(v ?? '').slice(0, 300)}`).join('\n')
+      : null;
+    wlog('recv', `← ${action}  HTTP ${res.status}`, detail);
+  }
+
+  return result;
 }
 
-async function soapWithFallback(host, port, controlURL, serviceType, action, args = {}) {
+async function soapWithFallback(host, port, controlURL, serviceType, action, args = {}, rawBody = null) {
   const portsToTry = [port, ...WEMO_PORTS.filter((p) => p !== port)];
   let lastErr = null;
   for (const tryPort of portsToTry) {
     try {
-      return await soapRequest(host, tryPort, controlURL, serviceType, action, args);
+      return await soapRequest(host, tryPort, controlURL, serviceType, action, args, 10_000, rawBody);
     } catch (err) {
       lastErr = err;
       const isConn = err.code === 'ECONNREFUSED' || err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT';
@@ -328,21 +394,193 @@ exports.rebootDevice = rebootDevice;
 const WIFI_SVC = 'urn:Belkin:service:WiFiSetup:1';
 const WIFI_URL = '/upnp/control/WiFiSetup1';
 
+const META_SVC = 'urn:Belkin:service:metainfo:1';
+const META_URL = '/upnp/control/metainfo1';
+
+// Retrieve device MAC and serial number required for password encryption.
+// Returns a pipe-delimited string: "MAC|SerialNumber|..."
+async function getMetaInfo(host, port) {
+  const res = await soapWithFallback(host, port, META_URL, META_SVC, 'GetMetaInfo');
+  return String(res['MetaInfo'] ?? '');
+}
+exports.getMetaInfo = getMetaInfo;
+
+// Encrypt a WiFi password using AES-128-CBC, keyed from device MAC + serial.
+// Matches OpenSSL: enc -aes-128-cbc -md md5 -S <salt> -iv <iv> -pass pass:<keydata>
+// Key derivation: EVP_BytesToKey(MD5, 1 iter, 16 bytes) = MD5(keydata + salt)
+function encryptWifiPassword(password, metaInfo) {
+  const parts   = metaInfo.split('|');
+  const mac     = parts[0] || '';
+  const serial  = parts[1] || '';
+  const keydata = mac.slice(0, 6) + serial + mac.slice(6, 12);
+
+  const saltBuf = Buffer.from(keydata.slice(0, 8),  'utf8');
+  const iv      = Buffer.from(keydata.slice(0, 16), 'utf8');
+  const key     = crypto.createHash('md5')
+    .update(Buffer.from(keydata, 'utf8'))
+    .update(saltBuf)
+    .digest();
+
+  const cipher    = crypto.createCipheriv('aes-128-cbc', key, iv);
+  const encrypted = Buffer.concat([
+    cipher.update(Buffer.from(password, 'utf8')),
+    cipher.final(),
+  ]);
+  const b64     = encrypted.toString('base64');
+  const lenEnc  = b64.length.toString(16).padStart(2, '0');
+  const lenOrig = password.length.toString(16).padStart(2, '0');
+  return b64 + lenEnc + lenOrig;
+}
+
 async function getApList(host, port) {
   const res = await soapWithFallback(host, port, WIFI_URL, WIFI_SVC, 'GetApList');
   const raw = String(res['ApList'] ?? '');
+  wlog('step', 'Raw ApList response', raw.trim() || '(empty)');
   if (!raw.trim()) return [];
-  return raw.split('\n').filter(Boolean).map((line) => {
+  // pywemo skips the first line (may be a count or blank).
+  // We filter(Boolean) to drop empty strings, which handles both cases.
+  const lines = raw.split('\n').filter(Boolean);
+  const entries = lines.map((line) => {
     const parts = line.split('|');
-    return { ssid: parts[0] || '', channel: parts[1] || '', auth: parts[2] || '', encrypt: parts[3] || '', signal: parseInt(parts[4] || '0', 10) || 0 };
-  }).sort((a, b) => b.signal - a.signal);
+    // pywemo uses columns[-1] (last field) as the combined "auth/encrypt" string.
+    // Format: ssid|channel|[rssi|]auth/encrypt
+    // Some firmware may split auth and encrypt into separate fields (5 fields).
+    let auth, encrypt, rssi;
+    const last = parts[parts.length - 1] || '';
+    if (last.includes('/')) {
+      // "auth/encrypt" in last field: ssid|channel|rssi|auth/encrypt OR ssid|channel|auth/encrypt
+      const [authMode, encMode] = last.split('/');
+      auth    = authMode || '';
+      encrypt = encMode  || '';
+      // rssi is either field[2] (4-field) or absent (3-field)
+      rssi    = parts.length >= 4 ? (parseInt(parts[2] || '0', 10) || 0) : 0;
+    } else {
+      // 5-field: ssid|channel|auth|encrypt|rssi
+      auth    = parts[2] || '';
+      encrypt = parts[3] || '';
+      rssi    = parseInt(parts[4] || '0', 10) || 0;
+    }
+    return { ssid: parts[0] || '', channel: parts[1] || '', auth, encrypt, rssi };
+  }).sort((a, b) => b.rssi - a.rssi);
+  wlog('step', `Parsed ${entries.length} AP(s)`,
+    entries.map((e) => `${e.ssid}  ch${e.channel}  ${e.auth}/${e.encrypt}  ${e.rssi}%`).join('\n'));
+  return entries;
 }
 exports.getApList = getApList;
 
+// Normalize UI auth/security labels to WeMo firmware strings.
+// Sourced directly from the official WeMo Android app (constants.js in APK):
+//   AUTH_OPEN = "OPEN", AUTH_WEP = "WEP",
+//   AUTH_WPA = AUTH_WPA2 = "WPA1PSKWPA2PSK"
+function normalizeAuth(auth) {
+  if (!auth) return 'WPA1PSKWPA2PSK';
+  const a = auth.toUpperCase().replace(/[-\s]/g, '');
+  if (a === 'OPEN') return 'OPEN';
+  if (a === 'WEP')  return 'WEP';
+  // WPA, WPA-PSK, WPA2, WPA2-PSK, WPA2PSK, WPAPSK, WPA1PSKWPA2PSK, etc.
+  return 'WPA1PSKWPA2PSK';
+}
+
+// Normalize encrypt type.  APK: ENCRYPT_OPEN="NONE", ENCRYPT_WEP="WEP", ENCRYPT_WPA/WPA2="AES"
+function normalizeEncrypt(auth, encrypt) {
+  if (encrypt) return encrypt; // already provided by scan result
+  const a = (auth || '').toUpperCase();
+  if (a === 'OPEN') return 'NONE';
+  if (a === 'WEP')  return 'WEP';
+  return 'AES';
+}
+
 async function connectHomeNetwork(host, port, { ssid, auth, password, encrypt, channel }) {
-  await soapWithFallback(host, port, WIFI_URL, WIFI_SVC, 'ConnectHomeNetwork', {
-    ssid, auth: auth || 'WPA2PSK', password: password || '', encrypt: encrypt || 'AES', channel: channel || '0',
-  });
+  const plainPassword = password || '';
+
+  // -------------------------------------------------------------------------
+  // Step 1 — Scan the AP list first.
+  // This primes the device's internal AP cache AND gives us the exact
+  // auth/encrypt strings the firmware recognises (e.g. "WPA2PSK", "TKIPAES").
+  // pywemo always does GetApList before ConnectHomeNetwork.
+  // -------------------------------------------------------------------------
+  let firmwareAuth    = normalizeAuth(auth);
+  let firmwareEncrypt = normalizeEncrypt(firmwareAuth, encrypt);
+  let firmwareChannel = channel || '0';
+
+  wlog('step', 'Scanning AP list to prime device cache and get exact auth/encrypt…');
+  try {
+    const apList = await getApList(host, port);
+    const match  = apList.find((ap) => ap.ssid === ssid);
+    if (match) {
+      firmwareAuth    = match.auth    || firmwareAuth;
+      firmwareEncrypt = match.encrypt || firmwareEncrypt;
+      firmwareChannel = match.channel || firmwareChannel;
+      wlog('step', `Found "${ssid}" in AP list`,
+        `auth: ${firmwareAuth}\nencrypt: ${firmwareEncrypt}\nchannel: ${firmwareChannel}`);
+    } else {
+      wlog('step', `"${ssid}" not found in AP list — using user-specified values`,
+        `auth: ${firmwareAuth}\nencrypt: ${firmwareEncrypt}\nchannel: ${firmwareChannel}`);
+    }
+  } catch (e) {
+    wlog('error', `AP scan failed (${e.message}) — proceeding with user values`);
+  }
+
+  // -------------------------------------------------------------------------
+  // Step 2 — Encrypt the password (skip for OPEN networks).
+  // -------------------------------------------------------------------------
+  const isOpen = firmwareAuth === 'OPEN' || firmwareEncrypt === 'NONE';
+  let encryptedPassword = null;
+
+  if (!isOpen && plainPassword) {
+    try {
+      wlog('step', 'Fetching MetaInfo (MAC + serial for AES key derivation)…');
+      const metaInfo = await getMetaInfo(host, port);
+      if (metaInfo) {
+        wlog('step', 'Encrypting password with AES-128-CBC (method 1)…');
+        encryptedPassword = encryptWifiPassword(plainPassword, metaInfo);
+        wlog('step', `Password encrypted → ${maskPwd(encryptedPassword)}`);
+      }
+    } catch (e) {
+      wlog('error', `MetaInfo unavailable (${e.message}) — will try plaintext fallback`);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Step 3 — Send ConnectHomeNetwork twice (confirmed working pattern).
+  //
+  // Confirmed working on F7C027 firmware 2.00.11851:
+  //   - Flat params (no PairingData wrapper)
+  //   - SSID in CDATA
+  //   - Encrypted password (AES-128-CBC with MAC/serial key)
+  //   - Send twice in quick succession
+  // -------------------------------------------------------------------------
+  const finalPassword = encryptedPassword || plainPassword;
+  const args = {
+    ssid,
+    auth:     firmwareAuth,
+    password: finalPassword,
+    encrypt:  firmwareEncrypt,
+    channel:  firmwareChannel,
+  };
+
+  // Build raw body to preserve CDATA for ssid
+  const makeBody = () => [
+    '<?xml version="1.0" encoding="utf-8"?>',
+    '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">',
+    '<s:Body>',
+    '<u:ConnectHomeNetwork xmlns:u="urn:Belkin:service:WiFiSetup:1">',
+    `<ssid><![CDATA[${ssid}]]></ssid>`,
+    `<auth>${args.auth}</auth>`,
+    `<password>${args.password}</password>`,
+    `<encrypt>${args.encrypt}</encrypt>`,
+    `<channel>${args.channel}</channel>`,
+    '</u:ConnectHomeNetwork>',
+    '</s:Body>',
+    '</s:Envelope>',
+  ].join('\n');
+
+  for (let i = 1; i <= 2; i++) {
+    wlog('step', `ConnectHomeNetwork #${i}…`);
+    await soapWithFallback(host, port, WIFI_URL, WIFI_SVC, 'ConnectHomeNetwork', {}, makeBody());
+    if (i === 1) await new Promise((r) => setTimeout(r, 500));
+  }
+  wlog('step', 'ConnectHomeNetwork sent — poll GetNetworkStatus for result');
 }
 exports.connectHomeNetwork = connectHomeNetwork;
 

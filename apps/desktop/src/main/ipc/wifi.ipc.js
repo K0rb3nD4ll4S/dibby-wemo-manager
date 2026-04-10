@@ -1,9 +1,16 @@
 'use strict';
 
-const { ipcMain } = require('electron');
+const { ipcMain, BrowserWindow } = require('electron');
 const wemo = require('../wemo');
 
 module.exports = function registerWifiIpc() {
+  // Push real-time WiFi diagnostic log entries to all open renderer windows.
+  wemo.setWifiLogger((entry) => {
+    BrowserWindow.getAllWindows().forEach((w) => {
+      if (!w.isDestroyed()) w.webContents.send('wifi-log', entry);
+    });
+  });
+
   ipcMain.handle('get-ap-list', async (_e, { host, port }) => {
     return wemo.getApList(host, port);
   });
