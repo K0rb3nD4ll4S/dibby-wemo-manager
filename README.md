@@ -87,7 +87,10 @@ Restart Homebridge. Devices appear in HomeKit automatically.
 - **Background scheduler** — keeps rules firing even when the GUI is closed
   - Windows: native Windows service (`DibbyWemoService`)
   - Linux: background process, runs while app is in system tray
-- **WiFi provisioning** — set up a WeMo device on a new network directly from the app (no Belkin app required); real-time SOAP communication log shown during setup
+- **WiFi provisioning** — connect a WeMo device to your home network directly from the app (no WeMo app required):
+  - Scans available networks with signal strength and security type
+  - Real-time SOAP communication log shows every exchange during setup
+  - Confirmed working on F7C027 firmware (flat params, AES-encrypted password, double-send)
 - **Web remote** — optional local web interface accessible from your phone
 - **Sunrise/sunset support** — location-aware scheduling via city search
 
@@ -138,6 +141,7 @@ All communication is local UPnP/SOAP over HTTP — no Belkin cloud:
 | On/Off | UPnP SOAP `SetBinaryState` / `GetBinaryState` |
 | State query | UPnP SOAP `GetBinaryState` |
 | Native rules | UPnP SOAP `FetchRules` / `StoreRules` (ZIP + SQLite) |
+| WiFi setup | UPnP SOAP `GetApList` / `ConnectHomeNetwork` / `CloseSetup` on device AP at `10.22.22.1` |
 
 ### Native Firmware Rules Database
 
@@ -173,7 +177,7 @@ The DWM (Dibby Wemo Manager) scheduler is a Node.js process that:
 
 ### Prerequisites
 
-- Node.js ≥ 18
+- Node.js 18, 20, 22, or 24
 - npm ≥ 9
 
 ### Install all dependencies
@@ -236,7 +240,7 @@ Each [GitHub Release](../../releases) includes:
 | `dibby-wemo-manager-2.0.9.x86_64.rpm` | Linux x64 | Fedora / RHEL package |
 | `Dibby Wemo Manager-2.0.9-arm64.AppImage` | Linux ARM64 | Raspberry Pi 4/5 AppImage |
 | `dibby-wemo-manager_2.0.9_arm64.deb` | Linux ARM64 | Raspberry Pi OS package |
-| `homebridge-dibby-wemo-2.0.9.tgz` | Any | Homebridge plugin npm package |
+| `homebridge-dibby-wemo-2.0.10.tgz` | Any | Homebridge plugin npm package |
 
 ---
 

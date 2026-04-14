@@ -4,31 +4,40 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
-## [2.0.14] — 2026-04-10
+## [2.0.14] — 2026-04-13
 
-### Fix — WiFi Provisioning (Set WiFi) Now Works on Desktop App
+### WiFi Provisioning Fix + Homebridge 2.0 Compatibility
 
-The **Set WiFi** feature in the desktop app was non-functional since release. When setting up a WeMo device on its setup AP (`WeMo.Switch.xxx` / 10.22.22.1), the `ConnectHomeNetwork` SOAP call always failed with HTTP 500 / UPnP 501 "Action Failed".
+#### Desktop App — WiFi Setup (v2.0.9)
 
-**Root causes identified and fixed:**
+The **Set WiFi** feature in the desktop app was non-functional since release. When setting up a WeMo device on its setup AP (`WeMo.Switch.xxx` / 10.22.22.1), the `ConnectHomeNetwork` SOAP call always failed with HTTP 500 / UPnP 501 "Action Failed". All root causes have been identified and fixed. **Confirmed working on F7C027 firmware 2.00.11851.**
 
-- **AP scan not performed before connecting** — The WeMo firmware requires `GetApList` to be called first to prime its internal AP cache. `ConnectHomeNetwork` without a preceding scan fails on some firmware versions. The app now always scans first and uses the exact `auth`/`encrypt` strings the device reports (e.g. `WPA2PSK`/`AES`) rather than normalising them.
-- **ConnectHomeNetwork must be sent twice** — Confirmed from pywemo and direct device testing: the firmware only reliably accepts the connection on the second call. The app now sends the request twice in quick succession.
-- **Wrong network status polling logic** — Status `2` means "connecting (in progress)" and should keep polling, but was wrongly treated as "bad password". Status `1` = Connected (success), `3`/`4` = failed.
-- **CloseSetup never called after success** — After `GetNetworkStatus` returns `1` (Connected), `CloseSetup` must be called to let the device finalise and reboot onto the home network. This call was missing entirely.
-- **Signal bars showed dBm thresholds** — The WeMo device reports signal as 0–100% (not dBm). Signal bars and percentage labels now display correctly.
-- **Real-time communication log** — A live SOAP request/response log panel is now visible in the WiFi tab while connecting, showing every step (AP scan, encryption, connect attempts, status polling).
+**Root causes fixed:**
 
-**WiFi provisioning sequence (confirmed working on F7C027 firmware 2.00.11851):**
-1. `GetApList` — scan to get exact auth/encrypt strings from the device
-2. `GetMetaInfo` — fetch MAC + serial for AES-128-CBC password encryption
+- **AP scan not performed before connecting** — The WeMo firmware requires `GetApList` to be called first to prime its internal AP cache. `ConnectHomeNetwork` without a preceding scan fails on some firmware versions. The app now always scans first and uses the exact `auth`/`encrypt` strings the device reports (e.g. `WPA2PSK`/`AES`) rather than normalising them
+- **ConnectHomeNetwork must be sent twice** — Confirmed from pywemo and direct device testing: the firmware only reliably accepts the connection on the second call. The app now sends the request twice in quick succession
+- **Wrong network status polling logic** — Status `2` means "connecting (in progress)" and should keep polling, but was wrongly treated as "bad password". Status `1` = Connected (success), `3`/`4` = failed
+- **CloseSetup never called after success** — After `GetNetworkStatus` returns `1` (Connected), `CloseSetup` must be called to let the device finalise and reboot onto the home network. This call was missing entirely
+- **AES-128-CBC password encryption** — password is encrypted using the device's MAC + serial (from `MetaInfo`) as key material, exactly as the official WeMo Android app does
+- **Signal bars showed dBm thresholds** — The WeMo device reports signal as 0–100% (not dBm). Signal bars and percentage labels now display correctly
+- **Real-time communication log** — A live SOAP request/response log panel is now visible in the WiFi tab while connecting, showing every step with color-coded entries (blue = sent, green = received, gray = status, red = error)
+
+**Confirmed provisioning sequence (F7C027 firmware 2.00.11851):**
+1. `GetApList` — scan to prime device cache and get exact auth/encrypt strings
+2. `GetMetaInfo` — fetch MAC + serial for AES-128-CBC password key derivation
 3. `ConnectHomeNetwork` (flat params, CDATA-wrapped SSID, encrypted password) — sent twice
-4. Poll `GetNetworkStatus` until `1` (Connected)
+4. Poll `GetNetworkStatus` every 3 s until `1` (Connected)
 5. `CloseSetup` — device finalises and reboots onto the home network
 
+#### Homebridge Plugin — Homebridge 2.0 Compatibility (v2.0.10)
+
+- **Homebridge 2.0 beta declared compatible** — `engines.homebridge` updated to `^1.6.0 || ^2.0.0-beta.0`. Without this declaration Homebridge 2.0 logs a compatibility warning even though the plugin works correctly
+- **Node.js 22 / 24 explicitly supported** — `engines.node` updated to `^18.20.4 || ^20.15.1 || ^22 || ^24`. Homebridge 2.0 beta requires Node.js 22 or 24
+- Full audit confirmed: zero usage of any APIs removed in Homebridge 2.0 (`BatteryService`, `Characteristic.getValue()`, `getServiceByUUIDAndSubType()`, `updateReachability()`, `setPrimaryService()`, enum access via `Characteristic.*` — none present)
+
 ### Affected packages
-- Desktop app → **2.0.9**
-- `homebridge-dibby-wemo` → **2.0.9** (npm — version sync)
+- Desktop app (Windows) → **2.0.9**
+- `homebridge-dibby-wemo` → **2.0.10** (npm)
 
 ---
 
