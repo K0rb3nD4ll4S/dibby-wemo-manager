@@ -6,7 +6,10 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ## [2.0.14] — 2026-04-13
 
-### WiFi Provisioning Fix + Homebridge 2.0 Compatibility
+### Unified Versioning + WiFi Provisioning Fix + Homebridge 2.0 Compatibility
+
+All monorepo packages synced to a single version (2.0.14) for coherent release tracking. Desktop, Homebridge plugin, core, MQTT bridge, Node-RED contrib, and Android app now share one version across the board.
+
 
 #### Desktop App — WiFi Setup (v2.0.9)
 

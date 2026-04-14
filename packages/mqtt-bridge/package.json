@@ -1,6 +1,6 @@
 {
   "name": "@wemo-manager/mqtt-bridge",
-  "version": "2.0.8",
+  "version": "2.0.14",
   "description": "Dibby Wemo MQTT Bridge \u00e2\u20ac\u201d publishes Wemo device state to any MQTT broker with Home Assistant auto-discovery",
   "main": "src/index.js",
   "scripts": {
