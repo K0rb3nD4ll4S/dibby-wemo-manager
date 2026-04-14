@@ -10,5 +10,5 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/K0rb3nD4ll4S/dibby-wemo-manager/issues",
   "requirements": [],
-  "version": "2.0.8"
+  "version": "2.0.14"
 }

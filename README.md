@@ -2,15 +2,17 @@
 
 **Local Wemo control — no Belkin cloud required.**
 
-Dibby Wemo Manager gives you full local control of Belkin Wemo smart switches and plugs from three interfaces:
+Dibby Wemo Manager gives you full local control of Belkin Wemo smart switches and plugs from five interfaces:
 
 | Component | Description |
 |---|---|
 | 🖥️ **Desktop App** | Cross-platform Electron app (Windows + Linux) — device dashboard, power control, scheduling |
-| 🏠 **Homebridge Plugin** | HomeKit integration with custom scheduling UI inside Homebridge |
+| 🏠 **Homebridge Plugin** | HomeKit integration with custom scheduling UI inside Homebridge (and HOOBS) |
+| 🏡 **Home Assistant Integration** | Native HACS integration with full DWM scheduling engine inside HA |
 | 🔴 **Node-RED Nodes** | Drag-and-drop nodes for Node-RED flows — discover, control, and monitor Wemo devices |
+| 📡 **MQTT Bridge** | Publishes Wemo state to any MQTT broker with Home Assistant auto-discovery |
 
-All three share the same local-network Wemo protocol (UPnP/SOAP) and the same DWM scheduling engine. No Belkin account, no cloud dependency, no internet required.
+All five share the same local-network Wemo protocol (UPnP/SOAP) and the same DWM scheduling engine. No Belkin account, no cloud dependency, no internet required.
 
 ---
 
@@ -19,14 +21,17 @@ All three share the same local-network Wemo protocol (UPnP/SOAP) and the same DW
 ```
 dibby-wemo-manager/
 ├── apps/
-│   ├── desktop/          # Electron desktop app (Windows + Linux)
-│   └── android/          # Android companion app
+│   ├── desktop/             # Electron desktop app (Windows + Linux)
+│   └── android/             # Android companion app
 ├── packages/
-│   ├── homebridge-plugin/  # homebridge-dibby-wemo Homebridge plugin
-│   ├── node-red-contrib/   # node-red-contrib-dibby-wemo Node-RED nodes
-│   ├── mqtt-bridge/        # MQTT bridge with Home Assistant auto-discovery
-│   └── wemo-core/          # Shared Wemo protocol helpers (internal)
-└── package.json            # npm workspaces root
+│   ├── homebridge-plugin/   # homebridge-dibby-wemo Homebridge plugin (works with HOOBS)
+│   ├── node-red-contrib/    # node-red-contrib-dibby-wemo Node-RED nodes
+│   ├── mqtt-bridge/         # MQTT bridge with Home Assistant auto-discovery
+│   └── wemo-core/           # Shared Wemo protocol helpers (internal)
+├── custom_components/
+│   └── dibby_wemo/          # Home Assistant integration (HACS-compatible)
+├── hacs.json                # HACS manifest
+└── package.json             # npm workspaces root
 ```
 
 ---
@@ -73,6 +78,25 @@ Then add to your Homebridge `config.json`:
 
 Restart Homebridge. Devices appear in HomeKit automatically.
 
+### HOOBS
+
+The Homebridge plugin is fully HOOBS-compatible. In HOOBS:
+
+1. Open the **Plugins** tab → search for **`homebridge-dibby-wemo`**
+2. Click **Install**
+3. Open **Config** and add the `DibbyWemo` platform block (same config as Homebridge above)
+4. Restart HOOBS — devices appear in HomeKit automatically
+
+### Home Assistant (HACS)
+
+1. Open **HACS** → **Integrations** → **⋮** → **Custom repositories**
+2. Add `https://github.com/K0rb3nD4ll4S/dibby-wemo-manager` as category **Integration**
+3. Search for **Dibby Wemo** → Install → Restart Home Assistant
+4. **Settings** → **Devices & Services** → **Add Integration** → search **Dibby Wemo**
+5. HA will auto-discover all Wemo devices on your network
+
+Once the HACS default repository picks up this integration, the custom-repository step will no longer be needed.
+
 ### Node-RED Nodes
 
 From your Node-RED user directory:
@@ -83,6 +107,16 @@ npm install node-red-contrib-dibby-wemo
 ```
 
 Or via the Node-RED Palette Manager: search for **`node-red-contrib-dibby-wemo`** and click Install. Restart Node-RED — four new nodes (`wemo-config`, `wemo-control`, `wemo-state`, `wemo-discover`) appear under the **wemo** category.
+
+### MQTT Bridge
+
+Run the MQTT bridge via Docker (from `packages/mqtt-bridge/`):
+
+```bash
+docker compose up -d
+```
+
+The bridge publishes each Wemo device's state to MQTT with Home Assistant auto-discovery topics — devices appear automatically in HA's MQTT integration without any config flow.
 
 ---
 
@@ -124,6 +158,17 @@ Or via the Node-RED Palette Manager: search for **`node-red-contrib-dibby-wemo`*
 - **Catch-up on restart** — rules missed while Homebridge was restarting fire automatically on startup
 - No cloud required; all communication is local SOAP/UPnP
 
+### 🏡 Home Assistant Integration
+
+HACS-installable native integration (`custom_components/dibby_wemo/`):
+
+- **Auto-discovery** via SSDP — all Wemo devices found and added automatically
+- **Switch entities** for every Wemo device, fully controllable from HA
+- **Full DWM scheduling engine** inside HA — all rule types (Schedule, Countdown, Away Mode, Always On, Trigger)
+- **Firmware rule management** — read and manage native Wemo on-device rules
+- **Sunrise/sunset scheduling** with location awareness
+- **Local polling** only — no cloud, pure Python stdlib, no pip dependencies
+
 ### 🔴 Node-RED Nodes
 
 Four drag-and-drop nodes for Node-RED flows:
@@ -134,6 +179,15 @@ Four drag-and-drop nodes for Node-RED flows:
 - **`wemo-discover`** — SSDP discovery of all Wemo devices on the network
 
 All nodes run pure local UPnP/SOAP — no cloud, no Belkin account, no internet required. Published as [`node-red-contrib-dibby-wemo`](https://www.npmjs.com/package/node-red-contrib-dibby-wemo) on npm.
+
+### 📡 MQTT Bridge
+
+Dockerised bridge that publishes Wemo device state to any MQTT broker:
+
+- **Home Assistant auto-discovery** — devices appear in HA's MQTT integration without manual config
+- **Real-time state updates** — on/off changes published immediately
+- **Command topics** — control any device by publishing to its command topic
+- **Runs anywhere Docker runs** — Linux, Raspberry Pi, NAS, etc.
 
 ---
 

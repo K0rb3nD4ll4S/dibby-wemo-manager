@@ -6,9 +6,13 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ## [2.0.14] — 2026-04-13
 
-### Unified Versioning + Node-RED Publish + WiFi Provisioning Fix + Homebridge 2.0 Compatibility
+### Unified Versioning + Node-RED Publish + Home Assistant + HOOBS + WiFi Provisioning Fix + Homebridge 2.0 Compatibility
 
-All monorepo packages synced to a single version (2.0.14) for coherent release tracking. Desktop, Homebridge plugin, core, MQTT bridge, Node-RED contrib, and Android app now share one version across the board.
+All monorepo packages synced to a single version (**2.0.14**) for coherent release tracking. Desktop, Homebridge plugin, Home Assistant custom component, Node-RED contrib, MQTT bridge, core, and Android app now share one version across the board.
+
+**Home Assistant custom component** — `custom_components/dibby_wemo/manifest.json` bumped to 2.0.14. HACS users on the existing repository will see the update automatically. Install via HACS → Custom Repositories → add this repo as an Integration.
+
+**HOOBS compatibility documented** — the `homebridge-dibby-wemo` plugin is fully HOOBS-compatible (HOOBS installs any plugin from the Homebridge npm registry). Install via the HOOBS Plugins tab.
 
 **`node-red-contrib-dibby-wemo` published to npm at 2.0.14** — four drag-and-drop Node-RED nodes (`wemo-config`, `wemo-control`, `wemo-state`, `wemo-discover`) for local Wemo control inside Node-RED flows. Install via Palette Manager or `npm install node-red-contrib-dibby-wemo`.
 
