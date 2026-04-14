@@ -6,9 +6,11 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ## [2.0.14] — 2026-04-13
 
-### Unified Versioning + WiFi Provisioning Fix + Homebridge 2.0 Compatibility
+### Unified Versioning + Node-RED Publish + WiFi Provisioning Fix + Homebridge 2.0 Compatibility
 
 All monorepo packages synced to a single version (2.0.14) for coherent release tracking. Desktop, Homebridge plugin, core, MQTT bridge, Node-RED contrib, and Android app now share one version across the board.
+
+**`node-red-contrib-dibby-wemo` published to npm at 2.0.14** — four drag-and-drop Node-RED nodes (`wemo-config`, `wemo-control`, `wemo-state`, `wemo-discover`) for local Wemo control inside Node-RED flows. Install via Palette Manager or `npm install node-red-contrib-dibby-wemo`.
 
 
 #### Desktop App — WiFi Setup (v2.0.9)

@@ -2,14 +2,15 @@
 
 **Local Wemo control — no Belkin cloud required.**
 
-Dibby Wemo Manager gives you full local control of Belkin Wemo smart switches and plugs from two interfaces:
+Dibby Wemo Manager gives you full local control of Belkin Wemo smart switches and plugs from three interfaces:
 
 | Component | Description |
 |---|---|
 | 🖥️ **Desktop App** | Cross-platform Electron app (Windows + Linux) — device dashboard, power control, scheduling |
 | 🏠 **Homebridge Plugin** | HomeKit integration with custom scheduling UI inside Homebridge |
+| 🔴 **Node-RED Nodes** | Drag-and-drop nodes for Node-RED flows — discover, control, and monitor Wemo devices |
 
-Both share the same local-network Wemo protocol (UPnP/SOAP) and the same DWM scheduling engine. No Belkin account, no cloud dependency, no internet required.
+All three share the same local-network Wemo protocol (UPnP/SOAP) and the same DWM scheduling engine. No Belkin account, no cloud dependency, no internet required.
 
 ---
 
@@ -18,11 +19,14 @@ Both share the same local-network Wemo protocol (UPnP/SOAP) and the same DWM sch
 ```
 dibby-wemo-manager/
 ├── apps/
-│   └── desktop/          # Electron desktop app (Windows + Linux)
+│   ├── desktop/          # Electron desktop app (Windows + Linux)
+│   └── android/          # Android companion app
 ├── packages/
-│   ├── homebridge-plugin/ # homebridge-dibby-wemo Homebridge plugin
-│   └── wemo-core/        # Shared Wemo protocol helpers (internal)
-└── package.json          # npm workspaces root
+│   ├── homebridge-plugin/  # homebridge-dibby-wemo Homebridge plugin
+│   ├── node-red-contrib/   # node-red-contrib-dibby-wemo Node-RED nodes
+│   ├── mqtt-bridge/        # MQTT bridge with Home Assistant auto-discovery
+│   └── wemo-core/          # Shared Wemo protocol helpers (internal)
+└── package.json            # npm workspaces root
 ```
 
 ---
@@ -69,6 +73,17 @@ Then add to your Homebridge `config.json`:
 
 Restart Homebridge. Devices appear in HomeKit automatically.
 
+### Node-RED Nodes
+
+From your Node-RED user directory:
+
+```bash
+cd ~/.node-red
+npm install node-red-contrib-dibby-wemo
+```
+
+Or via the Node-RED Palette Manager: search for **`node-red-contrib-dibby-wemo`** and click Install. Restart Node-RED — four new nodes (`wemo-config`, `wemo-control`, `wemo-state`, `wemo-discover`) appear under the **wemo** category.
+
 ---
 
 ## Features
@@ -108,6 +123,17 @@ Restart Homebridge. Devices appear in HomeKit automatically.
 - **Scheduler health monitor** — green/amber/red status bar shows scheduler state in real time
 - **Catch-up on restart** — rules missed while Homebridge was restarting fire automatically on startup
 - No cloud required; all communication is local SOAP/UPnP
+
+### 🔴 Node-RED Nodes
+
+Four drag-and-drop nodes for Node-RED flows:
+
+- **`wemo-config`** — configure connection to a specific Wemo device by IP + UDN
+- **`wemo-control`** — turn a device on/off or toggle via incoming message
+- **`wemo-state`** — poll current on/off state, output via message payload
+- **`wemo-discover`** — SSDP discovery of all Wemo devices on the network
+
+All nodes run pure local UPnP/SOAP — no cloud, no Belkin account, no internet required. Published as [`node-red-contrib-dibby-wemo`](https://www.npmjs.com/package/node-red-contrib-dibby-wemo) on npm.
 
 ---
 
