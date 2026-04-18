@@ -509,57 +509,62 @@ class LocalScheduler {
           }
         }
 
-        // ── Countdown — fire only when state matches condition and within window ──
+        // ── Countdown — level-triggered: fires whenever device is IN the trigger state
+        //    (not just on the transition), within optional active window. Cancels
+        //    the pending timer if the device leaves the state or window. ──
         if (countdownDevMap.has(key)) {
-          const prevState = this._countdownStates.get(key);
           this._countdownStates.set(key, isOn);
-          if (prevState !== isOn) {
-            const nowSecs = secondsFromMidnight(new Date());
-            for (const { rule, td } of countdownDevMap.get(key)) {
-              const condition = rule.countdownAction ?? 'on_to_off';
-              const triggered = condition === 'on_to_off' ? isOn : !isOn;
-              if (!triggered) continue;
+          const nowSecs = secondsFromMidnight(new Date());
+          for (const { rule, td } of countdownDevMap.get(key)) {
+            const condition      = rule.countdownAction ?? 'on_to_off';
+            const inTriggerState = condition === 'on_to_off' ? isOn : !isOn;
+            const timerKey       = `${key}-${rule.id}`;
+            const existing       = this._countdownTimers.get(timerKey);
 
-              // Check active window (if defined)
-              const winStart = Number(rule.windowStart ?? -1);
-              const winEnd   = Number(rule.windowEnd   ?? -1);
-              if (winStart >= 0 && winEnd >= 0) {
-                const crossesMidnight = winEnd < winStart;
-                const inWindow = crossesMidnight
-                  ? (nowSecs >= winStart || nowSecs <= winEnd)
-                  : (nowSecs >= winStart && nowSecs <= winEnd);
-                if (!inWindow) continue;
-              } else if (winStart >= 0) {
-                if (nowSecs < winStart) continue;
-              }
-
-              const timerKey  = `${key}-${rule.id}`;
-              const existing  = this._countdownTimers.get(timerKey);
-              if (existing) { clearTimeout(existing.timer); this._countdownTimers.delete(timerKey); }
-
-              const wantOn     = condition === 'off_to_on';
-              const durationMs = (Number(rule.countdownTime) || 60) * 1000;
-              const label      = wantOn ? 'ON' : 'OFF';
-              const mins       = Math.round(durationMs / 60000);
-              this._onFire?.({ success: true,
-                msg: `"${rule.name}" countdown started — will turn ${label} in ${mins} min (${td.host})`,
-                entry: { action: wantOn ? 1 : 0 } });
-
-              const timer = setTimeout(async () => {
-                this._countdownTimers.delete(timerKey);
-                try {
-                  await wemo.setBinaryState(td.host, td.port, wantOn);
-                  this._onFire?.({ success: true,
-                    msg: `"${rule.name}" countdown elapsed → ${label} (${td.host}) ✓`,
-                    entry: { action: wantOn ? 1 : 0 } });
-                } catch (e2) {
-                  this._onFire?.({ success: false,
-                    msg: `"${rule.name}" countdown elapsed → ${label} FAILED: ${e2.message}`,
-                    entry: { action: wantOn ? 1 : 0 } });
-                }
-              }, durationMs);
-              this._countdownTimers.set(timerKey, { timer, wantOn });
+            // Active window check (if defined)
+            let inWindow = true;
+            const winStart = Number(rule.windowStart ?? -1);
+            const winEnd   = Number(rule.windowEnd   ?? -1);
+            if (winStart >= 0 && winEnd >= 0) {
+              const crossesMidnight = winEnd < winStart;
+              inWindow = crossesMidnight
+                ? (nowSecs >= winStart || nowSecs <= winEnd)
+                : (nowSecs >= winStart && nowSecs <= winEnd);
+            } else if (winStart >= 0) {
+              inWindow = nowSecs >= winStart;
             }
+
+            // Not in trigger state / outside window → cancel any pending timer
+            if (!inTriggerState || !inWindow) {
+              if (existing) { clearTimeout(existing.timer); this._countdownTimers.delete(timerKey); }
+              continue;
+            }
+
+            // In trigger state AND in window. If a timer is already running, let it keep running.
+            if (existing) continue;
+
+            const wantOn     = condition === 'off_to_on';
+            const durationMs = (Number(rule.countdownTime) || 60) * 1000;
+            const label      = wantOn ? 'ON' : 'OFF';
+            const mins       = Math.round(durationMs / 60000);
+            this._onFire?.({ success: true,
+              msg: `"${rule.name}" countdown started — will turn ${label} in ${mins} min (${td.host})`,
+              entry: { action: wantOn ? 1 : 0 } });
+
+            const timer = setTimeout(async () => {
+              this._countdownTimers.delete(timerKey);
+              try {
+                await wemo.setBinaryState(td.host, td.port, wantOn);
+                this._onFire?.({ success: true,
+                  msg: `"${rule.name}" countdown elapsed → ${label} (${td.host}) ✓`,
+                  entry: { action: wantOn ? 1 : 0 } });
+              } catch (e2) {
+                this._onFire?.({ success: false,
+                  msg: `"${rule.name}" countdown elapsed → ${label} FAILED: ${e2.message}`,
+                  entry: { action: wantOn ? 1 : 0 } });
+              }
+            }, durationMs);
+            this._countdownTimers.set(timerKey, { timer, wantOn });
           }
         }
 

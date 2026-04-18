@@ -536,49 +536,53 @@ class DwmScheduler:
                     if prev is not None and prev != is_on:
                         await self._fire_trigger_rules(key, is_on)
 
-                # Countdown — fire on first poll OR state change (no prev is not None guard)
+                # Countdown — level-triggered: fires whenever device is IN the trigger
+                # state (not just on the transition), within optional active window.
+                # Cancels the pending timer if the device leaves the state or window.
                 if key in countdown_dev_map:
-                    prev = self._countdown_states.get(key)
                     self._countdown_states[key] = is_on
-                    if prev != is_on:
-                        now_secs = _secs_from_midnight()
-                        for item in countdown_dev_map[key]:
-                            rule, td = item["rule"], item["td"]
-                            condition = rule.get("countdownAction", "on_to_off")
-                            triggered = is_on if condition == "on_to_off" else not is_on
-                            if not triggered:
-                                continue
+                    now_secs = _secs_from_midnight()
+                    for item in countdown_dev_map[key]:
+                        rule, td = item["rule"], item["td"]
+                        condition = rule.get("countdownAction", "on_to_off")
+                        in_trigger_state = is_on if condition == "on_to_off" else not is_on
+                        timer_key = f"{key}-{rule['id']}"
+                        existing = self._countdown_timers.get(timer_key)
 
-                            win_start = rule.get("windowStart", -1)
-                            win_end   = rule.get("windowEnd",   -1)
-                            if win_start is not None and win_start >= 0 and win_end is not None and win_end >= 0:
-                                if win_end < win_start:
-                                    in_win = now_secs >= win_start or now_secs <= win_end
-                                else:
-                                    in_win = win_start <= now_secs <= win_end
-                                if not in_win:
-                                    continue
-                            elif win_start is not None and win_start >= 0:
-                                if now_secs < win_start:
-                                    continue
+                        in_window = True
+                        win_start = rule.get("windowStart", -1)
+                        win_end   = rule.get("windowEnd",   -1)
+                        if win_start is not None and win_start >= 0 and win_end is not None and win_end >= 0:
+                            if win_end < win_start:
+                                in_window = now_secs >= win_start or now_secs <= win_end
+                            else:
+                                in_window = win_start <= now_secs <= win_end
+                        elif win_start is not None and win_start >= 0:
+                            in_window = now_secs >= win_start
 
-                            timer_key = f"{key}-{rule['id']}"
-                            existing = self._countdown_timers.pop(timer_key, None)
+                        # Not in trigger state / outside window → cancel pending timer
+                        if not in_trigger_state or not in_window:
                             if existing:
                                 existing.cancel()
+                                self._countdown_timers.pop(timer_key, None)
+                            continue
 
-                            want_on = condition == "off_to_on"
-                            duration_s = int(rule.get("countdownTime") or 60)
-                            label = "ON" if want_on else "OFF"
-                            mins = round(duration_s / 60)
-                            self._emit({"success": True,
-                                "msg": f'"{rule["name"]}" countdown started — will turn {label} in {mins} min ({td["host"]})'})
+                        # In trigger state AND in window. If a timer is already running, let it finish.
+                        if existing:
+                            continue
 
-                            task = asyncio.ensure_future(
-                                self._run_countdown(timer_key, td["host"], int(td["port"]),
-                                                    want_on, duration_s, rule["name"])
-                            )
-                            self._countdown_timers[timer_key] = task
+                        want_on = condition == "off_to_on"
+                        duration_s = int(rule.get("countdownTime") or 60)
+                        label = "ON" if want_on else "OFF"
+                        mins = round(duration_s / 60)
+                        self._emit({"success": True,
+                            "msg": f'"{rule["name"]}" countdown started — will turn {label} in {mins} min ({td["host"]})'})
+
+                        task = asyncio.ensure_future(
+                            self._run_countdown(timer_key, td["host"], int(td["port"]),
+                                                want_on, duration_s, rule["name"])
+                        )
+                        self._countdown_timers[timer_key] = task
 
             except Exception as e:
                 self._device_health[key] = False

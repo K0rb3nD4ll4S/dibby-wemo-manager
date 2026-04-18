@@ -404,8 +404,8 @@
         <div class="form-group">
           <label>Condition</label>
           <select id="dwm-countdown-action">
-            <option value="on_to_off">If device turns ON → auto-OFF after duration</option>
-            <option value="off_to_on">If device turns OFF → auto-ON after duration</option>
+            <option value="on_to_off">If device is ON → auto-OFF after duration</option>
+            <option value="off_to_on">If device is OFF → auto-ON after duration</option>
           </select>
         </div>
         <div class="form-group">
@@ -557,7 +557,7 @@
         </tr>
         <tr style="border-bottom:1px solid var(--border)">
           <td style="padding:7px 8px;white-space:nowrap">⏱ <strong>Countdown</strong></td>
-          <td style="padding:7px 8px;color:var(--muted)">Auto-off after a set number of minutes. Useful for things like a bathroom fan or porch light.</td>
+          <td style="padding:7px 8px;color:var(--muted)">Runs whenever the device is in the trigger state — turn OFF after N minutes while ON, or turn ON after N minutes while OFF. Works even if the device was already in that state when Homebridge starts. Manual change before the timer fires cancels it. Useful for bathroom fans, porch lights, and similar "max runtime" scenarios.</td>
         </tr>
         <tr style="border-bottom:1px solid var(--border)">
           <td style="padding:7px 8px;white-space:nowrap">🏠 <strong>Away Mode</strong></td>

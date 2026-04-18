@@ -4,6 +4,36 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.15] — 2026-04-17
+
+### Countdown rule is now state-based, not transition-based
+
+The DWM **Countdown** rule (auto-timer-off / auto-timer-on) is now level-triggered instead of edge-triggered. Previously the timer only started when the device *transitioned* into the trigger state — so if the device was already ON when Homebridge, Home Assistant, or the Desktop scheduler started, the auto-off timer would never run until someone manually toggled it off and back on.
+
+**New behavior:**
+
+- The timer runs **whenever the device is in the trigger state**, regardless of how it got there. If the device is already ON when the scheduler starts, the auto-OFF countdown starts immediately.
+- If the device leaves the trigger state before the timer fires (e.g. you manually turn off an auto-off device early), the timer is **cancelled** — no surprise re-toggle.
+- If the device re-enters the trigger state, a fresh countdown starts.
+- If the active-window expires mid-countdown, the timer is cancelled.
+
+**UI wording updated everywhere:**
+
+- "If device turns ON → auto-OFF after duration" → **"If device is ON → auto-OFF after duration"**
+- "If device turns OFF → auto-ON after duration" → **"If device is OFF → auto-ON after duration"**
+
+Applied consistently to:
+- Desktop app Countdown editor (`CountdownEditor.jsx`)
+- Homebridge plugin rule editor + Help tab (`homebridge-ui/public/index.html`)
+- Home Assistant integration scheduler (`custom_components/dibby_wemo/scheduler.py`)
+
+Existing rules with `countdownAction: 'on_to_off'` or `'off_to_on'` continue to work unchanged — only the trigger semantics improved. No rule-store migration required.
+
+### Affected packages
+All monorepo packages bumped to **2.0.15** in unified versioning.
+
+---
+
 ## [2.0.14] — 2026-04-13
 
 ### Unified Versioning + Node-RED Publish + Home Assistant + HOOBS + WiFi Provisioning Fix + Homebridge 2.0 Compatibility

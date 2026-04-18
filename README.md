@@ -128,7 +128,7 @@ The bridge publishes each Wemo device's state to MQTT with Home Assistant auto-d
 - **One-click power control** — toggle any device instantly
 - **DWM Rules** — cross-device scheduling engine:
   - **Schedule** — turn devices on/off at specific times on selected days
-  - **Countdown** — active-window timer (on at sunset, off at midnight, etc.)
+  - **Countdown** — state-based auto-timer: turns the device OFF (or ON) after N minutes of being in that state, including if it was already in that state when the scheduler started
   - **Away Mode** — randomised on/off simulation while you're away
   - **Always On** — enforce a device stays on; auto-corrects within 10 seconds
   - **Trigger** — IFTTT-style: when device A changes state, control device B

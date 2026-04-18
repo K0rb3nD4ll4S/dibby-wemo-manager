@@ -26,13 +26,13 @@ export default function CountdownEditor({ form, onChange }) {
           value={countdownAction}
           onChange={(e) => onChange({ ...form, countdownAction: e.target.value })}
         >
-          <option value="on_to_off">If device turns ON → auto-OFF after duration</option>
-          <option value="off_to_on">If device turns OFF → auto-ON after duration</option>
+          <option value="on_to_off">If device is ON → auto-OFF after duration</option>
+          <option value="off_to_on">If device is OFF → auto-ON after duration</option>
         </select>
         <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>
           {countdownAction === 'on_to_off'
-            ? 'When the device is turned ON, it will automatically turn OFF after the countdown.'
-            : 'When the device is turned OFF, it will automatically turn ON after the countdown.'}
+            ? 'Whenever the device is ON (including already-on at startup), the countdown runs and the device is turned OFF. If it is turned OFF manually before the countdown elapses, the timer is cancelled.'
+            : 'Whenever the device is OFF (including already-off at startup), the countdown runs and the device is turned ON. If it is turned ON manually before the countdown elapses, the timer is cancelled.'}
         </div>
       </div>
 
@@ -72,8 +72,7 @@ export default function CountdownEditor({ form, onChange }) {
         {windowEnabled && (
           <>
             <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 12 }}>
-              The countdown only activates when the device state changes within this time window.
-              State changes outside the window are ignored.
+              The countdown only runs while the device is in the trigger state AND the current time is within this window. Outside the window the timer is paused / cancelled.
             </p>
 
             {/* Window times */}
