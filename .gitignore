@@ -51,5 +51,5 @@ yarn-error.log*
 *.temp
 .cache/
 
-# ── Claude agent internals ───────────────────────────────────────────────────
+# ── Local editor / tooling caches ────────────────────────────────────────────
 .claude/
