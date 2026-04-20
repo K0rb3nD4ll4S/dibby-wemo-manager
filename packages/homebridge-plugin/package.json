@@ -34,7 +34,8 @@
   "homepage": "https://github.com/K0rb3nD4ll4S/dibby-wemo-manager#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/K0rb3nD4ll4S/dibby-wemo-manager.git"
+    "url": "git+https://github.com/K0rb3nD4ll4S/dibby-wemo-manager.git",
+    "directory": "packages/homebridge-plugin"
   },
   "bugs": {
     "url": "https://github.com/K0rb3nD4ll4S/dibby-wemo-manager/issues"
