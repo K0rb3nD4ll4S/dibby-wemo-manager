@@ -49,11 +49,15 @@ class WemoSwitchAccessory {
   // ── HomeKit handlers ──────────────────────────────────────────────────────
 
   async _getOn() {
-    try {
-      this._currentState = await this.wemo.getBinaryState(this.device.host, this.device.port);
-    } catch (e) {
-      this.log.warn(`[${this.device.friendlyName}] getBinaryState failed: ${e.message}`);
-    }
+    // Return the cached state instantly. The background poll (`_startPolling`)
+    // keeps `_currentState` fresh and calls `updateCharacteristic` whenever
+    // the device's real state changes, so HomeKit stays in sync without us
+    // doing a live SOAP call on every HomeKit read.
+    //
+    // Doing a live SOAP call here causes Homebridge "SLOW_WARNING" /
+    // "TIMEOUT_WARNING" messages whenever the Wemo device is slow to respond
+    // (>3 s), which is common on wifi or when the device is busy. See:
+    // https://github.com/homebridge/homebridge/wiki/Characteristic-Warnings
     return this._currentState;
   }
 

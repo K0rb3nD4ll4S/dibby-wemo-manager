@@ -43,17 +43,17 @@ dibby-wemo-manager/
 Download the latest installer from [Releases](../../releases):
 
 **Windows:**
-- **`Dibby Wemo Manager Setup 2.0.15.exe`** — NSIS installer (recommended)
-- **`Dibby Wemo Manager 2.0.15.exe`** — Portable single-file executable
+- **`Dibby Wemo Manager Setup 2.0.16.exe`** — NSIS installer (recommended)
+- **`Dibby Wemo Manager 2.0.16.exe`** — Portable single-file executable
 
 **Linux (x64):**
-- **`Dibby Wemo Manager-2.0.15.AppImage`** — Universal AppImage, runs anywhere
-- **`dibby-wemo-manager_2.0.15_amd64.deb`** — Debian / Ubuntu
-- **`dibby-wemo-manager-2.0.15.x86_64.rpm`** — Fedora / RHEL
+- **`Dibby Wemo Manager-2.0.16.AppImage`** — Universal AppImage, runs anywhere
+- **`dibby-wemo-manager_2.0.16_amd64.deb`** — Debian / Ubuntu
+- **`dibby-wemo-manager-2.0.16.x86_64.rpm`** — Fedora / RHEL
 
 **Linux (ARM64 — Raspberry Pi 4/5):**
-- **`Dibby Wemo Manager-2.0.15-arm64.AppImage`**
-- **`dibby-wemo-manager_2.0.15_arm64.deb`**
+- **`Dibby Wemo Manager-2.0.16-arm64.AppImage`**
+- **`dibby-wemo-manager_2.0.16_arm64.deb`**
 
 Run the installer (Windows) or AppImage (Linux). Wemo devices are discovered automatically via SSDP on your local network.
 
@@ -313,14 +313,14 @@ Each [GitHub Release](../../releases) includes:
 
 | File | OS | Description |
 |---|---|---|
-| `Dibby Wemo Manager Setup 2.0.15.exe` | Windows | NSIS installer (recommended) |
-| `Dibby Wemo Manager 2.0.15.exe` | Windows | Portable executable |
-| `Dibby Wemo Manager-2.0.15.AppImage` | Linux x64 | Universal AppImage |
-| `dibby-wemo-manager_2.0.15_amd64.deb` | Linux x64 | Debian / Ubuntu package |
-| `dibby-wemo-manager-2.0.15.x86_64.rpm` | Linux x64 | Fedora / RHEL package |
-| `Dibby Wemo Manager-2.0.15-arm64.AppImage` | Linux ARM64 | Raspberry Pi 4/5 AppImage |
-| `dibby-wemo-manager_2.0.15_arm64.deb` | Linux ARM64 | Raspberry Pi OS package |
-| `homebridge-dibby-wemo-2.0.15.tgz` | Any | Homebridge plugin npm package |
+| `Dibby Wemo Manager Setup 2.0.16.exe` | Windows | NSIS installer (recommended) |
+| `Dibby Wemo Manager 2.0.16.exe` | Windows | Portable executable |
+| `Dibby Wemo Manager-2.0.16.AppImage` | Linux x64 | Universal AppImage |
+| `dibby-wemo-manager_2.0.16_amd64.deb` | Linux x64 | Debian / Ubuntu package |
+| `dibby-wemo-manager-2.0.16.x86_64.rpm` | Linux x64 | Fedora / RHEL package |
+| `Dibby Wemo Manager-2.0.16-arm64.AppImage` | Linux ARM64 | Raspberry Pi 4/5 AppImage |
+| `dibby-wemo-manager_2.0.16_arm64.deb` | Linux ARM64 | Raspberry Pi OS package |
+| `homebridge-dibby-wemo-2.0.16.tgz` | Any | Homebridge plugin npm package |
 
 ---
 

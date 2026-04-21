@@ -4,6 +4,23 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.16] — 2026-04-21
+
+### Homebridge: eliminate Characteristic SLOW_WARNING / TIMEOUT_WARNING
+
+The Homebridge plugin was triggering [Characteristic Warnings](https://github.com/homebridge/homebridge/wiki/Characteristic-Warnings) in Homebridge logs — specifically `SLOW_WARNING` (>3 s) and occasionally `TIMEOUT_WARNING` (>10 s) on the `On` characteristic.
+
+**Root cause:** the `onGet` handler for the `On` characteristic was making a live SOAP call to the Wemo device on every HomeKit read. Wemo UPnP responses are usually 150–400 ms on a healthy device, but can easily reach 3–10 s when the device is busy, on wifi, or momentarily unreachable — which HomeKit treats as a slow handler.
+
+**Fix:** `onGet` now returns the cached state instantly. The background poll (running every `pollInterval` seconds, default 30 s) keeps the cache fresh and pushes real state changes to HomeKit via `updateCharacteristic`. This is the pattern the Homebridge docs explicitly recommend — HomeKit gets an instant response on every read, and state stays accurate because the poll already notifies HomeKit whenever the device's real state changes.
+
+**Impact for users:** no more "slow read" warnings in Homebridge logs, faster HomeKit app response, and no change to how quickly state updates appear (still governed by `pollInterval`). Existing configs continue to work unchanged — no migration needed.
+
+### Affected packages
+All monorepo packages bumped to **2.0.16** in unified versioning.
+
+---
+
 ## [2.0.15] — 2026-04-17
 
 ### Countdown rule is now state-based, not transition-based
