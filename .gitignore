@@ -21,6 +21,9 @@ apps/desktop/WemoManagerData/
 *.key
 *.pem
 
+# ── Bundled Node binary (~91 MB; copy from system Node before building) ──────
+apps/desktop/resources/node.exe
+
 # ── Environment / secrets ─────────────────────────────────────────────────────
 .env
 .env.*

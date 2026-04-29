@@ -14,7 +14,7 @@ const sun    = require('./core/sun');
 const AdmZip = require('adm-zip');
 const { parseStringPromise } = require('xml2js');
 const { create } = require('xmlbuilder2');
-const { namesToDayNumbers, timeToSecs } = require('./core/types');
+const { namesToDayNumbers, deviceDaysToDibby, dibbyDayToDevice, timeToSecs } = require('./core/types');
 
 // Wemo devices close the socket immediately after each response.
 const NO_KEEPALIVE = new http.Agent({ keepAlive: false });
@@ -599,8 +599,8 @@ exports.closeSetup = closeSetup;
 // HomeKit
 // ---------------------------------------------------------------------------
 
-async function getHomeKitInfo(host, port) {
-  const result = { setupDone: null, setupCode: null };
+async function getHomeKitInfo(host, port, modelName) {
+  const result = { setupDone: null, setupCode: null, setupURI: null, category: null };
   try {
     const res = await soapWithFallback(host, port, BE_URL, BE_SVC, 'getHKSetupState');
     result.setupDone = String(res['HKSetupDone'] ?? '').trim();
@@ -609,9 +609,71 @@ async function getHomeKitInfo(host, port) {
     const res = await soapWithFallback(host, port, BE_URL, BE_SVC, 'GetHKSetupInfo');
     result.setupCode = String(res['HKSetupCode'] ?? '').trim();
   } catch { /* not supported */ }
+
+  // Build the X-HM:// URI Apple Home expects for QR-code-based setup.
+  // The Wemo SOAP API exposes only the 8-digit setup code; we derive the URI
+  // locally so we can render a scannable QR without hitting the device again.
+  if (result.setupCode && /^\d{3}-?\d{2}-?\d{3}$/.test(result.setupCode)) {
+    const cat = homeKitCategoryFromModel(modelName);
+    result.category = cat;
+    result.setupURI  = buildHomeKitSetupURI(result.setupCode, cat, /* IP flag */ 2);
+  }
   return result;
 }
 exports.getHomeKitInfo = getHomeKitInfo;
+
+/**
+ * Map a Wemo modelName to its HomeKit Accessory Category Identifier.
+ * (HAP spec §13-1.) Falls back to 7 (Outlet) which is the safe default for
+ * controllable on/off relays — Apple Home will still pair correctly even if
+ * the category is approximate.
+ */
+function homeKitCategoryFromModel(modelName) {
+  const m = String(modelName ?? '').toLowerCase();
+  if (m.includes('lightswitch')) return 8;  // Switch
+  if (m.includes('light') || m.includes('bulb')) return 5;  // Lightbulb
+  if (m.includes('socket') || m.includes('plug') || m.includes('outlet') || m.includes('insight')) return 7;  // Outlet
+  if (m.includes('motion') || m.includes('sensor')) return 10;  // Sensor
+  return 7;  // Outlet — safe default for Wemo on/off relays
+}
+exports.homeKitCategoryFromModel = homeKitCategoryFromModel;
+
+/**
+ * Build the X-HM:// setup URI from an 8-digit HomeKit setup code.
+ *
+ * Payload layout (HAP spec §4.2.1.5, "Setup Code Tag"): 46 bits, base36-encoded
+ * to 9 ASCII characters. Bit positions (LSB first):
+ *   [0..2]   version  (always 0)
+ *   [3..6]   reserved (0)
+ *   [7..14]  category (8 bits)
+ *   [15..18] flags    (4 bits — 1=NFC, 2=IP, 4=BLE)
+ *   [19..45] setupCode (27 bits, the integer value of the 8-digit code)
+ *
+ * Returns e.g. "X-HM://0023U2J03" for setup code 111-22-333 + category 7 + IP flag.
+ */
+function buildHomeKitSetupURI(setupCode, category, flags) {
+  const digits = String(setupCode).replace(/-/g, '');
+  if (!/^\d{8}$/.test(digits)) {
+    throw new Error(`invalid HomeKit setup code: ${setupCode}`);
+  }
+  const code = BigInt(digits);
+  let payload = 0n;
+  // version (3 bits, 0) + reserved (4 bits, 0) — bits 0..6 stay 0
+  payload |= (BigInt(category & 0xff))   << 7n;   // bits 7..14
+  payload |= (BigInt(flags    & 0x0f))   << 15n;  // bits 15..18
+  payload |= (code            & 0x7ffffffn) << 19n; // bits 19..45 (27 bits)
+
+  // Base36 encode to exactly 9 chars (zero-padded), uppercase
+  let s = '';
+  let v = payload;
+  for (let i = 0; i < 9; i++) {
+    const digit = Number(v % 36n);
+    s = digit.toString(36).toUpperCase() + s;
+    v /= 36n;
+  }
+  return 'X-HM://' + s;
+}
+exports.buildHomeKitSetupURI = buildHomeKitSetupURI;
 
 // ---------------------------------------------------------------------------
 // Setup XML parsing
@@ -1092,8 +1154,15 @@ async function getRules(host, port) {
       for (const rd of allRds) {
         const key = rd.deviceid;
         if (!deviceMap.has(key)) deviceMap.set(key, { ...rd, days: [] });
-        const dayNum = Number(rd.dayid);
-        if (dayNum > 0 && dayNum <= 7) deviceMap.get(key).days.push(dayNum);
+        // Translate Belkin device DayID → Dibby internal day numbers.
+        // One Belkin row may expand to multiple Dibby days (Daily=0, Weekdays=8,
+        // Weekends=9), and per-day values 1-7 are also remapped because Belkin
+        // uses Sun=1..Sat=7 while Dibby uses Mon=1..Sun=7.
+        const expanded = deviceDaysToDibby(rd.dayid);
+        const target   = deviceMap.get(key).days;
+        for (const d of expanded) {
+          if (!target.includes(d)) target.push(d);
+        }
       }
       return {
         ...rule,
@@ -1132,8 +1201,12 @@ async function createRule(host, port, input) {
   const insertDays = isCountdown ? [-1] : (dayNumbers.length ? dayNumbers : [1,2,3,4,5,6,7]);
   for (const deviceId of deviceIds) {
     for (const dayNum of insertDays) {
+      // Translate Dibby internal day → Belkin firmware DayID convention so
+      // rules created in Dibby are also correctly read by the Belkin WeMo app.
+      // Countdown sentinel (-1) and any negative values pass through unchanged.
+      const deviceDayId = dayNum > 0 ? dibbyDayToDevice(dayNum) : dayNum;
       db.run(`INSERT INTO RULEDEVICES (RuleID,DeviceID,GroupID,DayID,StartTime,RuleDuration,StartAction,EndAction,SensorDuration,CountdownTime,EndTime,OnModeOffset,OffModeOffset) VALUES (?,?,0,?,?,?,?,?,?,?,?,?,?)`,
-        [ruleId, deviceId, dayNum, startSecs,
+        [ruleId, deviceId, deviceDayId, startSecs,
           isAway ? duration : 0,
           input.startAction ?? 1, input.endAction ?? -1,
           2, isCountdown ? (input.countdownTime || 3600) : 0,
@@ -1209,11 +1282,16 @@ async function updateRule(host, port, ruleId, input) {
     const dayNumbers = input.days?.length > 0 ? namesToDayNumbers(input.days) : null;
     let existingDaysByDevice = null;
     if (!dayNumbers) {
+      // Existing DayID values in the firmware are in Belkin convention. Translate
+      // them to Dibby internal (Mon=1..Sun=7) so the insert path can apply a
+      // single uniform Dibby→Belkin conversion at the end.
       existingDaysByDevice = new Map();
       const r = db.exec('SELECT DeviceID,DayID FROM RULEDEVICES WHERE RuleID=?', [ruleId]);
       if (r[0]) for (const [did, day] of r[0].values) {
         if (!existingDaysByDevice.has(did)) existingDaysByDevice.set(did, []);
-        existingDaysByDevice.get(did).push(Number(day));
+        for (const d of deviceDaysToDibby(day)) {
+          if (!existingDaysByDevice.get(did).includes(d)) existingDaysByDevice.get(did).push(d);
+        }
       }
     }
 
@@ -1232,8 +1310,11 @@ async function updateRule(host, port, ruleId, input) {
         ? (dayNumbers || existingDaysByDevice?.get(deviceId) || insertDays)
         : insertDays;
       for (const dayNum of days) {
+        // Translate Dibby internal day → Belkin firmware DayID convention.
+        // Negative sentinel values (e.g. -1 for countdown) pass through unchanged.
+        const deviceDayId = dayNum > 0 ? dibbyDayToDevice(dayNum) : dayNum;
         db.run(`INSERT INTO RULEDEVICES (RuleID,DeviceID,GroupID,DayID,StartTime,RuleDuration,StartAction,EndAction,SensorDuration,CountdownTime,EndTime,OnModeOffset,OffModeOffset) VALUES (?,?,0,?,?,?,?,?,?,?,?,?,?)`,
-          [ruleId, deviceId, dayNum, startSecs,
+          [ruleId, deviceId, deviceDayId, startSecs,
             isAway ? duration : 0,
             sa, ea, 2,
             isCountdown ? (input.countdownTime ?? existingActions?.countdownTime ?? 3600) : 0,

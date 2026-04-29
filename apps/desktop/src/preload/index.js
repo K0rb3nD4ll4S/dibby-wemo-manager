@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('wemoAPI', {
   factoryReset:       (args)         => invoke('factory-reset', args),
   resetWifi:          (args)         => invoke('reset-wifi', args),
   getHomekitInfo:     (args)         => invoke('get-homekit-info', args),
+  getHomekitQR:       (args)         => invoke('get-homekit-qr', args),
 
   // Saved device management
   getSavedDevices:    ()             => invoke('get-saved-devices'),
@@ -76,6 +77,14 @@ contextBridge.exposeInMainWorld('wemoAPI', {
   serviceStart:            () => invoke('service-start'),
   serviceStop:             () => invoke('service-stop'),
   syncDevicesToService:    (devices) => invoke('sync-devices-to-service', devices),
+
+  // Embedded HomeKit (HAP) bridge
+  hkBridgeStatus:          () => invoke('hk-bridge-status'),
+  hkBridgeStart:           () => invoke('hk-bridge-start'),
+  hkBridgeStop:            () => invoke('hk-bridge-stop'),
+  hkBridgeSetAutostart:    (v) => invoke('hk-bridge-set-autostart', v),
+  hkBridgeResetPairings:   () => invoke('hk-bridge-reset-pairings'),
+  hkBridgeSync:            () => invoke('hk-bridge-sync'),
 
   onSchedulerFired: (cb) => {
     const handler = (_e, data) => cb(data);

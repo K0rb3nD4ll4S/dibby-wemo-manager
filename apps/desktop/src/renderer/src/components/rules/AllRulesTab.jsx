@@ -1,5 +1,5 @@
 'use strict';
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import RuleEditor       from './RuleEditor';
 import useDeviceStore   from '../../store/devices';
 import useSettingsStore from '../../store/settings';
@@ -168,6 +168,20 @@ export default function AllRulesTab() {
   const [deviceErrors, setDeviceErrors] = useState({});
   const [editingRule,  setEditingRule]  = useState(null);
   const [editingDevice, setEditingDevice] = useState(null);
+  const [svcStatus,    setSvcStatus]    = useState(null);
+
+  // Poll scheduler service status so we know whether device-firmware rules will fire
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = () => {
+      window.wemoAPI?.serviceStatus?.()
+        .then((s) => { if (!cancelled) setSvcStatus(s); })
+        .catch(() => {});
+    };
+    refresh();
+    const id = setInterval(refresh, 15000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -300,6 +314,22 @@ export default function AllRulesTab() {
           📥 Copy adds rules to local DWM database
         </span>
       </div>
+
+      {/* Scheduler-not-running banner — only when there are device-firmware rules at risk */}
+      {wemoCount > 0 && svcStatus && !svcStatus.running && (
+        <div className="notice notice-warn" style={{ marginBottom: 12, fontSize: 12 }}>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>
+            ⚠️ {wemoCount} Wemo device rule{wemoCount !== 1 ? 's are' : ' is'} not firing — scheduler service is {svcStatus.installed ? 'stopped' : 'not installed'}
+          </div>
+          <div style={{ color: 'var(--text2)', lineHeight: 1.45 }}>
+            Wemo on-device firmware schedulers stopped working when Belkin shut down their cloud (2024).
+            Rules sit in device memory but never trigger unless an external scheduler fires them. Open the
+            sidebar's <strong>Scheduler</strong> section and {svcStatus.installed ? 'start' : 'install'} the
+            DibbyWemoScheduler service so these rules actually fire — or convert them to DWM rules using the
+            📥 button on each card.
+          </div>
+        </div>
+      )}
 
       {/* Device errors */}
       {errorEntries.length > 0 && (

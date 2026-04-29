@@ -269,7 +269,7 @@ function DevicePicker({ isDwm, currentUdn, selected, allDevices, onChange }) {
       <p style={{ fontSize: 12, color: 'var(--text2)', margin: '2px 0 8px' }}>
         {isDwm
           ? 'Select which devices this rule will control.'
-          : 'This rule will be stored on the current device and run on all selected devices.'}
+          : 'The 🏠 device is the storage host — this rule lives in its firmware. The other selected devices are the targets the rule controls.'}
       </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {allDevices.map((d) => {
@@ -284,7 +284,7 @@ function DevicePicker({ isDwm, currentUdn, selected, allDevices, onChange }) {
                 cursor: locked ? 'default' : 'pointer',
                 display: 'flex', alignItems: 'center', gap: 4,
               }}
-              title={locked ? 'Current device (always included)' : undefined}
+              title={locked ? 'Storage host — this rule is stored in this device’s firmware. To change, delete the rule and re-create it on the desired device’s Rules tab.' : undefined}
               onClick={() => !locked && toggle(d.udn)}
             >
               {locked ? '🏠 ' : ''}{d.friendlyName || d.name}
@@ -513,6 +513,23 @@ export default function RuleEditor({ rule, device, isDwm = false, onSave, onClos
       {error && (
         <div className="notice notice-danger" style={{ marginBottom: 12 }}>
           ⚠️ {error}
+        </div>
+      )}
+
+      {/* Firmware-rule scheduler warning — only on Wemo (device) rules */}
+      {!isDwm && (
+        <div className="notice notice-warn" style={{ marginBottom: 12, fontSize: 12 }}>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>
+            ⚠️ Wemo device rules don't fire on their own anymore
+          </div>
+          <div style={{ color: 'var(--text2)', lineHeight: 1.45 }}>
+            After Belkin shut down their cloud (2024), the on-device scheduler in Wemo firmware no longer
+            wakes up to fire rules. The rule will be saved to the device's memory, but to actually fire it
+            you need <strong>Dibby's scheduler running on an always-on machine</strong> (Windows service,
+            macOS daemon, Linux/Pi systemd unit, Homebridge, Home Assistant, Node-RED, or the Android app
+            in foreground mode). For most users, creating this as a <strong>DWM rule</strong> instead is
+            simpler — DWM rules are stored locally and fire from Dibby's scheduler directly.
+          </div>
         </div>
       )}
 

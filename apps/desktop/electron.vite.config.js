@@ -25,6 +25,8 @@ export default defineConfig({
           'ipc/wifi.ipc':      resolve(__dirname, 'src/main/ipc/wifi.ipc.js'),
           'ipc/system.ipc':    resolve(__dirname, 'src/main/ipc/system.ipc.js'),
           'ipc/scheduler.ipc': resolve(__dirname, 'src/main/ipc/scheduler.ipc.js'),
+          'ipc/homekit.ipc':   resolve(__dirname, 'src/main/ipc/homekit.ipc.js'),
+          'homekit-bridge':    resolve(__dirname, 'src/main/homekit-bridge.js'),
           scheduler:           resolve(__dirname, 'src/main/scheduler.js'),
           'scheduler-standalone': resolve(__dirname, 'src/main/scheduler-standalone.js'),
           'service-manager':      resolve(__dirname, 'src/main/service-manager.js'),

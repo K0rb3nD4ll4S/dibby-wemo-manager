@@ -57,8 +57,29 @@ module.exports = function registerDeviceIpc() {
     return wemo.resetWifi(host, port);
   });
 
-  ipcMain.handle('get-homekit-info', async (_e, { host, port }) => {
-    return wemo.getHomeKitInfo(host, port);
+  ipcMain.handle('get-homekit-info', async (_e, { host, port, modelName }) => {
+    return wemo.getHomeKitInfo(host, port, modelName);
+  });
+
+  /**
+   * Returns the HomeKit setup info plus a PNG data URL of the X-HM:// QR code.
+   * Renderer can drop the data URL straight into <img src=…>. The QR encoding
+   * uses error-correction level Q (~25 %) so users can scan it from a slightly
+   * blurry phone camera.
+   */
+  ipcMain.handle('get-homekit-qr', async (_e, { host, port, modelName }) => {
+    const info = await wemo.getHomeKitInfo(host, port, modelName);
+    if (!info.setupURI) return { ...info, qrDataURL: null };
+    let qrcode;
+    try { qrcode = require('qrcode'); }
+    catch { return { ...info, qrDataURL: null, qrError: 'qrcode package not installed' }; }
+    const qrDataURL = await qrcode.toDataURL(info.setupURI, {
+      errorCorrectionLevel: 'Q',
+      margin:                1,
+      width:                 240,
+      color: { dark: '#000000ff', light: '#ffffffff' },
+    });
+    return { ...info, qrDataURL };
   });
 
   // Saved device list management
@@ -67,6 +88,8 @@ module.exports = function registerDeviceIpc() {
     store.saveDevices(list);
     // Keep service device list in sync so it picks up new/renamed devices
     try { require('../service-manager-sync').syncDevices(list); } catch { /* service sync optional */ }
+    // Reconcile HomeKit bridge accessory list (if bridge is running)
+    try { require('./homekit.ipc').syncFromDeviceList(list); } catch { /* hk-bridge sync optional */ }
   });
   ipcMain.handle('get-device-order',      () => store.getDeviceOrder());
   ipcMain.handle('save-device-order',     (_e, order) => store.saveDeviceOrder(order));

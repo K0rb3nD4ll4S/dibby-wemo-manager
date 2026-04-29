@@ -37,6 +37,33 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# ── Day-of-week translation ──────────────────────────────────────────────────
+#
+# Belkin firmware DayID encoding (extracted from the official WeMo Android app):
+#   0 = Daily (every day)
+#   1 = Sun, 2 = Mon, 3 = Tue, 4 = Wed, 5 = Thu, 6 = Fri, 7 = Sat
+#   8 = Weekdays (single row covering Mon-Fri)
+#   9 = Weekends (single row covering Sat-Sun)
+#
+# Dibby internal day numbers: 1 = Mon ... 7 = Sun (ISO-8601).
+BELKIN_TO_DIBBY: dict[int, list[int]] = {
+    0: [1, 2, 3, 4, 5, 6, 7],
+    1: [7], 2: [1], 3: [2], 4: [3], 5: [4], 6: [5], 7: [6],
+    8: [1, 2, 3, 4, 5],
+    9: [6, 7],
+}
+
+
+def device_days_to_dibby(raw_day_id: int) -> list[int]:
+    """One Belkin firmware DayID → list of Dibby day numbers. Unknown → []."""
+    return list(BELKIN_TO_DIBBY.get(int(raw_day_id), []))
+
+
+def dibby_day_to_device(d: int) -> int:
+    """Dibby day number (1=Mon..7=Sun) → Belkin DayID (2=Mon..7=Sat,1=Sun)."""
+    return 1 if int(d) == 7 else int(d) + 1
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _secs_to_hhmm(secs: int) -> str:
@@ -434,6 +461,10 @@ async def create_rule(host: str, port: int, rule: dict) -> int:
         device_id = rule.get("deviceId", "")
 
         for day in days:
+            # Translate Dibby internal day → Belkin firmware DayID convention so
+            # rules created here are also correctly read by the Belkin WeMo app.
+            # Negative sentinel values (e.g. countdown -1) pass through unchanged.
+            device_day_id = dibby_day_to_device(day) if int(day) > 0 else int(day)
             conn.execute("""
                 INSERT INTO RULEDEVICES
                 (RuleID, DeviceID, GroupID, DayID, StartTime, RuleDuration,
@@ -441,7 +472,7 @@ async def create_rule(host: str, port: int, rule: dict) -> int:
                  OnModeOffset, OffModeOffset)
                 VALUES (?,?,0,?,?,0,?,?,2,?,?,?,?)
             """, (
-                str(rule_id), device_id, day, start_secs,
+                str(rule_id), device_id, device_day_id, start_secs,
                 float(start_action), float(end_action),
                 countdown_time, end_secs, -1, -1,
             ))

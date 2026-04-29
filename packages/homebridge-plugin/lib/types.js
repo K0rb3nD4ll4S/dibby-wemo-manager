@@ -1,9 +1,33 @@
 'use strict';
 
-/** Day numbers: 1=Monday ... 7=Sunday (Wemo convention) */
+/** Dibby internal day numbers: 1=Monday ... 7=Sunday (ISO-8601). */
 const DAY_NUMBERS = { Monday:1, Tuesday:2, Wednesday:3, Thursday:4, Friday:5, Saturday:6, Sunday:7 };
 const DAY_NAMES   = { 1:'Monday', 2:'Tuesday', 3:'Wednesday', 4:'Thursday', 5:'Friday', 6:'Saturday', 7:'Sunday' };
 const DAY_SHORT   = { 1:'Mon', 2:'Tue', 3:'Wed', 4:'Thu', 5:'Fri', 6:'Sat', 7:'Sun' };
+
+/**
+ * Belkin firmware DayID encoding (extracted from the official WeMo Android app):
+ *   0 = Daily (every day)
+ *   1 = Sun, 2 = Mon, 3 = Tue, 4 = Wed, 5 = Thu, 6 = Fri, 7 = Sat
+ *   8 = Weekdays (single row covering Mon-Fri)
+ *   9 = Weekends (single row covering Sat-Sun)
+ */
+const BELKIN_TO_DIBBY = {
+  0: [1, 2, 3, 4, 5, 6, 7],
+  1: [7], 2: [1], 3: [2], 4: [3], 5: [4], 6: [5], 7: [6],
+  8: [1, 2, 3, 4, 5],
+  9: [6, 7],
+};
+
+/** One device DayID → array of Dibby day numbers. Unknown values → []. */
+function deviceDaysToDibby(rawDayId) {
+  return BELKIN_TO_DIBBY[Number(rawDayId)] || [];
+}
+
+/** Dibby day number (1=Mon..7=Sun) → Belkin DayID (2=Mon..7=Sat,1=Sun). */
+function dibbyDayToDevice(d) {
+  return d === 7 ? 1 : Number(d) + 1;
+}
 
 /** Rule types stored in RULES.Type */
 const RULE_TYPES = {
@@ -69,8 +93,9 @@ function secsToHHMM(secs) {
 }
 
 module.exports = {
-  DAY_NUMBERS, DAY_NAMES, DAY_SHORT,
+  DAY_NUMBERS, DAY_NAMES, DAY_SHORT, BELKIN_TO_DIBBY,
   RULE_TYPES, ACTIONS, NETWORK_STATUS, RESET_CODES, RD_DEFAULTS, SUN_CODES,
   namesToDayNumbers, dayNumbersToNames, dayNumbersToShort,
+  deviceDaysToDibby, dibbyDayToDevice,
   timeToSecs, secsToHHMM,
 };

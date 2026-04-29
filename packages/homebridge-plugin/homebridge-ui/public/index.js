@@ -66,6 +66,21 @@ function hhmmToSecs(str) {
 
 const DAY_NAMES = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+// Belkin firmware DayID encoding (from the official WeMo Android app):
+//   0=Daily, 1=Sun, 2=Mon, 3=Tue, 4=Wed, 5=Thu, 6=Fri, 7=Sat,
+//   8=Weekdays (one row covers Mon-Fri), 9=Weekends (one row covers Sat-Sun).
+// Translate to Dibby internal day numbers (1=Mon..7=Sun) so display + DWM copy
+// match the user's expectation regardless of which app created the rule.
+const BELKIN_TO_DIBBY = {
+  0: [1, 2, 3, 4, 5, 6, 7],
+  1: [7], 2: [1], 3: [2], 4: [3], 5: [4], 6: [5], 7: [6],
+  8: [1, 2, 3, 4, 5],
+  9: [6, 7],
+};
+function deviceDaysToDibby(rawDayId) {
+  return BELKIN_TO_DIBBY[Number(rawDayId)] || [];
+}
+
 function dayLabel(dayIds) {
   if (!dayIds?.length) return '—';
   if (dayIds.length === 7) return 'Every day';
@@ -800,7 +815,8 @@ function renderWemoRules(host, port) {
   el.innerHTML = _wemoRules.rules.map((r) => {
     const devices = (_wemoRules.ruleDevices ?? []).filter((rd) => String(rd.RuleID) === String(r.RuleID));
     const enabled = String(r.State) === '1';
-    const dayList = [...new Set(devices.map((d) => d.DayID))].sort().map((d) => DAY_NAMES[d] ?? d).join(', ') || '—';
+    const dibbyDays = [...new Set(devices.flatMap((d) => deviceDaysToDibby(d.DayID)))].sort((a, b) => a - b);
+    const dayList   = dibbyDays.length ? dibbyDays.map((d) => DAY_NAMES[d]).join(', ') : '—';
     const startTime = devices[0]?.StartTime >= 0 ? secsToHHMM(devices[0].StartTime) : '—';
 
     return `<div class="card" data-wemo-rule-id="${r.RuleID}">
@@ -923,7 +939,9 @@ async function copyWemoRulesToDwm(host, port) {
   for (const r of _wemoRules.rules) {
     const ruleDevs = (_wemoRules.ruleDevices ?? []).filter((rd) => String(rd.RuleID) === String(r.RuleID));
     if (!ruleDevs.length) continue;
-    const days = [...new Set(ruleDevs.map((d) => Number(d.DayID)))].sort();
+    // Translate Belkin device DayID → Dibby internal day numbers so the copied
+    // DWM rule matches the user's intent (Belkin-Friday=6 → Dibby-Friday=5, etc).
+    const days = [...new Set(ruleDevs.flatMap((d) => deviceDaysToDibby(d.DayID)))].sort((a, b) => a - b);
     const rd0 = ruleDevs[0];
     const startTime = rd0.StartTime ?? 0;
     const endTime   = rd0.RuleDuration > 0 ? startTime + rd0.RuleDuration : -1;

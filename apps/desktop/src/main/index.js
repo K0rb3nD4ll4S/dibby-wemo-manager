@@ -12,6 +12,17 @@ if (process.env.PORTABLE_EXECUTABLE_DIR) {
   app.setPath('userData', path.join(process.env.PORTABLE_EXECUTABLE_DIR, 'WemoManagerData'));
 }
 
+// Surface stray errors as console output instead of the cryptic
+// "A JavaScript error occurred in the main process: undefined: undefined"
+// dialog. Errors that need to be shown to the user are surfaced via toast
+// from explicit IPC error handlers; this just keeps the app alive on background failures.
+process.on('unhandledRejection', (reason) => {
+  console.error('[main] unhandledRejection:', reason && (reason.stack || reason.message || reason));
+});
+process.on('uncaughtException', (err) => {
+  console.error('[main] uncaughtException:', err && (err.stack || err.message || err));
+});
+
 let mainWindow      = null;
 let tray            = null;
 let forceQuit       = false; // set true only when user chooses Quit from tray/menu
@@ -313,6 +324,7 @@ app.whenReady().then(() => {
   require('./ipc/wifi.ipc')();
   require('./ipc/system.ipc')();
   require('./ipc/scheduler.ipc')();
+  require('./ipc/homekit.ipc')();
 
   // Start embedded web remote server (phone access on local network)
   const scheduler = (() => { try { return require('./scheduler'); } catch { return null; } })();

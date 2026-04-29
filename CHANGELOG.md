@@ -4,6 +4,129 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.18] — 2026-04-28
+
+### Embedded HomeKit bridge — runs HEADLESS in the scheduler service
+
+Dibby now ships its own HAP (HomeKit Accessory Protocol) bridge using `hap-nodejs`, and it runs **inside the `DibbyWemoScheduler` background service** — not in the desktop app. Pair Dibby once with Apple Home and **every Wemo on your network** appears as a HomeKit Switch, including older Wemos with no native HomeKit firmware. Because the bridge is in the always-on service, it stays alive when the desktop app is closed and across reboots — perfect for users without an always-on PC.
+
+#### How it's wired up
+
+- **Service hosts bridge.** When `DibbyWemoScheduler` starts, it loads `homekit-bridge.js` and publishes the bridge on mDNS. The bridge runs in the same Node process as the rule scheduler.
+- **Bridge identity is persistent and shared.** Username MAC, pincode, and pairing trust live in `C:\ProgramData\DibbyWemoManager\homekit-bridge\` so the bridge survives service restarts AND reboots without re-prompting Apple Home.
+- **Service writes a status snapshot every 30 s** to `homekit-bridge\status.json` (running flag, pincode, X-HM:// URI, QR data URL, paired-controller count, accessory count). The desktop app's Settings UI reads this file to display status — the desktop never runs the bridge itself when the service is hosting it (avoids port collision).
+- **In-app fallback.** If the service is NOT installed, the desktop app can host the bridge in-process (Settings → "Start in-app fallback"). Storage in this case is `<userData>/homekit-bridge/`. Bridge stops when the desktop app is closed — recommended only for evaluation.
+- **Live device sync.** The service watches `devices.json`; whenever the desktop app saves a new device list, the bridge reconciles its HAP accessory list (adds new, removes vanished) without any user intervention.
+- **State polling** every 30 s pushes live on/off changes to HomeKit so automations driven by Wemo state changes are responsive. HomeKit reads return cached state instantly to avoid `SLOW_WARNING`.
+
+#### Settings UI
+
+Settings → 🏠 HomeKit Bridge shows:
+- **Mode banner** — "Headless mode" (service hosts) vs install/start CTAs vs in-app fallback
+- **Live status** — running/stopped, paired-controller count, accessory count
+- **Pairing QR** — scannable X-HM:// QR + manual pincode for fallback entry
+- **Auto-start** toggle (mirrors to both service and app preference files)
+- **Sync Devices** — touches `devices.json` so the service re-reconciles
+- **Reset Pairings** — wipes pairing trust + identity for a fresh re-pair
+
+#### What this means for users without a computer
+
+Install `DibbyWemoScheduler` once (1-click in Settings, or via the NSIS installer). The service runs at boot under SYSTEM. The bridge is alive 24/7. Every Wemo appears in Apple Home. No desktop app needed after pairing. A $35 Pi running the Linux build does the same thing.
+
+#### Files added / changed
+- `apps/desktop/src/main/homekit-bridge.js` — encapsulated bridge module (start/stop/syncDevices/getStatus/resetPairings); uses hap-nodejs's official `bridge.setupURI()` for canonical X-HM:// QR encoding (the format Apple Home actually accepts — includes the 4-char setupID suffix)
+- `apps/desktop/src/main/scheduler-standalone.js` — auto-starts and graceful-stops the bridge inside the headless service; writes `status.json` every 30 s
+- `apps/desktop/src/main/ipc/homekit.ipc.js` — service-mode preferred, in-app fallback when service is absent; mirrors auto-start prefs to both locations
+- `apps/desktop/src/main/service-manager.js` — copies bundled `node.exe`, `node-windows/`, and the scheduler script to `C:\ProgramData\DibbyWemoManager\` so service config references stable paths (works from both portable and installer); recursively walks node-windows' transitive dep tree (`xml`, `yargs`, `yargs-parser`, `cliui`, `string-width`, `strip-ansi`, `ansi-regex`, `ansi-styles`, `wrap-ansi`, `escalade`, `get-caller-file`, `require-directory`, `y18n`, `emoji-regex`, `is-fullwidth-code-point`); 45-s install timeout with stage-trace logging at `service-install.log`
+- `apps/desktop/package.json` — `hap-nodejs ^0.14.3` added to dependencies; `extraResources` ships a real `node.exe` (~91 MB) so the service has a Node interpreter that supports `chacha20-poly1305` (Electron's bundled BoringSSL doesn't expose it in a hap-nodejs–compatible way); `nsis.perMachine: true` for all-users install default
+- `apps/desktop/electron.vite.config.js` — `homekit.ipc.js` and `homekit-bridge.js` added to bundle entry points
+- `apps/desktop/src/preload/index.js` — `hkBridge*` API exposed to renderer
+- `apps/desktop/src/renderer/src/App.jsx` — `HomeKitBridgePanel` with mode-aware UI (headless/installed-not-running/in-app/no-service); install / start / stop / **uninstall** service buttons inline in the panel
+- `apps/desktop/resources/nsis-installer.nsh` — `customInit` hook stops + cleans the previous install before file copy (no `ERROR_SHARING_VIOLATION` on upgrade); `customUnInstall` removes the service, `daemon/`, `node-windows/`, `homekit-bridge/`, `node.exe`, and `service-install.log`
+- `apps/desktop/tools/uninstall-service.ps1` — standalone admin-elevating cleanup tool (also removes `node.exe` and `service-install.log`)
+
+### Service management buttons in Settings (install / start / stop / uninstall)
+
+The HomeKit Bridge panel in Settings now has the full service-management surface inline. Whatever state the service is in, the right buttons are visible:
+
+| Service state | Buttons shown |
+|---|---|
+| Not installed | ⚙ Install DibbyWemoScheduler service |
+| Installed, stopped | ▶ Start service · 🗑 Uninstall service |
+| Installed, running | ■ Stop service · 🗑 Uninstall service |
+
+The Uninstall button shows a confirm dialog explaining that bridge pairing data, deployed node-windows, and the bundled node.exe will be removed (devices and DWM rules are preserved). The same buttons exist in the Sidebar's Scheduler panel — both surfaces stay in sync via shared status polling.
+
+### QR code for native HomeKit setup codes
+
+For Wemos that DO have native HomeKit firmware, the per-device Info tab now shows a scannable X-HM:// QR alongside the setup code text. Open Apple Home → + → Add Accessory → scan and pair, no need to look up the physical sticker.
+
+- `apps/desktop/src/main/wemo.js` — `buildHomeKitSetupURI()` and `homeKitCategoryFromModel()` helpers; `getHomeKitInfo()` now returns `setupURI` and `category` fields
+- `apps/desktop/src/main/ipc/devices.ipc.js` — new `get-homekit-qr` IPC handler returns `{ setupCode, setupURI, qrDataURL, category }`
+- `apps/desktop/src/renderer/src/components/device/DeviceInfoTab.jsx` — QR rendered next to setup code, with click-to-copy on URI; HAP category readout
+
+### UX honesty: Wemo firmware schedulers no longer fire rules autonomously
+
+After Belkin shut down their cloud (2024), the on-device autonomous scheduler in Wemo firmware no longer wakes up to fire scheduled rules. The rule data is stored on the device but never triggers — confirmed across Socket and LightSwitch firmware revisions through end-to-end testing in this house. This isn't a Dibby bug; the firmware was designed to receive a cloud-pushed "reload rules" nudge over the TLS pipe to `api.xbcs.net`, and that nudge no longer comes.
+
+This release adds clear in-app warnings so users understand what's happening:
+
+- **`RuleEditor` warning banner** (`apps/desktop/src/renderer/src/components/rules/RuleEditor.jsx`) — when editing a Wemo (firmware) device rule, a prominent banner explains that the rule is saved to the device's memory but won't fire without an external scheduler. Recommends DWM rules or running Dibby's scheduler service.
+- **`AllRulesTab` system banner** (`apps/desktop/src/renderer/src/components/rules/AllRulesTab.jsx`) — if the system has any device-firmware rules but the `DibbyWemoScheduler` Windows service isn't running, a top-of-page banner says the rules aren't firing and points to the install/start flow.
+- **Live scheduler status polling** — every 15 s the rules tab queries `serviceStatus()` so the banner appears/disappears as the service is started or stopped.
+
+### What this proves and why it can't be "fixed at the firmware layer"
+
+We did the full reverse-engineering loop and documented it here so future contributors don't repeat it:
+
+- Tried `StoreRules` (SQLite-in-ZIP), `UpdateWeeklyCalendar` (simple per-day timer string), `EditWeeklycalendar` enable/disable/remove, fake `ServerEnvironment`, `SetSetupDoneStatus`, soft reboot — all accepted at the SOAP layer, none cause rules to fire
+- Devices actively try to reach `api.xbcs.net:443` constantly (visible in proxy log) — they want the cloud nudge
+- Belkin's real server `97.74.107.18:443` now times out (was alive in March 2026); `api.xbcs.net` returns NXDOMAIN
+- TLS interception is blocked: device pins a specific GoDaddy intermediate cert chain and rejects forged certs with `unknown ca` alert
+- Public web / dark web search for leaked Belkin TLS server private keys: nothing
+- 2014 IOActive disclosure was about the GPG firmware-signing key, NOT the TLS server key; rotated by Belkin in their Jan 2024 patch anyway, irrelevant to current firmware revisions
+- Firmware modification (custom build with cloud-pinning removed) requires per-device serial-port flash and breaks HomeKit pairing — multi-month embedded engineering project, not a viable v2.0.18 fix
+
+The honest answer: **rules must be fired by an external scheduler.** Dibby already provides this — the `DibbyWemoScheduler` Windows service (and the Homebridge plugin, Home Assistant integration, Node-RED nodes, MQTT bridge) all act as external schedulers.
+
+### Recommended setup for users without an always-on PC
+
+- **Raspberry Pi running Dibby's Linux build** (~$35 hardware, low power)
+- **Homebridge** on existing HomeKit hub
+- **Home Assistant** on existing automation hub
+- **Android phone** with the Dibby Android app in foreground mode (works on a phone left on a charger)
+
+Even one of these covers an entire household of Wemo devices — the scheduler doesn't need to run on every device.
+
+### Affected packages
+All monorepo packages bumped to **2.0.18** in unified versioning.
+
+---
+
+## [2.0.17] — 2026-04-21
+
+### Fix — Day-of-week off-by-one for rules from the Belkin WeMo app
+
+Rules created by the **official Belkin WeMo phone app** (or any other source using Belkin's native firmware convention) were displaying with every day shifted +1 — a Friday rule appeared as Saturday, and so on. Rules created in Dibby Wemo itself were unaffected.
+
+**Root cause:** Belkin's firmware encodes `RULEDEVICES.DayID` with a Sunday-first convention (`1=Sun, 2=Mon, …, 6=Fri, 7=Sat`), plus three special values: `0=Daily`, `8=Weekdays`, `9=Weekends`. Dibby was reading these values using its own ISO-8601 (Monday-first) convention, so every day was off by one and the bundle values (Daily / Weekdays / Weekends) were silently dropped.
+
+This was confirmed by inspecting the official WeMo Android app's own `deCodeDays` function in the decompiled APK.
+
+**Fix:** boundary translation at every Wemo-device I/O site — Dibby's internal day numbers stay Mon=1..Sun=7, but the firmware's Sunday-first `DayID` is translated on read and on write. Single-row "Daily / Weekdays / Weekends" bundles are now correctly expanded into their constituent days.
+
+**Affected components, all patched in this release:**
+- Desktop app (`apps/desktop`) — rules list, rule editor, standalone scheduler
+- Homebridge plugin (`packages/homebridge-plugin`) — rules tab, copy-to-DWM, rule create/update
+- Home Assistant integration (`custom_components/dibby_wemo`) — rule create/update API
+
+**Round-trip with the Belkin app now works:** rules created in Dibby write `DayID` in Belkin's convention, so the WeMo phone app reads them back as the correct day.
+
+### Affected packages
+All monorepo packages bumped to **2.0.17** in unified versioning.
+
+---
+
 ## [2.0.16] — 2026-04-21
 
 ### Homebridge: eliminate Characteristic SLOW_WARNING / TIMEOUT_WARNING

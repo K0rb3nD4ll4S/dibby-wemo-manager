@@ -191,6 +191,11 @@
     <a href="#scheduler">  How the scheduler works</a>
     <a href="#svc">        Always-on service</a>
 
+    <a href="#homekit"     class="section">HomeKit</a>
+    <a href="#homekit">    HomeKit Bridge — Apple Home for every Wemo</a>
+    <a href="#homekit-pair">  Pairing with Apple Home</a>
+    <a href="#homekit-troubleshoot">  Troubleshooting</a>
+
     <a href="#web-remote"  class="section">Web Remote</a>
     <a href="#web-remote"> Phone &amp; tablet access</a>
     <a href="#qr-code">    QR code setup</a>
@@ -852,6 +857,179 @@
       then click <strong>🗑 Remove</strong>. The service will be stopped and uninstalled.
       Your rules remain on the devices — only the background scheduler is removed.
     </p>
+
+    <!-- ═══════════════════════ HOMEKIT ═══════════════════════ -->
+    <h2 id="homekit">🏠 HomeKit Bridge — every Wemo in Apple Home</h2>
+
+    <p>
+      Dibby ships its own HomeKit Accessory Protocol (HAP) bridge. Pair Dibby once with the
+      iOS Home app, and <strong>every Wemo on your network appears as a HomeKit Switch</strong> —
+      including older Wemos that have no native HomeKit firmware, and newer ones whose physical
+      setup-code sticker has been lost.
+    </p>
+
+    <div class="new">
+      <strong>The bridge runs in the always-on service, not in this desktop app.</strong>
+      That means it stays alive after you close Dibby and across reboots. Pair once, forget
+      about Dibby being open. (If you don't have the service installed, you can run the bridge
+      in this desktop app as a fallback — but it stops when you close Dibby.)
+    </div>
+
+    <h3 id="homekit-pair">Pairing with Apple Home</h3>
+
+    <ol class="steps">
+      <li>If you haven't already, install the <strong>DibbyWemoScheduler</strong> service
+          (see <a href="#svc">Always-on service</a> above). The bridge needs the service
+          to run headless.</li>
+      <li>Open Dibby Desktop → <strong>Settings</strong> (gear icon, top-left) →
+          scroll to <strong>🏠 HomeKit Bridge</strong>.</li>
+      <li>The status banner should read <strong>"Headless mode"</strong>.
+          A QR code and 8-digit setup code appear.</li>
+      <li>On your iPhone or iPad: open the <strong>Home</strong> app →
+          tap <strong>+</strong> → <strong>Add Accessory</strong> →
+          point your camera at the QR shown in Dibby Settings.</li>
+      <li>iOS asks "Add to Home?" — confirm. Pairing takes ~10–20 seconds.</li>
+      <li>Apple Home now lists every Wemo Dibby has discovered, grouped under
+          <strong>Dibby Wemo Bridge</strong>. Each Wemo is a Switch you can rename,
+          add to rooms, and use in Apple Home automations.</li>
+    </ol>
+
+    <div class="tip">
+      <strong>Manual setup code:</strong> If your camera can't scan the QR (iPad in landscape,
+      bad lighting), tap <strong>"More options…"</strong> in the Home app and type the
+      8-digit code shown next to the QR.
+    </div>
+
+    <h3>What "the bridge" actually does</h3>
+    <p>
+      Apple Home doesn't talk Wemo's protocol. The HAP bridge is a translator: it advertises
+      itself on your local network as a HomeKit accessory, presents your Wemos as HomeKit
+      Switches, and forwards every on/off command Apple Home sends down to the matching Wemo
+      via Wemo's local SOAP/UPnP control. State changes the other way (a Wemo turning on from
+      Dibby's scheduler, or someone pressing the physical button) get pushed back into HomeKit
+      via background polling.
+    </p>
+
+    <h3>Sync — adding new Wemos after pairing</h3>
+    <p>
+      When you discover new Wemos in Dibby, the bridge picks them up automatically and adds
+      them to Apple Home — usually within ~30 seconds. If a device doesn't show up, click
+      <strong>↻ Sync Devices</strong> in the HomeKit Bridge panel to force the service to
+      re-reconcile its accessory list. Devices removed from Dibby are also removed from
+      Apple Home.
+    </p>
+
+    <h3>Where pairing data lives</h3>
+    <p>
+      The bridge's pincode, MAC username, and pairing trust are stored in
+      <code>C:\ProgramData\DibbyWemoManager\homekit-bridge\</code>. As long as that directory
+      exists, the bridge keeps the same pincode and stays paired with Apple Home across
+      restarts. To re-pair from scratch (e.g. you lost your iPhone and the trust is stuck),
+      click <strong>⚠ Reset Pairings</strong> and then re-add the bridge in Apple Home.
+    </p>
+
+    <h3>Service management — Install, Start, Stop, Uninstall</h3>
+    <p>
+      All four service operations live in <strong>Settings → 🏠 HomeKit Bridge</strong>
+      (and also in the Sidebar's Scheduler section). The buttons that appear depend on
+      the current state:
+    </p>
+    <table>
+      <tr>
+        <td><strong>Service not installed</strong></td>
+        <td>Shows <strong>⚙ Install DibbyWemoScheduler service</strong>. Click it and accept
+            the UAC prompt — Dibby copies the service files to
+            <code>C:\ProgramData\DibbyWemoManager\</code> and registers the service with Windows.</td>
+      </tr>
+      <tr>
+        <td><strong>Installed but stopped</strong></td>
+        <td>Shows <strong>▶ Start service</strong> and <strong>🗑 Uninstall service</strong>.
+            Start brings the bridge back up using the existing pairing trust (no re-pairing
+            needed). Uninstall removes everything.</td>
+      </tr>
+      <tr>
+        <td><strong>Installed and running</strong></td>
+        <td>Shows <strong>■ Stop service</strong> and <strong>🗑 Uninstall service</strong>.
+            Stopping pauses the bridge but keeps the pincode + pairing trust on disk —
+            the same QR code and Apple Home pairing will work next time you start.</td>
+      </tr>
+    </table>
+
+    <div class="note">
+      <strong>What "Uninstall service" deletes:</strong>
+      <ul>
+        <li>The DibbyWemoScheduler service from Windows Service Control Manager</li>
+        <li><code>C:\ProgramData\DibbyWemoManager\daemon\</code> (winsw + service XML)</li>
+        <li><code>C:\ProgramData\DibbyWemoManager\node-windows\</code> (deployed npm package)</li>
+        <li><code>C:\ProgramData\DibbyWemoManager\scheduler-standalone.js</code></li>
+        <li><code>C:\ProgramData\DibbyWemoManager\node.exe</code> (~91 MB)</li>
+        <li><code>C:\ProgramData\DibbyWemoManager\homekit-bridge\</code> — pairing trust will be lost; re-pair on next install</li>
+      </ul>
+      <strong>What it KEEPS</strong> — your real data:
+      <ul>
+        <li><code>devices.json</code> (your discovered Wemos)</li>
+        <li><code>dwm-rules.json</code> (your DWM rules)</li>
+        <li><code>scheduler.log</code> (history)</li>
+      </ul>
+    </div>
+
+    <div class="tip">
+      <strong>Reinstalling Dibby?</strong> The NSIS installer auto-detects an existing
+      install, stops the running service, and cleans stale runtime state before extracting
+      new files — so a re-install always starts from a clean slate without you needing to
+      uninstall first.
+    </div>
+
+    <h3>Standalone cleanup tool — for stuck states</h3>
+    <p>
+      If something goes wrong and the service is in a weird state that the in-app
+      Uninstall button can't recover from, run the standalone cleanup tool. It does the
+      same thing as the in-app button, but as a self-elevating PowerShell script that
+      can run even if Dibby itself won't open:
+    </p>
+    <ol class="steps">
+      <li>Open Dibby's install directory (or the portable's folder)</li>
+      <li>Find <code>resources/tools/uninstall-service.bat</code></li>
+      <li>Right-click → <strong>Run as administrator</strong> (or just double-click and click Yes when Windows asks for admin rights)</li>
+      <li>The script stops + removes the service, deletes the deployed files, and reports each step</li>
+    </ol>
+    <p>
+      Safe to re-run any time. After it finishes, open Dibby and click <strong>⚙ Install
+      DibbyWemoScheduler service</strong> in Settings to start fresh.
+    </p>
+
+    <h3 id="homekit-troubleshoot">Troubleshooting</h3>
+    <table>
+      <tr>
+        <td><strong>QR code doesn't appear in Settings</strong></td>
+        <td>The service isn't running yet. Click <strong>Install DibbyWemoScheduler service</strong>
+            (or <strong>Start service</strong> if already installed). The status flips to
+            <em>Headless mode</em> within a few seconds and the QR appears.</td>
+      </tr>
+      <tr>
+        <td><strong>"Couldn't add accessory" in iOS Home</strong></td>
+        <td>Make sure your iPhone is on the <em>same WiFi network</em> as the host running
+            the service. The bridge advertises via mDNS, which doesn't cross VLANs or
+            isolated guest networks. Also check Windows Firewall isn't blocking inbound
+            traffic to the service.</td>
+      </tr>
+      <tr>
+        <td><strong>iOS keeps saying "Cannot connect"</strong></td>
+        <td>The bridge port may be blocked. The service uses a port in the 47126–47326 range.
+            Allow that range inbound on private networks in Windows Firewall.</td>
+      </tr>
+      <tr>
+        <td><strong>Stuck on "Loading…" in Apple Home</strong></td>
+        <td>Click <strong>⚠ Reset Pairings</strong> in Dibby Settings, then re-add the bridge
+            in Apple Home. This wipes the pairing state and gives you a fresh QR + pincode.</td>
+      </tr>
+      <tr>
+        <td><strong>Bridge accessories disappear after restart</strong></td>
+        <td>The service may not be set to auto-start. In <strong>Services.msc</strong> on
+            Windows, find <code>DibbyWemoScheduler</code>, right-click → Properties →
+            Startup type: <em>Automatic</em>.</td>
+      </tr>
+    </table>
 
     <!-- ═══════════════════════ WIFI ═══════════════════════ -->
     <h2 id="web-remote">Web Remote — phone &amp; tablet access</h2>

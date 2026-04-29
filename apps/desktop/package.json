@@ -1,7 +1,7 @@
 {
   "name": "dibby-wemo-manager",
   "productName": "Dibby Wemo Manager",
-  "version": "2.0.16",
+  "version": "2.0.18",
   "private": true,
   "description": "Belkin Wemo device manager \u00e2\u20ac\u201c local control, no cloud required",
   "author": "SRS IT",
@@ -19,6 +19,7 @@
   "dependencies": {
     "adm-zip": "^0.5.14",
     "axios": "^1.7.0",
+    "hap-nodejs": "^0.14.3",
     "sql.js": "^1.12.0",
     "qrcode": "^1.5.4",
     "ws": "^8.18.0",
@@ -87,8 +88,13 @@
     },
     "nsis": {
       "oneClick": false,
+      "perMachine": true,
+      "allowElevation": true,
       "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true
+      "createDesktopShortcut": true,
+      "deleteAppDataOnUninstall": false,
+      "differentialPackage": false,
+      "include": "resources/nsis-installer.nsh"
     },
     "linux": {
       "target": [
@@ -117,13 +123,38 @@
     "asarUnpack": [
       "**/node_modules/sql.js/dist/**",
       "**/node_modules/node-windows/**",
+      "**/node_modules/xml/**",
+      "**/node_modules/yargs/**",
+      "**/node_modules/yargs-parser/**",
+      "**/node_modules/cliui/**",
+      "**/node_modules/string-width/**",
+      "**/node_modules/strip-ansi/**",
+      "**/node_modules/ansi-regex/**",
+      "**/node_modules/ansi-styles/**",
+      "**/node_modules/color-convert/**",
+      "**/node_modules/color-name/**",
+      "**/node_modules/wrap-ansi/**",
+      "**/node_modules/escalade/**",
+      "**/node_modules/get-caller-file/**",
+      "**/node_modules/require-directory/**",
+      "**/node_modules/y18n/**",
+      "**/node_modules/emoji-regex/**",
+      "**/node_modules/is-fullwidth-code-point/**",
       "out/main/scheduler-standalone.js",
       "out/main/wemo.js"
     ],
     "extraResources": [
       {
+        "from": "tools",
+        "to": "tools"
+      },
+      {
         "from": "out/main/scheduler-standalone.js",
         "to": "scheduler-standalone.js"
+      },
+      {
+        "from": "resources/node.exe",
+        "to": "node.exe"
       },
       {
         "from": "../../node_modules/sql.js/dist/sql-wasm.wasm",

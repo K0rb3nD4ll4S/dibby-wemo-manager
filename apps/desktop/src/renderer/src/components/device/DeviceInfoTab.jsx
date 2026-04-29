@@ -29,9 +29,11 @@ export default function DeviceInfoTab({ device }) {
   const loadInfo = async () => {
     setLoading(true);
     try {
+      // Fetch the QR-bearing variant directly so we get a scannable X-HM:// QR
+      // alongside the plain setup code, in a single round-trip.
       const [infoRes, hkRes] = await Promise.allSettled([
         window.wemoAPI.getDeviceInfo({ host: device.host, port: device.port }),
-        window.wemoAPI.getHomekitInfo({ host: device.host, port: device.port }),
+        window.wemoAPI.getHomekitQR({ host: device.host, port: device.port, modelName: device.modelName }),
       ]);
       if (infoRes.status === 'fulfilled') setInfo(infoRes.value);
       if (hkRes.status  === 'fulfilled') setHkInfo(hkRes.value);
@@ -143,13 +145,41 @@ export default function DeviceInfoTab({ device }) {
         <div className="section-header">HomeKit</div>
         {hkInfo?.setupCode
           ? <>
-              <div className="info-row">
-                <span className="info-label">Setup Code</span>
-                <span className="info-value mono">{hkInfo.setupCode}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Status</span>
-                <span className="info-value">{hkInfo.setupDone === '1' ? '✅ Paired' : '⏳ Not paired'}</span>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+                {hkInfo.qrDataURL && (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <img
+                      src={hkInfo.qrDataURL}
+                      alt={`HomeKit setup QR for ${device.friendlyName || device.name}`}
+                      title="Scan with the iOS Home app to add this accessory"
+                      style={{ width: 160, height: 160, background: '#fff', padding: 6, borderRadius: 6 }}
+                    />
+                    <span style={{ fontSize: 10, color: 'var(--text3)' }}>
+                      Scan with iOS Home app
+                    </span>
+                  </div>
+                )}
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <CopyField label="Setup Code" value={hkInfo.setupCode} mono />
+                  <div className="info-row">
+                    <span className="info-label">Status</span>
+                    <span className="info-value">{hkInfo.setupDone === '1' ? '✅ Paired' : '⏳ Not paired'}</span>
+                  </div>
+                  {hkInfo.setupURI && <CopyField label="Setup URI" value={hkInfo.setupURI} mono />}
+                  {hkInfo.category && (
+                    <div className="info-row">
+                      <span className="info-label">HAP Category</span>
+                      <span className="info-value">
+                        {({ 5:'Lightbulb', 7:'Outlet', 8:'Switch', 10:'Sensor' }[hkInfo.category]) || `#${hkInfo.category}`}
+                      </span>
+                    </div>
+                  )}
+                  <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6, lineHeight: 1.4 }}>
+                    Open the iOS <strong>Home app</strong> → tap <strong>+</strong> → <strong>Add Accessory</strong> → scan
+                    this QR (or type the setup code). The device must be powered on, on the same Wi-Fi as your iPhone, and
+                    not already paired to another HomeKit user.
+                  </p>
+                </div>
               </div>
             </>
           : <p style={{ fontSize: 13, color: 'var(--text3)' }}>HomeKit not supported on this device.</p>

@@ -16,6 +16,55 @@ All five share the same local-network Wemo protocol (UPnP/SOAP) and the same DWM
 
 ---
 
+## 🏠 Apple Home / HomeKit — built-in headless bridge
+
+Dibby ships an embedded HAP (HomeKit Accessory Protocol) bridge that **runs inside the `DibbyWemoScheduler` background service**. Pair the bridge with Apple Home once, and **every Wemo on your network** appears in Home as a HomeKit Switch — including older Wemos that have no native HomeKit firmware, and newer ones whose setup-code sticker has been lost.
+
+Because the bridge runs in the always-on service, it stays alive after you close the desktop app and across reboots. **No need to keep the desktop GUI open.**
+
+**To enable:**
+
+1. Open Dibby Desktop → **Settings** (gear icon) → **🏠 HomeKit Bridge**
+2. Click **⚙ Install DibbyWemoScheduler service** (one-time, requires admin via UAC prompt)
+3. The bridge auto-starts. Scan the QR code shown in Settings with your iPhone Home app, or type the manual pincode
+4. Done — every Wemo Dibby has discovered now appears under "Dibby Wemo Bridge" in Apple Home
+
+**To stop / uninstall the service** (also from Settings → 🏠 HomeKit Bridge):
+
+- **■ Stop service** — pauses the bridge; pairing trust + pincode are preserved so you can start again later without re-pairing
+- **🗑 Uninstall service** — fully removes the service from Windows + deletes bridge pairing data + deployed node-windows + bundled node.exe (~91 MB freed). Your devices.json and DWM rules are kept. Re-pair from scratch on next install
+- The same buttons are also in the Sidebar's Scheduler panel for quick access without opening Settings
+
+**Auto-sync:** when you discover new Wemos in Dibby, the bridge automatically adds them as HomeKit accessories. Removed devices are removed from Home too.
+
+**No always-on PC?** The same service runs on a $35 Raspberry Pi (`.deb` package) or any always-on Linux host. Pi 4 + Dibby = the cheapest "every Wemo in Apple Home + scheduler running 24/7" setup.
+
+**Already running Homebridge?** The standalone `homebridge-dibby-wemo` plugin is still published — same pairing model, runs inside Homebridge instead. Either path works; the embedded bridge just removes the Homebridge-install step.
+
+---
+
+## ⚠️ Important: rules need an always-on host
+
+**Wemo on-device firmware schedulers stopped firing rules autonomously after Belkin shut down their cloud (2024).** The device still accepts rule writes (`StoreRules`, `UpdateWeeklyCalendar`) and stores them in its memory, but its internal scheduler no longer wakes up to fire them — it was designed around a cloud-pushed nudge that no longer exists, and the TLS pipe to `api.xbcs.net` is pinned so the nudge can't be faked locally.
+
+To fire rules on schedule, **at least one always-on host on your network must run a Dibby scheduler**. Any one of these works for an entire household:
+
+| Host | Notes |
+|---|---|
+| Windows PC | Install `DibbyWemoScheduler` Windows service from Settings — runs headless, survives reboots, no login required |
+| macOS | Run Dibby desktop in Login Items, or install as a `launchd` daemon |
+| Raspberry Pi (~$35) | Run the Linux ARM64 AppImage / `.deb` — boots up automatically, low power |
+| Existing Homebridge / HOOBS | Install [`homebridge-dibby-wemo`](https://www.npmjs.com/package/homebridge-dibby-wemo) — scheduler runs inside Homebridge |
+| Existing Home Assistant | Install via HACS — HA's automation engine fires the rules |
+| Node-RED | Install [`node-red-contrib-dibby-wemo`](https://www.npmjs.com/package/node-red-contrib-dibby-wemo) — scheduler runs inside Node-RED |
+| Old Android phone on a charger | Install Dibby Android app, foreground service runs in background |
+
+**You do not need a host running on every device** — one always-on host fires rules for every Wemo on the LAN. A spare phone or a $35 Pi is enough.
+
+If you want the simplest setup: a Pi 4 with Raspberry Pi OS + the Dibby ARM64 `.deb` package + `systemd` enable. Done in ~10 minutes, runs forever.
+
+---
+
 ## Repository Layout
 
 ```
@@ -43,17 +92,17 @@ dibby-wemo-manager/
 Download the latest installer from [Releases](../../releases):
 
 **Windows:**
-- **`Dibby Wemo Manager Setup 2.0.16.exe`** — NSIS installer (recommended)
-- **`Dibby Wemo Manager 2.0.16.exe`** — Portable single-file executable
+- **`Dibby Wemo Manager Setup 2.0.18.exe`** — NSIS installer (recommended)
+- **`Dibby Wemo Manager 2.0.18.exe`** — Portable single-file executable
 
 **Linux (x64):**
-- **`Dibby Wemo Manager-2.0.16.AppImage`** — Universal AppImage, runs anywhere
-- **`dibby-wemo-manager_2.0.16_amd64.deb`** — Debian / Ubuntu
-- **`dibby-wemo-manager-2.0.16.x86_64.rpm`** — Fedora / RHEL
+- **`Dibby Wemo Manager-2.0.18.AppImage`** — Universal AppImage, runs anywhere
+- **`dibby-wemo-manager_2.0.18_amd64.deb`** — Debian / Ubuntu
+- **`dibby-wemo-manager-2.0.18.x86_64.rpm`** — Fedora / RHEL
 
 **Linux (ARM64 — Raspberry Pi 4/5):**
-- **`Dibby Wemo Manager-2.0.16-arm64.AppImage`**
-- **`dibby-wemo-manager_2.0.16_arm64.deb`**
+- **`Dibby Wemo Manager-2.0.18-arm64.AppImage`**
+- **`dibby-wemo-manager_2.0.18_arm64.deb`**
 
 Run the installer (Windows) or AppImage (Linux). Wemo devices are discovered automatically via SSDP on your local network.
 
@@ -313,14 +362,14 @@ Each [GitHub Release](../../releases) includes:
 
 | File | OS | Description |
 |---|---|---|
-| `Dibby Wemo Manager Setup 2.0.16.exe` | Windows | NSIS installer (recommended) |
-| `Dibby Wemo Manager 2.0.16.exe` | Windows | Portable executable |
-| `Dibby Wemo Manager-2.0.16.AppImage` | Linux x64 | Universal AppImage |
-| `dibby-wemo-manager_2.0.16_amd64.deb` | Linux x64 | Debian / Ubuntu package |
-| `dibby-wemo-manager-2.0.16.x86_64.rpm` | Linux x64 | Fedora / RHEL package |
-| `Dibby Wemo Manager-2.0.16-arm64.AppImage` | Linux ARM64 | Raspberry Pi 4/5 AppImage |
-| `dibby-wemo-manager_2.0.16_arm64.deb` | Linux ARM64 | Raspberry Pi OS package |
-| `homebridge-dibby-wemo-2.0.16.tgz` | Any | Homebridge plugin npm package |
+| `Dibby Wemo Manager Setup 2.0.18.exe` | Windows | NSIS installer (recommended) |
+| `Dibby Wemo Manager 2.0.18.exe` | Windows | Portable executable |
+| `Dibby Wemo Manager-2.0.18.AppImage` | Linux x64 | Universal AppImage |
+| `dibby-wemo-manager_2.0.18_amd64.deb` | Linux x64 | Debian / Ubuntu package |
+| `dibby-wemo-manager-2.0.18.x86_64.rpm` | Linux x64 | Fedora / RHEL package |
+| `Dibby Wemo Manager-2.0.18-arm64.AppImage` | Linux ARM64 | Raspberry Pi 4/5 AppImage |
+| `dibby-wemo-manager_2.0.18_arm64.deb` | Linux ARM64 | Raspberry Pi OS package |
+| `homebridge-dibby-wemo-2.0.18.tgz` | Any | Homebridge plugin npm package |
 
 ---
 

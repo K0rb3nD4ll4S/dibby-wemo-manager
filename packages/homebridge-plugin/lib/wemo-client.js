@@ -16,7 +16,7 @@ const { parseStringPromise } = require('xml2js');
 const { create } = require('xmlbuilder2');
 
 // Core helpers — bundled locally so the plugin is self-contained
-const { namesToDayNumbers, timeToSecs } = require('./types');
+const { namesToDayNumbers, deviceDaysToDibby, dibbyDayToDevice, timeToSecs } = require('./types');
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -474,12 +474,16 @@ function _insertNewRule(db, ruleId, ruleData) {
   );
 
   for (const dayId of dayNums) {
+    // Translate Dibby internal day → Belkin firmware DayID convention so
+    // rules created here are also correctly interpreted by the Belkin WeMo app.
+    // Negative sentinel values (e.g. countdown -1) pass through unchanged.
+    const deviceDayId = dayId > 0 ? dibbyDayToDevice(dayId) : dayId;
     db.run(
       `INSERT INTO RULEDEVICES (RuleID,DeviceID,GroupID,DayID,StartTime,RuleDuration,StartAction,EndAction,
         SensorDuration,Type,Value,Level,ZBCapabilityStart,ZBCapabilityEnd,
         OnModeOffset,OffModeOffset,CountdownTime,EndTime)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [String(ruleId), devId, 0, dayId, startSecs, 0,
+      [String(ruleId), devId, 0, deviceDayId, startSecs, 0,
        startAction, endAction, 0, 0, 0, 0, '', '',
        0, 0, ruleData.countdownTime ?? 0, endSecs]
     );
