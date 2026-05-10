@@ -4,6 +4,34 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.19] — 2026-05-07
+
+### Home Assistant integration — proper discovery via HA's own SSDP / DHCP framework
+
+The HA integration previously relied on raw `socket` multicast in its config flow to find Wemos. That works in Home Assistant Core / HAOS but **fails silently** in Home Assistant Container (Docker bridge networking) — the most common install style — because the container's network namespace can't bind multicast sockets the way HA's privileged supervisor can.
+
+This release switches to **Home Assistant's built-in SSDP and DHCP discovery framework**:
+
+- `manifest.json` now declares SSDP `deviceType` patterns for every Wemo product line (`controllee`, `lightswitch:1`/`:2`, `sensor`, `Lighting`, `bridge`, `insight`, `Maker`, `dimmer`, `Crockpot`, `Coffee`, `HeaterB`, `HumidifierB`, `AirPurifier`, `NetCamSensor`) plus the catch-all manufacturer `Belkin International Inc.`
+- `manifest.json` also declares DHCP `macaddress` patterns for 18 known Belkin OUIs (94:10:3E, AC:9C:81, EC:1A:59, 14:91:82, 24:F5:A2, B4:75:0E, A4:08:F5, 7C:8B:B5, C0:56:27, 64:62:5A, 24:E5:0F, 38:43:7D, 68:DB:F5, 90:CD:B6, 80:69:1A, F4:F5:A8, 08:86:3B), so a new Wemo joining the network triggers HA's auto-discovery
+- `config_flow.py` adds `async_step_ssdp` and `async_step_dhcp` handlers; the user just clicks confirm on the popup HA shows them when a Wemo is detected
+- The legacy `async_step_user` flow is kept as a fallback and now accepts a **comma-separated manual device list** for environments where neither SSDP nor DHCP discovery works
+- Options flow also exposes manual-device editing post-install
+- Single-instance unique ID — one Dibby Wemo integration covers every device on the LAN
+- `strings.json` updated with new dialog copy + per-field hints
+
+This brings Dibby Wemo's HA discovery behaviour in line with Home Assistant's built-in `wemo` integration, but without losing any of Dibby's DWM scheduling features.
+
+### What users will see
+- **Existing installs** — restart HA after updating via HACS. Existing config entries stay; new devices auto-appear via SSDP.
+- **Fresh installs** — within seconds of adding the integration, HA's own SSDP service surfaces any Wemo as an auto-discovery suggestion. No more "0 devices found" dead end.
+- **Docker bridge users** — discovery still works because HA's supervisor handles SSDP, not the integration's container.
+
+### Affected packages
+All monorepo packages bumped to **2.0.19** in unified versioning. Desktop, Homebridge plugin, Node-RED, MQTT bridge, and Android share the version; the meaningful code change is in `custom_components/dibby_wemo/`.
+
+---
+
 ## [2.0.18] — 2026-04-28
 
 ### Embedded HomeKit bridge — runs HEADLESS in the scheduler service
