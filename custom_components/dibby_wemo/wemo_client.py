@@ -206,6 +206,77 @@ def _ssdp_discover_sync(timeout_s: float) -> list[dict]:
     return [{"location": loc} for loc in locations]
 
 
+def _local_subnet_base() -> str | None:
+    """Return the /24 base (e.g. '192.168.18.') of the host's primary LAN IP.
+
+    Uses the trick of opening a UDP socket to a public address — no packet
+    is actually sent, but the kernel selects the outbound interface and we
+    can read its IP. Returns None if detection fails.
+    """
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+        finally:
+            s.close()
+        parts = ip.split(".")
+        if len(parts) == 4:
+            return ".".join(parts[:3]) + "."
+    except Exception as e:
+        _LOGGER.debug("Local subnet detection failed: %s", e)
+    return None
+
+
+def _probe_wemo_ip_sync(host: str, timeout: float = 0.8) -> str | None:
+    """Try every Wemo port — return setup.xml URL on first hit, else None."""
+    for port in WEMO_PORTS:
+        try:
+            conn = HTTPConnection(host, port, timeout=timeout)
+            conn.request("GET", "/setup.xml")
+            resp = conn.getresponse()
+            body = resp.read(2048).decode(errors="replace")
+            conn.close()
+            if resp.status == 200 and "Belkin" in body:
+                return f"http://{host}:{port}/setup.xml"
+        except Exception:
+            continue
+    return None
+
+
+def _unicast_subnet_scan_sync(timeout_s: float = 6.0) -> list[dict]:
+    """Probe every host on the local /24 for /setup.xml — Docker-bridge friendly.
+
+    Multicast SSDP can't cross Docker's bridge network, so fall back to
+    unicast probes which traverse the NAT just fine. Uses a thread pool to
+    finish a /24 sweep in ~5s.
+    """
+    base = _local_subnet_base()
+    if not base:
+        return []
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    locations: set[str] = set()
+    targets = [f"{base}{i}" for i in range(1, 255)]
+    deadline_workers = max(32, min(64, len(targets)))
+
+    with ThreadPoolExecutor(max_workers=deadline_workers) as pool:
+        futures = {pool.submit(_probe_wemo_ip_sync, ip): ip for ip in targets}
+        try:
+            for fut in as_completed(futures, timeout=timeout_s):
+                try:
+                    url = fut.result()
+                except Exception:
+                    continue
+                if url:
+                    locations.add(url)
+        except Exception as e:
+            _LOGGER.debug("Subnet scan reached timeout: %s", e)
+
+    return [{"location": loc} for loc in locations]
+
+
 def _fetch_setup_xml_sync(location: str) -> dict | None:
     try:
         parsed = urlparse(location)
@@ -235,9 +306,22 @@ def _fetch_setup_xml_sync(location: str) -> dict | None:
 
 
 async def discover_devices(timeout_s: float = 10.0) -> list[dict]:
-    """Return list of WemoDevice dicts found via SSDP."""
+    """Return list of WemoDevice dicts.
+
+    First tries SSDP multicast (works on host-network installs and bare-metal
+    HA). If that returns nothing — common when HA runs in a Docker bridge
+    network and can't escape multicast — falls back to a unicast /24 subnet
+    scan that traverses the bridge NAT just fine.
+    """
     loop = asyncio.get_event_loop()
     raw = await loop.run_in_executor(None, lambda: _ssdp_discover_sync(timeout_s))
+
+    if not raw:
+        _LOGGER.info("SSDP returned no devices — falling back to unicast subnet scan")
+        scan_budget = max(5.0, min(timeout_s, 15.0))
+        raw = await loop.run_in_executor(
+            None, lambda: _unicast_subnet_scan_sync(timeout_s=scan_budget)
+        )
 
     devices: list[dict] = []
     seen_udns: set[str] = set()

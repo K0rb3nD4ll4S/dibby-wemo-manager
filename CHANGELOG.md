@@ -4,6 +4,25 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.22] — 2026-05-11
+
+### Fix: Home Assistant integration discovers devices in Docker bridge mode
+
+Many HA installs run inside a Docker container with `bridge` networking. SSDP multicast (`239.255.255.250:1900`) does not traverse the bridge, so both HA's own discovery framework and our internal M-SEARCH would return zero devices, leaving users with a "No devices found" dialog and no path forward except manual IP entry.
+
+Fix — `custom_components/dibby_wemo/wemo_client.py`:
+- `_local_subnet_base()` detects the container's outbound interface IP and derives the local `/24` base.
+- `_probe_wemo_ip_sync(host)` performs a unicast `GET /setup.xml` against every Wemo port candidate (49152–49156) with a short timeout, accepting only responses containing "Belkin".
+- `_unicast_subnet_scan_sync()` sweeps the full `/24` with a thread pool (32–64 workers) — a complete scan finishes in ~5 seconds.
+- `discover_devices()` runs SSDP first as before; if SSDP returns nothing, automatically falls back to the unicast scan. On host-network and bare-metal installs the SSDP path still wins and nothing changes.
+
+Bridge-mode users now see their Wemos in the initial setup dialog instead of an empty list.
+
+### Affected packages
+All monorepo packages bumped to **2.0.22** in unified versioning.
+
+---
+
 ## [2.0.21] — 2026-05-11
 
 ### Fix: macOS window now appears
