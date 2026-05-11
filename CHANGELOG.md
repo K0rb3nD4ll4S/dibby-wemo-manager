@@ -4,6 +4,25 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.21] — 2026-05-11
+
+### Fix: macOS window now appears
+
+v2.0.20 set `hardenedRuntime: true` alongside ad-hoc signing (`identity: "-"`). On macOS that combination is unstable — hardened runtime needs strict entitlements + signed library inheritance that ad-hoc identities don't satisfy cleanly, and the renderer process gets killed before the window can show, leaving the user looking at a launched-but-invisible app.
+
+Fix:
+- `hardenedRuntime: false` — no strict sandbox, entitlements aren't applied (and aren't needed for an unsigned/ad-hoc app)
+- Removed `entitlements` + `entitlementsInherit` references (orphaned without hardened runtime; kept the .plist file on disk for future Apple Developer ID upgrades)
+- `extendInfo.LSUIElement: false` explicitly tells macOS this IS a regular foreground app with a dock icon, not a menu-bar utility (some Electron builds inherit `LSUIElement: true` by accident)
+- `extendInfo.NSHighResolutionCapable: true` for Retina display support
+
+Future Apple Developer ID releases can re-enable hardened runtime + re-link the entitlements file.
+
+### Affected packages
+All monorepo packages bumped to **2.0.21** in unified versioning.
+
+---
+
 ## [2.0.20] — 2026-05-11
 
 ### Fix: macOS .dmg now opens on macOS 15 (Sequoia)
