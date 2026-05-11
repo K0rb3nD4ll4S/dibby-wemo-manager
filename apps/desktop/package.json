@@ -1,7 +1,7 @@
 {
   "name": "dibby-wemo-manager",
   "productName": "Dibby Wemo Manager",
-  "version": "2.0.19",
+  "version": "2.0.20",
   "private": true,
   "description": "Belkin Wemo device manager \u00e2\u20ac\u201c local control, no cloud required",
   "author": "SRS IT",
@@ -68,7 +68,7 @@
       ],
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
-      "identity": null,
+      "identity": "-",
       "entitlements": "resources/entitlements.mac.plist",
       "entitlementsInherit": "resources/entitlements.mac.plist",
       "notarize": false

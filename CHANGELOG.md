@@ -4,6 +4,23 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.20] — 2026-05-11
+
+### Fix: macOS .dmg now opens on macOS 15 (Sequoia)
+
+v2.0.19 shipped with `identity: null` in the macOS build config, which tells electron-builder to **skip signing entirely**. On macOS 15+ Gatekeeper refuses to launch unsigned apps even via right-click → Open — so the v2.0.19 .dmg files would not open on current macOS at all.
+
+Fix: switch to **ad-hoc signing** (`identity: "-"`). The `codesign -s -` invocation on the macOS CI runner generates a runtime-only identity that Gatekeeper accepts via right-click → Open on every macOS version, including Sequoia. Still not Apple-notarised (would require a $99/yr Apple Developer account); future releases can upgrade by setting `CSC_LINK` + `CSC_KEY_PASSWORD` secrets in repo settings and changing `identity: "-"` to `identity: "Developer ID Application: ..."`.
+
+### Fix: HA hassfest validation passes (manifest key order)
+
+The `custom_components/dibby_wemo/manifest.json` now sorts keys as `domain, name, then alphabetical` per Home Assistant's `hassfest` convention. v2.0.19 was functional but failed CI validation; no user-visible difference.
+
+### Affected packages
+All monorepo packages bumped to **2.0.20** in unified versioning.
+
+---
+
 ## [2.0.19] — 2026-05-11
 
 ### macOS support — desktop app + headless LaunchDaemon
