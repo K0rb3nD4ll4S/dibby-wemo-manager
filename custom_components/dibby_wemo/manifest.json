@@ -6,11 +6,29 @@
   ],
   "config_flow": true,
   "dependencies": [],
+  "dhcp": [
+    { "macaddress": "94103E*" },
+    { "macaddress": "AC9C81*" },
+    { "macaddress": "EC1A59*" },
+    { "macaddress": "149182*" },
+    { "macaddress": "24F5A2*" },
+    { "macaddress": "B4750E*" },
+    { "macaddress": "A408F5*" },
+    { "macaddress": "7C8BB5*" },
+    { "macaddress": "C05627*" },
+    { "macaddress": "64625A*" },
+    { "macaddress": "24E50F*" },
+    { "macaddress": "38437D*" },
+    { "macaddress": "68DBF5*" },
+    { "macaddress": "90CDB6*" },
+    { "macaddress": "80691A*" },
+    { "macaddress": "F4F5A8*" },
+    { "macaddress": "08863B*" }
+  ],
   "documentation": "https://github.com/K0rb3nD4ll4S/dibby-wemo-manager",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/K0rb3nD4ll4S/dibby-wemo-manager/issues",
   "requirements": [],
-  "version": "2.0.19",
   "ssdp": [
     { "manufacturer": "Belkin International Inc." },
     { "deviceType": "urn:Belkin:device:controllee:1" },
@@ -29,24 +47,5 @@
     { "deviceType": "urn:Belkin:device:Crockpot:1" },
     { "deviceType": "urn:Belkin:device:Coffee:1" }
   ],
-  "dhcp": [
-    { "macaddress": "94103E*" },
-    { "macaddress": "AC9C81*" },
-    { "macaddress": "EC1A59*" },
-    { "macaddress": "149182*" },
-    { "macaddress": "24F5A2*" },
-    { "macaddress": "B4750E*" },
-    { "macaddress": "A408F5*" },
-    { "macaddress": "7C8BB5*" },
-    { "macaddress": "C05627*" },
-    { "macaddress": "64625A*" },
-    { "macaddress": "24E50F*" },
-    { "macaddress": "38437D*" },
-    { "macaddress": "68DBF5*" },
-    { "macaddress": "90CDB6*" },
-    { "macaddress": "80691A*" },
-    { "macaddress": "F4F5A8*" },
-    { "macaddress": "08863B*" },
-    { "macaddress": "B4750E*" }
-  ]
+  "version": "2.0.19"
 }
