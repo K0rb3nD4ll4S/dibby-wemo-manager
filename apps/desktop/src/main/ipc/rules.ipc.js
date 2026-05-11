@@ -6,13 +6,14 @@ const fs        = require('fs');
 const wemo      = require('../wemo');
 const store     = require('../store');
 const scheduler = require('../scheduler');
+const PATHS     = require('../core/paths');
 
-// Write DWM rules to ProgramData so the standalone service can read them
-const DWM_SHARED = path.join('C:\\ProgramData', 'DibbyWemoManager', 'dwm-rules.json');
+// Write DWM rules to the shared OS-specific data dir so the standalone
+// service / launchd daemon / systemd unit can read them.
 function syncDwmRulesToService() {
   try {
-    fs.mkdirSync(path.dirname(DWM_SHARED), { recursive: true });
-    fs.writeFileSync(DWM_SHARED, JSON.stringify(store.getDwmRules(), null, 2), 'utf8');
+    fs.mkdirSync(path.dirname(PATHS.DWM_RULES_FILE), { recursive: true });
+    fs.writeFileSync(PATHS.DWM_RULES_FILE, JSON.stringify(store.getDwmRules(), null, 2), 'utf8');
   } catch { /* non-critical */ }
 }
 

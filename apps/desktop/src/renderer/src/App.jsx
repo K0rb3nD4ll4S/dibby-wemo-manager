@@ -119,8 +119,20 @@ function SettingsPanel({ onClose }) {
   );
 }
 
-/* ── HomeKit Bridge panel — runs in the headless DibbyWemoScheduler service ── */
+/* ── Platform-aware service noun for UI labels ─────────────────────────── */
+// Windows  → "DibbyWemoScheduler service"
+// macOS    → "Dibby Wemo LaunchDaemon"
+// Linux    → "dibby-wemo-scheduler systemd unit"
+function _platformServiceLabel() {
+  const p = (typeof navigator !== 'undefined' && navigator.platform) || '';
+  if (/Mac/i.test(p)) return { full: 'Dibby Wemo LaunchDaemon', short: 'LaunchDaemon', isMac: true, isWin: false, isLinux: false };
+  if (/Linux/i.test(p)) return { full: 'dibby-wemo-scheduler systemd unit', short: 'systemd unit', isMac: false, isWin: false, isLinux: true };
+  return { full: 'DibbyWemoScheduler service', short: 'service', isMac: false, isWin: true, isLinux: false };
+}
+
+/* ── HomeKit Bridge panel — runs in the headless background service / daemon ── */
 function HomeKitBridgePanel() {
+  const svcLabel = _platformServiceLabel();
   const addToast = useSettingsStore((s) => s.addToast);
   const [status,  setStatus]  = useState(null);
   const [svcStat, setSvcStat] = useState(null);
@@ -191,11 +203,15 @@ function HomeKitBridgePanel() {
   };
   const uninstallSvc = async () => {
     if (!confirm(
-      'Uninstall the DibbyWemoScheduler service?\n\n' +
+      `Uninstall the ${svcLabel.full}?\n\n` +
       'This will:\n' +
-      '  • Stop and remove the service from Windows\n' +
-      '  • Delete bridge pairing data (re-pair needed)\n' +
-      '  • Delete deployed node-windows + node.exe\n\n' +
+      (svcLabel.isWin
+        ? '  • Stop and remove the service from Windows\n  • Delete deployed node-windows + node.exe\n'
+        : svcLabel.isMac
+          ? '  • Unload + remove the LaunchDaemon plist (you may be prompted for your admin password)\n  • Delete deployed scheduler-standalone.js + node binary\n'
+          : '  • Stop and disable the systemd unit\n  • Delete deployed scheduler-standalone.js + node binary\n'
+      ) +
+      '  • Delete bridge pairing data (re-pair needed)\n\n' +
       'Your devices and DWM rules are preserved.'
     )) return;
     setBusy(true);
@@ -216,15 +232,15 @@ function HomeKitBridgePanel() {
       <div className={`notice ${inService ? 'notice-info' : 'notice-warn'}`} style={{ fontSize: 12, marginBottom: 10, lineHeight: 1.5 }}>
         {inService ? (
           <>
-            <strong>Headless mode</strong> — the bridge is running inside the <code>DibbyWemoScheduler</code> background service, so it stays alive after you close the desktop app and across reboots. Pair once, forget about Dibby being open.
+            <strong>Headless mode</strong> — the bridge is running inside the <code>{svcLabel.full}</code>, so it stays alive after you close the desktop app and across reboots. Pair once, forget about Dibby being open.
           </>
         ) : svcStat?.installed ? (
           <>
-            <strong>Service installed but not running.</strong> Start it so the bridge runs headless. As a fallback, you can start the bridge inside this desktop process — but it will stop when Dibby is closed.
+            <strong>{svcLabel.short.charAt(0).toUpperCase() + svcLabel.short.slice(1)} installed but not running.</strong> Start it so the bridge runs headless. As a fallback, you can start the bridge inside this desktop process — but it will stop when Dibby is closed.
           </>
         ) : (
           <>
-            <strong>For the bridge to fire 24/7</strong>, install the <code>DibbyWemoScheduler</code> service. The service runs at boot under SYSTEM, hosts the bridge, and lives on after you close the desktop app. Without it, the bridge only runs while Dibby is open.
+            <strong>For the bridge to fire 24/7</strong>, install the <code>{svcLabel.full}</code>. It runs at boot under {svcLabel.isWin ? 'SYSTEM' : svcLabel.isMac ? 'root via launchd' : 'systemd'}, hosts the bridge, and lives on after you close the desktop app. Without it, the bridge only runs while Dibby is open.
           </>
         )}
       </div>
@@ -234,7 +250,7 @@ function HomeKitBridgePanel() {
         <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
           {!svcStat.installed && (
             <button className="btn btn-primary btn-sm" onClick={installSvc} disabled={busy}>
-              ⚙ Install DibbyWemoScheduler service
+              ⚙ Install {svcLabel.full}
             </button>
           )}
           {svcStat.installed && !svcStat.running && (

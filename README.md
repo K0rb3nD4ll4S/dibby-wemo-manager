@@ -92,19 +92,29 @@ dibby-wemo-manager/
 Download the latest installer from [Releases](../../releases):
 
 **Windows:**
-- **`Dibby Wemo Manager Setup 2.0.18.exe`** — NSIS installer (recommended)
-- **`Dibby Wemo Manager 2.0.18.exe`** — Portable single-file executable
+- **`Dibby Wemo Manager Setup 2.0.19.exe`** — NSIS installer (recommended)
+- **`Dibby Wemo Manager 2.0.19.exe`** — Portable single-file executable
+
+**macOS (universal — Intel + Apple Silicon):**
+- **`Dibby Wemo Manager-2.0.19.dmg`** — Drag to Applications
+
+The .dmg is **ad-hoc signed** (not notarised by Apple). On first launch, macOS shows "Dibby Wemo Manager can't be opened because Apple cannot check it for malicious software." To open it the first time:
+1. **Right-click** the app in Applications → **Open** → confirm in the dialog
+2. After that, future launches open normally
+3. Service install via Settings → 🏠 HomeKit Bridge prompts for your macOS admin password (standard system dialog) to install the LaunchDaemon
 
 **Linux (x64):**
-- **`Dibby Wemo Manager-2.0.18.AppImage`** — Universal AppImage, runs anywhere
-- **`dibby-wemo-manager_2.0.18_amd64.deb`** — Debian / Ubuntu
-- **`dibby-wemo-manager-2.0.18.x86_64.rpm`** — Fedora / RHEL
+- **`Dibby Wemo Manager-2.0.19.AppImage`** — Universal AppImage, runs anywhere
+- **`dibby-wemo-manager_2.0.19_amd64.deb`** — Debian / Ubuntu
+- **`dibby-wemo-manager-2.0.19.x86_64.rpm`** — Fedora / RHEL
 
 **Linux (ARM64 — Raspberry Pi 4/5):**
-- **`Dibby Wemo Manager-2.0.18-arm64.AppImage`**
-- **`dibby-wemo-manager_2.0.18_arm64.deb`**
+- **`Dibby Wemo Manager-2.0.19-arm64.AppImage`**
+- **`dibby-wemo-manager_2.0.19_arm64.deb`**
 
-Run the installer (Windows) or AppImage (Linux). Wemo devices are discovered automatically via SSDP on your local network.
+> **Headless 24/7 mode on Linux** (systemd service) is not yet implemented — planned for v2.0.20. The desktop app still works fine for device control + DWM rule editing while open.
+
+Run the installer (Windows) / drag-to-Applications (macOS) / AppImage (Linux). Wemo devices are discovered automatically via SSDP on your local network.
 
 ### Homebridge Plugin
 
@@ -141,10 +151,25 @@ The Homebridge plugin is fully HOOBS-compatible. In HOOBS:
 1. Open **HACS** → **Integrations** → **⋮** → **Custom repositories**
 2. Add `https://github.com/K0rb3nD4ll4S/dibby-wemo-manager` as category **Integration**
 3. Search for **Dibby Wemo** → Install → Restart Home Assistant
-4. **Settings** → **Devices & Services** → **Add Integration** → search **Dibby Wemo**
-5. HA will auto-discover all Wemo devices on your network
+4. ⚠️ **Disable HA's built-in Wemo integration first** (see below)
+5. **Settings** → **Devices & Services** → discovery cards for Wemos appear within ~60 s
+6. Click **Configure** on the Dibby Wemo discovery card → done
 
 Once the HACS default repository picks up this integration, the custom-repository step will no longer be needed.
+
+#### ⚠️ Important — disable HA's built-in `wemo` integration
+
+Home Assistant ships a built-in `wemo` integration that uses the **same SSDP / DHCP discovery patterns** as Dibby Wemo. Running both at the same time causes:
+
+- **Duplicate switch entities** for every Wemo (`switch.family_room_lamp` AND `switch.family_room_lamp_2`)
+- **Competing pollers** — extra LAN traffic, occasional state-flapping
+- **Toggle commands race** — turn-on from automations sometimes lands on the wrong handler
+
+**To disable it:**
+- **Settings → Devices & Services** → find the **Belkin Wemo** card (HA built-in) → click → **⋮ → Delete**
+- Don't re-add it; the "Belkin Wemo" entry in the "Not configured" list can be left alone (it won't auto-add)
+
+Dibby Wemo will then claim every Wemo on the LAN via its own discovery (SSDP/DHCP/unique-id) and you'll see your devices under **Dibby Wemo** only. The DWM scheduling engine, day-of-week fix, bundle DayID support, and firmware rule read/write are only available in Dibby Wemo — that's the value of switching.
 
 ### Node-RED Nodes
 

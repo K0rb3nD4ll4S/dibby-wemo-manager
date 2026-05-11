@@ -26,11 +26,12 @@ const fs    = require('fs');
 const wemo  = require('../wemo');
 const store = require('../store');
 const bridge = require('../homekit-bridge');
+const PATHS = require('../core/paths');
 
-const SERVICE_DATA_DIR    = path.join('C:\\ProgramData', 'DibbyWemoManager');
-const SERVICE_BRIDGE_DIR  = path.join(SERVICE_DATA_DIR, 'homekit-bridge');
-const SERVICE_STATUS_FILE = path.join(SERVICE_BRIDGE_DIR, 'status.json');
-const SERVICE_PREFS_FILE  = path.join(SERVICE_DATA_DIR, 'homekit-bridge-prefs.json');
+const SERVICE_DATA_DIR    = PATHS.SHARED_DATA_DIR;
+const SERVICE_BRIDGE_DIR  = PATHS.HK_BRIDGE_DIR;
+const SERVICE_STATUS_FILE = PATHS.HK_BRIDGE_STATUS_FILE;
+const SERVICE_PREFS_FILE  = PATHS.HK_BRIDGE_PREFS_FILE;
 const SERVICE_STATUS_FRESH_MS = 90_000; // status older than 90 s = service not running
 
 let _appBridgeStarted = false;

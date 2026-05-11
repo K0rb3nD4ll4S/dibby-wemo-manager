@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  macOS entitlements for Dibby Wemo Manager.
+
+  These entitlements are required for hardened runtime + notarisation while
+  allowing the runtime behaviours Dibby needs:
+
+  • allow-jit / allow-unsigned-executable-memory — Electron's V8 needs JIT
+  • allow-dyld-environment-variables — required when spawning the bundled
+    node binary as a LaunchDaemon helper
+  • disable-library-validation — needed because the bundled node binary
+    is signed with a different Developer ID than Electron itself
+  • inherit — child processes inherit these entitlements (spawned node)
+  • network.server — accept inbound HAP / web-remote connections
+  • network.client — outbound SOAP / SSDP to Wemo devices
+
+  Without these the bundled service either won't launch (Gatekeeper kills it
+  before main()) or hap-nodejs can't bind its listener port.
+-->
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+  <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+  <true/>
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
+  <key>com.apple.security.inherit</key>
+  <true/>
+  <key>com.apple.security.network.server</key>
+  <true/>
+  <key>com.apple.security.network.client</key>
+  <true/>
+</dict>
+</plist>

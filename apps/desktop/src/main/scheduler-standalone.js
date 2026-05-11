@@ -20,17 +20,21 @@
 const path = require('path');
 const fs   = require('fs');
 const wemo = require('./wemo');
+const PATHS = require('./core/paths');
 
-// ProgramData on Windows is writable by the LocalSystem account the service
-// runs under, and also by the user account the desktop app runs under, so the
-// two processes can read each other's state without privilege gymnastics.
-const DATA_DIR      = path.join('C:\\ProgramData', 'DibbyWemoManager');
-const DEVICES_FILE  = path.join(DATA_DIR, 'devices.json');
-const DWM_FILE      = path.join(DATA_DIR, 'dwm-rules.json');
-const LOG_FILE      = path.join(DATA_DIR, 'scheduler.log');
-const HK_BRIDGE_DIR = path.join(DATA_DIR, 'homekit-bridge');
-const HK_PREFS_FILE = path.join(DATA_DIR, 'homekit-bridge-prefs.json');
-const HK_STATUS_FILE= path.join(HK_BRIDGE_DIR, 'status.json');
+// Shared data dir is OS-specific (see core/paths.js):
+//   Windows: C:\ProgramData\DibbyWemoManager  (everyone-writable)
+//   macOS:   /Library/Application Support/Dibby Wemo Manager
+//   Linux:   /var/lib/dibby-wemo-manager
+// Both the GUI process and this headless daemon read+write here so they
+// share devices.json, dwm-rules.json, the HomeKit bridge state, etc.
+const DATA_DIR      = PATHS.SHARED_DATA_DIR;
+const DEVICES_FILE  = PATHS.DEVICES_FILE;
+const DWM_FILE      = PATHS.DWM_RULES_FILE;
+const LOG_FILE      = PATHS.SCHEDULER_LOG;
+const HK_BRIDGE_DIR = PATHS.HK_BRIDGE_DIR;
+const HK_PREFS_FILE = PATHS.HK_BRIDGE_PREFS_FILE;
+const HK_STATUS_FILE= PATHS.HK_BRIDGE_STATUS_FILE;
 const MAX_LOG_BYTES = 2 * 1024 * 1024; // 2 MB cap
 
 const HK_STATUS_REFRESH_MS = 30_000;

@@ -4,7 +4,38 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
-## [2.0.19] — 2026-05-07
+## [2.0.19] — 2026-05-11
+
+### macOS support — desktop app + headless LaunchDaemon
+
+Dibby Wemo Manager now runs on macOS with full feature parity to the Windows build:
+
+- **Cross-platform path refactor.** All hardcoded `C:\ProgramData\DibbyWemoManager\` references replaced with a new `apps/desktop/src/main/core/paths.js` module that resolves to:
+  - Windows: `C:\ProgramData\DibbyWemoManager\`
+  - macOS:   `/Library/Application Support/Dibby Wemo Manager/`
+  - Linux:   `/var/lib/dibby-wemo-manager/`
+- **macOS headless service** via LaunchDaemon (`/Library/LaunchDaemons/com.srsit.dibbywemoscheduler.plist`):
+  - Install/uninstall/start/stop wired through `launchctl` via AppleScript's `do shell script with administrator privileges` (native macOS auth dialog — no extra dependencies)
+  - Service runs at boot under `root` via launchd, keeps the bridge + scheduler alive even when the desktop app is closed and across reboots
+  - Same architectural model as Windows: deployed scripts + node binary in shared data dir, GUI process and daemon share state via JSON files
+- **Universal `node` binary** shipped via `extraResources` so the LaunchDaemon has a Node interpreter that supports `chacha20-poly1305` (Electron's BoringSSL doesn't expose it — same constraint as on Windows)
+- **Hardened-runtime + entitlements** for macOS code signing & notarisation (`resources/entitlements.mac.plist`):
+  - `allow-jit` + `allow-unsigned-executable-memory` for Electron V8
+  - `disable-library-validation` because the bundled node binary is signed with a different Developer ID than Electron itself
+  - `network.server` / `network.client` for HAP + SOAP/SSDP traffic
+- **Platform-aware UI labels.** "DibbyWemoScheduler service" on Windows, "Dibby Wemo LaunchDaemon" on macOS, "dibby-wemo-scheduler systemd unit" on Linux (planned for v2.0.20). All references in the HomeKit Bridge panel and confirm dialogs follow `navigator.platform`.
+
+#### Files added / changed for macOS support
+- `apps/desktop/src/main/core/paths.js` — new shared paths module
+- `apps/desktop/src/main/service-manager.js` — added `_macInstall`, `_macUninstall`, `_macStart`, `_macStop`, `_macStatus`, AppleScript-based privileged shell helper, platform dispatcher wraps the existing Windows code
+- `apps/desktop/src/main/scheduler-standalone.js` / `service-manager-sync.js` / `homekit.ipc.js` / `ipc/rules.ipc.js` — all now use `PATHS.*` constants from `core/paths.js` instead of hardcoded `C:\ProgramData`
+- `apps/desktop/package.json` — per-platform `extraResources` (Windows `node.exe`, macOS `node`, Linux `node`); `mac.hardenedRuntime`, `mac.entitlements`, `mac.category`
+- `apps/desktop/resources/entitlements.mac.plist` — new entitlements file
+- `apps/desktop/resources/NODE_BINARY_README.md` — doc for placing platform Node binaries
+- `apps/desktop/src/renderer/src/App.jsx` — `_platformServiceLabel()` helper + label substitutions throughout HomeKit Bridge panel
+
+#### Linux support
+- Cross-platform paths work; service install (`systemd` unit) is **scaffolded but not implemented in this release** — `_linuxNotImplemented()` returns a clear error. Target: v2.0.20.
 
 ### Home Assistant integration — proper discovery via HA's own SSDP / DHCP framework
 

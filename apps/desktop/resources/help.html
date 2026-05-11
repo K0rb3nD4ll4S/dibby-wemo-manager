@@ -858,6 +858,11 @@
       Your rules remain on the devices — only the background scheduler is removed.
     </p>
 
+    <!-- ═══════════════════════ HOME ASSISTANT CONFLICT ═══════════════════════ -->
+    <div class="notice notice-warn" style="margin: 18px 0; padding: 14px 18px; border-left: 4px solid var(--warning, #d97706);">
+      <strong>Using Home Assistant?</strong> Disable HA's built-in <code>wemo</code> integration before adding the Dibby Wemo HACS integration. They declare the same SSDP/DHCP discovery patterns and will create duplicate switch entities + race each other on toggle commands. In HA: <strong>Settings → Devices &amp; Services → Belkin Wemo card → ⋮ → Delete</strong>. Don't re-add it. Dibby Wemo will then claim every Wemo on the LAN automatically.
+    </div>
+
     <!-- ═══════════════════════ HOMEKIT ═══════════════════════ -->
     <h2 id="homekit">🏠 HomeKit Bridge — every Wemo in Apple Home</h2>
 

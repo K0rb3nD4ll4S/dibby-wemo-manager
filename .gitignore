@@ -56,3 +56,11 @@ yarn-error.log*
 
 # ── Local editor / tooling caches ────────────────────────────────────────────
 .claude/
+
+# ── Bundled Node binaries (gitignored; ~70-95 MB each; build CI downloads them) ──
+apps/desktop/resources/node-macos
+apps/desktop/resources/node-macos-x64
+apps/desktop/resources/node-macos-arm64
+apps/desktop/resources/node-linux
+apps/desktop/resources/node-linux-x64
+apps/desktop/resources/node-linux-arm64

@@ -1,0 +1,74 @@
+# Auto-build the macOS .dmg + ad-hoc-sign + upload to the GitHub release that
+# matches the pushed tag (v*.*.*).
+#
+# Why ad-hoc signing instead of Developer ID? No Apple account required (free
+# CI), but every macOS version (13/14/15+) accepts the app via right-click →
+# Open the first time. Without signing of any kind, macOS 15 (Sequoia) refuses
+# to launch the app at all.
+#
+# To switch to real Developer ID signing later: add CSC_LINK + CSC_KEY_PASSWORD
+# secrets to the repo settings and set `identity` in package.json's mac config.
+
+name: Build macOS .dmg
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build:
+    runs-on: macos-latest
+    permissions:
+      contents: write    # required for upload-release-asset
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+
+      - name: Download bundled Node binary for the LaunchDaemon
+        # The headless service can't use Electron's bundled Node (BoringSSL
+        # lacks chacha20-poly1305 in a hap-nodejs-compatible form), so we
+        # ship a real Node binary. Download the current 20.x release for
+        # both architectures, lipo them into a universal binary, and place
+        # it where electron-builder expects it.
+        run: |
+          set -e
+          NODE_VER=$(node --version | tr -d 'v')
+          echo "Bundling Node ${NODE_VER}"
+          mkdir -p apps/desktop/resources
+          curl -sSL "https://nodejs.org/dist/v${NODE_VER}/node-v${NODE_VER}-darwin-x64.tar.gz" | tar -xz -C /tmp
+          curl -sSL "https://nodejs.org/dist/v${NODE_VER}/node-v${NODE_VER}-darwin-arm64.tar.gz" | tar -xz -C /tmp
+          lipo -create \
+            "/tmp/node-v${NODE_VER}-darwin-x64/bin/node" \
+            "/tmp/node-v${NODE_VER}-darwin-arm64/bin/node" \
+            -output apps/desktop/resources/node-macos
+          chmod +x apps/desktop/resources/node-macos
+          file apps/desktop/resources/node-macos
+
+      - name: Install root deps (npm workspaces)
+        run: npm install --no-audit --no-fund
+
+      - name: Build .dmg (universal x64 + arm64, ad-hoc signed)
+        working-directory: apps/desktop
+        env:
+          # Ad-hoc signing: empty identity tells electron-builder to skip
+          # Developer ID lookup but still sign with the runtime-only "-" identity.
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npm run build:mac
+
+      - name: List build artefacts
+        run: ls -la apps/desktop/dist/
+
+      - name: Upload .dmg files to the matching release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            apps/desktop/dist/*.dmg
+            apps/desktop/dist/*.zip
+          tag_name: ${{ github.ref_name }}
+          fail_on_unmatched_files: false

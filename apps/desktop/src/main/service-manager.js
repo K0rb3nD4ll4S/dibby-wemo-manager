@@ -1,26 +1,32 @@
 'use strict';
 
 /**
- * Windows Service manager for the Dibby Wemo Scheduler.
+ * Cross-platform scheduler service manager.
  *
- * Uses node-windows to register/unregister a Windows service that:
- *  - Starts automatically at boot (no user login required)
- *  - Runs under LocalSystem account
- *  - Reads devices from C:\ProgramData\DibbyWemoManager\devices.json
+ *   Windows  → node-windows + winsw.exe → registered with Service Control Manager
+ *   macOS    → LaunchDaemon plist → loaded via launchctl
+ *   Linux    → systemd unit file → loaded via systemctl
+ *
+ * All three implementations share the same deployed scheduler script + bundled
+ * node binary under SHARED_DATA_DIR, so the GUI and the headless service agree
+ * on file paths regardless of platform.
  */
 
 const path = require('path');
 const fs   = require('fs');
+const os   = require('os');
+const PATHS = require('./core/paths');
 
-const SERVICE_NAME = 'DibbyWemoScheduler';
+const SERVICE_NAME = PATHS.SERVICE_NAME;
 const SERVICE_DESC = 'Dibby Wemo Scheduler — fires Wemo device rules on schedule (local, no cloud)';
 
-// Persistent, writable location for the deployed scheduler script. node-windows
-// creates a `daemon/` directory next to the script for winsw.exe + service XML,
-// so the script MUST live somewhere the service-install user can write to.
-// ProgramData is writable by anyone in BUILTIN\Users by default.
-const DEPLOY_DIR     = path.join('C:\\ProgramData', 'DibbyWemoManager');
-const DEPLOY_SCRIPT  = path.join(DEPLOY_DIR, 'scheduler-standalone.js');
+const IS_WINDOWS = process.platform === 'win32';
+const IS_MAC     = process.platform === 'darwin';
+const IS_LINUX   = process.platform === 'linux';
+
+// Backwards-compat aliases so existing call sites in this file keep working
+const DEPLOY_DIR     = PATHS.SHARED_DATA_DIR;
+const DEPLOY_SCRIPT  = PATHS.SCHEDULER_SCRIPT;
 
 /**
  * Copy the bundled scheduler-standalone.js (from inside the app package) into
@@ -96,11 +102,21 @@ function getScriptPath() {
  *   - Cache the deployed copy: re-copy only if the source is newer
  */
 function deployNodeExe() {
-  const dst = path.join(DEPLOY_DIR, 'node.exe');
+  const nodeBin = IS_WINDOWS ? 'node.exe' : 'node';
+  const dst = PATHS.NODE_BINARY;
   const candidates = [];
-  if (process.resourcesPath) candidates.push(path.join(process.resourcesPath, 'node.exe'));
-  candidates.push(path.join(__dirname, '..', '..', 'resources', 'node.exe'));
-  candidates.push('C:\\Program Files\\nodejs\\node.exe');
+  if (process.resourcesPath) candidates.push(path.join(process.resourcesPath, nodeBin));
+  candidates.push(path.join(__dirname, '..', '..', 'resources', nodeBin));
+  if (IS_WINDOWS) {
+    candidates.push('C:\\Program Files\\nodejs\\node.exe');
+  } else if (IS_MAC) {
+    candidates.push('/opt/homebrew/bin/node');
+    candidates.push('/usr/local/bin/node');
+    candidates.push('/usr/bin/node');
+  } else {
+    candidates.push('/usr/bin/node');
+    candidates.push('/usr/local/bin/node');
+  }
   let src = null;
   for (const c of candidates) {
     try { if (fs.existsSync(c)) { src = c; break; } } catch { /* skip */ }
@@ -108,7 +124,7 @@ function deployNodeExe() {
   if (!src) {
     // Last resort — defer to PATH lookup. Service may fail at runtime if
     // user has no system Node.
-    return 'node.exe';
+    return nodeBin;
   }
   fs.mkdirSync(DEPLOY_DIR, { recursive: true });
   let needsCopy = true;
@@ -118,8 +134,11 @@ function deployNodeExe() {
     if (dstStat.size === srcStat.size && dstStat.mtimeMs >= srcStat.mtimeMs) needsCopy = false;
   } catch { /* dst missing → copy */ }
   if (needsCopy) {
-    try { fs.copyFileSync(src, dst); _stage('deployNodeExe:copied:' + src); }
-    catch (e) {
+    try {
+      fs.copyFileSync(src, dst);
+      if (!IS_WINDOWS) fs.chmodSync(dst, 0o755);  // executable bit for macOS/Linux
+      _stage('deployNodeExe:copied:' + src);
+    } catch (e) {
       // If the destination is locked (service running from a previous install),
       // we can still use whatever's already there — it's the same binary.
       _stage('deployNodeExe:copy-failed:' + e.message);
@@ -318,7 +337,7 @@ let _installLastStage = 'idle';
 function _stage(s) {
   _installLastStage = s;
   try {
-    const logPath = path.join('C:\\ProgramData', 'DibbyWemoManager', 'service-install.log');
+    const logPath = PATHS.SERVICE_INSTALL_LOG;
     fs.appendFileSync(logPath, `[${new Date().toISOString()}] ${s}\n`);
   } catch { /* non-critical */ }
   console.log(`[service-install] ${s}`);
@@ -465,4 +484,276 @@ function getServiceStatus() {
   });
 }
 
-module.exports = { installService, uninstallService, startService, stopService, getServiceStatus };
+// ────────────────────────────────────────────────────────────────────────────
+//   macOS — LaunchDaemon
+// ────────────────────────────────────────────────────────────────────────────
+//
+// We install as a LaunchDaemon (system-wide, runs at boot, no login required)
+// rather than a LaunchAgent (per-user, requires login). The plist lives in
+// /Library/LaunchDaemons/ which requires admin write — we use osascript's
+// AppleScript privileged-shell escape to prompt for password via the system
+// authentication dialog (no extra dependencies).
+
+function _macPlistXml(nodeBinary, scriptPath) {
+  // The plist runs node + scheduler-standalone.js with stdout/stderr piped to
+  // SHARED_DATA_DIR/scheduler.{out,err}.log. KeepAlive=true so launchd restarts
+  // the daemon if it crashes.
+  const stdoutLog = path.join(PATHS.SHARED_DATA_DIR, 'scheduler.out.log');
+  const stderrLog = path.join(PATHS.SHARED_DATA_DIR, 'scheduler.err.log');
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>${PATHS.SERVICE_LABEL}</string>
+    <key>ProgramArguments</key>
+    <array>
+      <string>${nodeBinary}</string>
+      <string>${scriptPath}</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>${stdoutLog}</string>
+    <key>StandardErrorPath</key>
+    <string>${stderrLog}</string>
+    <key>WorkingDirectory</key>
+    <string>${PATHS.SHARED_DATA_DIR}</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>NODE_ENV</key>
+      <string>production</string>
+    </dict>
+  </dict>
+</plist>
+`;
+}
+
+function _runWithSudo(shellCmd) {
+  // Use osascript so macOS shows the native authentication dialog. The "with
+  // administrator privileges" clause translates to a one-shot sudo equivalent
+  // — no need to ship a separate sudo-prompt package.
+  return new Promise((resolve, reject) => {
+    const { spawn } = require('child_process');
+    // Escape quotes/backslashes for AppleScript string literal
+    const escaped = shellCmd.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const proc = spawn('osascript', [
+      '-e',
+      `do shell script "${escaped}" with administrator privileges`,
+    ]);
+    let stdout = '', stderr = '';
+    proc.stdout.on('data', (d) => { stdout += d.toString(); });
+    proc.stderr.on('data', (d) => { stderr += d.toString(); });
+    proc.on('close', (code) => {
+      if (code === 0) resolve(stdout);
+      else reject(new Error(stderr.trim() || `osascript exited ${code}`));
+    });
+  });
+}
+
+/**
+ * Locate the bundled scheduler-standalone.js source inside the app bundle.
+ * On macOS the app bundle is /Applications/Dibby Wemo Manager.app and
+ * resources land at .../Contents/Resources/.
+ */
+function _macFindBundledScript() {
+  const candidates = [];
+  if (process.resourcesPath) {
+    candidates.push(path.join(process.resourcesPath, 'scheduler-standalone.js'));
+    candidates.push(path.join(process.resourcesPath, 'app.asar.unpacked', 'out', 'main', 'scheduler-standalone.js'));
+  }
+  candidates.push(path.join(__dirname, 'scheduler-standalone.js'));
+  for (const c of candidates) {
+    try { if (fs.existsSync(c) && !c.includes('.asar' + path.sep)) return c; } catch { /* skip */ }
+  }
+  throw new Error('Could not locate bundled scheduler-standalone.js');
+}
+
+function _macFindBundledNode() {
+  // macOS node binary (universal x64+arm64) ships in extraResources.
+  // Falls back to system node if missing — sufficient for testing without
+  // shipping the ~70 MB binary during dev.
+  const candidates = [];
+  if (process.resourcesPath) candidates.push(path.join(process.resourcesPath, 'node'));
+  candidates.push(path.join(__dirname, '..', '..', 'resources', 'node'));
+  candidates.push('/opt/homebrew/bin/node');
+  candidates.push('/usr/local/bin/node');
+  candidates.push('/usr/bin/node');
+  for (const c of candidates) {
+    try { if (fs.existsSync(c)) return c; } catch { /* skip */ }
+  }
+  throw new Error('Could not locate a node binary (bundled or system) for the LaunchDaemon');
+}
+
+function _macInstall() {
+  return new Promise(async (resolve, reject) => {
+    try {
+      _stage('mac:install:start');
+
+      // 1. Stage files in a user-writable temp dir (no sudo yet)
+      const stageDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dibby-svc-'));
+      const stagedScript = path.join(stageDir, 'scheduler-standalone.js');
+      const stagedNode   = path.join(stageDir, 'node');
+      const stagedPlist  = path.join(stageDir, `${PATHS.SERVICE_LABEL}.plist`);
+
+      const srcScript = _macFindBundledScript();
+      const srcNode   = _macFindBundledNode();
+      _stage('mac:install:src found: script=' + srcScript + ' node=' + srcNode);
+
+      fs.copyFileSync(srcScript, stagedScript);
+      fs.copyFileSync(srcNode, stagedNode);
+      try { fs.chmodSync(stagedNode, 0o755); } catch { /* permission set in sudo phase too */ }
+
+      // Plist must reference the FINAL post-install paths
+      fs.writeFileSync(
+        stagedPlist,
+        _macPlistXml(PATHS.NODE_BINARY, PATHS.SCHEDULER_SCRIPT),
+        'utf8',
+      );
+      _stage('mac:install:staged');
+
+      // 2. Single sudo call to:
+      //    - Create SHARED_DATA_DIR with sticky-bit world-writable mode
+      //      (so the GUI process can still write devices.json + dwm-rules.json)
+      //    - Move root-owned service files into place
+      //    - Install the LaunchDaemon plist
+      //    - Load via launchctl
+      //
+      //    Sticky bit (1777) is the same model as /tmp — anyone can create
+      //    files in the dir, but only the file owner can delete their own.
+      //    Service-deployed files (node, scheduler-standalone.js) end up
+      //    owned by root with 644/755 perms; user data files (devices.json,
+      //    dwm-rules.json, scheduler.log) are owned by the desktop GUI's
+      //    user and remain user-writable.
+      const sh = (s) => s.replace(/'/g, `'\\''`);
+      const cmd = [
+        `mkdir -p '${sh(PATHS.SHARED_DATA_DIR)}'`,
+        `chmod 1777 '${sh(PATHS.SHARED_DATA_DIR)}'`,
+        `mkdir -p '${sh(PATHS.HK_BRIDGE_DIR)}'`,
+        `chmod 1777 '${sh(PATHS.HK_BRIDGE_DIR)}'`,
+        `mv '${sh(stagedScript)}' '${sh(PATHS.SCHEDULER_SCRIPT)}'`,
+        `mv '${sh(stagedNode)}'   '${sh(PATHS.NODE_BINARY)}'`,
+        `chown root:wheel '${sh(PATHS.SCHEDULER_SCRIPT)}' '${sh(PATHS.NODE_BINARY)}'`,
+        `chmod 644 '${sh(PATHS.SCHEDULER_SCRIPT)}'`,
+        `chmod 755 '${sh(PATHS.NODE_BINARY)}'`,
+        `mv '${sh(stagedPlist)}' '${sh(PATHS.LAUNCHD_PLIST_SYSTEM)}'`,
+        `chown root:wheel '${sh(PATHS.LAUNCHD_PLIST_SYSTEM)}'`,
+        `chmod 644 '${sh(PATHS.LAUNCHD_PLIST_SYSTEM)}'`,
+        `launchctl unload '${sh(PATHS.LAUNCHD_PLIST_SYSTEM)}' 2>/dev/null || true`,
+        `launchctl load -w '${sh(PATHS.LAUNCHD_PLIST_SYSTEM)}'`,
+      ].join(' && ');
+
+      await _runWithSudo(cmd);
+      _stage('mac:install:launchctl loaded');
+
+      // 3. Clean up temp stage dir (best-effort)
+      try { fs.rmSync(stageDir, { recursive: true, force: true }); } catch { /* ignore */ }
+
+      resolve({ ok: true, msg: 'LaunchDaemon installed and loaded.' });
+    } catch (e) {
+      _stage('mac:install:err:' + e.message);
+      reject(new Error('macOS service install failed: ' + e.message));
+    }
+  });
+}
+
+function _macUninstall() {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const cmd = [
+        `launchctl unload '${PATHS.LAUNCHD_PLIST_SYSTEM}' 2>/dev/null || true`,
+        `rm -f '${PATHS.LAUNCHD_PLIST_SYSTEM}'`,
+      ].join(' && ');
+      await _runWithSudo(cmd);
+      resolve({ ok: true, msg: 'LaunchDaemon unloaded and removed.' });
+    } catch (e) { reject(new Error('macOS service uninstall failed: ' + e.message)); }
+  });
+}
+
+function _macStart() {
+  return _runWithSudo(`launchctl load -w '${PATHS.LAUNCHD_PLIST_SYSTEM}'`)
+    .then(() => ({ ok: true, msg: 'LaunchDaemon started.' }))
+    .catch((e) => { throw new Error('macOS service start failed: ' + e.message); });
+}
+
+function _macStop() {
+  return _runWithSudo(`launchctl unload '${PATHS.LAUNCHD_PLIST_SYSTEM}'`)
+    .then(() => ({ ok: true, msg: 'LaunchDaemon stopped.' }))
+    .catch((e) => { throw new Error('macOS service stop failed: ' + e.message); });
+}
+
+function _macStatus() {
+  return new Promise((resolve) => {
+    const { exec } = require('child_process');
+    const installed = fs.existsSync(PATHS.LAUNCHD_PLIST_SYSTEM);
+    if (!installed) {
+      return resolve({ installed: false, running: false, status: 'Not installed' });
+    }
+    exec(`launchctl list | grep ${PATHS.SERVICE_LABEL}`, (err, stdout) => {
+      // launchctl list format: "PID  Status  Label" — PID = "-" if not running
+      const running = !!stdout && !stdout.startsWith('-');
+      resolve({
+        installed: true,
+        running,
+        status: running ? 'Running' : 'Stopped',
+      });
+    });
+  });
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+//   Linux — systemd (deferred to v2.0.20 — function bodies stub for now)
+// ────────────────────────────────────────────────────────────────────────────
+
+function _linuxNotImplemented() {
+  return Promise.reject(new Error(
+    'Linux systemd integration is not implemented yet (planned for v2.0.20). ' +
+    'For now, run scheduler-standalone.js manually via systemd-run or your favourite process supervisor.'
+  ));
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+//   Platform dispatcher — single public API
+// ────────────────────────────────────────────────────────────────────────────
+
+const _winInstall   = installService;
+const _winUninstall = uninstallService;
+const _winStart     = startService;
+const _winStop      = stopService;
+const _winStatus    = getServiceStatus;
+
+function installServiceX() {
+  if (IS_WINDOWS) return _winInstall();
+  if (IS_MAC)     return _macInstall();
+  return _linuxNotImplemented();
+}
+function uninstallServiceX() {
+  if (IS_WINDOWS) return _winUninstall();
+  if (IS_MAC)     return _macUninstall();
+  return _linuxNotImplemented();
+}
+function startServiceX() {
+  if (IS_WINDOWS) return _winStart();
+  if (IS_MAC)     return _macStart();
+  return _linuxNotImplemented();
+}
+function stopServiceX() {
+  if (IS_WINDOWS) return _winStop();
+  if (IS_MAC)     return _macStop();
+  return _linuxNotImplemented();
+}
+function getServiceStatusX() {
+  if (IS_WINDOWS) return _winStatus();
+  if (IS_MAC)     return _macStatus();
+  return Promise.resolve({ installed: false, running: false, status: 'Unsupported platform' });
+}
+
+module.exports = {
+  installService:   installServiceX,
+  uninstallService: uninstallServiceX,
+  startService:     startServiceX,
+  stopService:      stopServiceX,
+  getServiceStatus: getServiceStatusX,
+};

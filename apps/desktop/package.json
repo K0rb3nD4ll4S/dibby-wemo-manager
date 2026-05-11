@@ -13,6 +13,7 @@
     "build:win": "electron-vite build && node scripts/bundle-standalone.js && electron-builder --win --x64",
     "build:linux": "electron-vite build && node scripts/bundle-standalone.js && electron-builder --linux --x64",
     "build:linux:arm64": "electron-vite build && node scripts/bundle-standalone.js && electron-builder --linux --arm64",
+    "build:mac": "electron-vite build && node scripts/bundle-standalone.js && electron-builder --mac --x64 --arm64",
     "build:all": "electron-vite build && node scripts/bundle-standalone.js && electron-builder --win --x64 && electron-builder --linux --x64",
     "preview": "electron-vite preview"
   },
@@ -57,7 +58,20 @@
         }
       ],
       "icon": "resources/icon.png",
-      "category": "public.app-category.utilities"
+      "category": "public.app-category.utilities",
+      "extraResources": [
+        {
+          "from": "resources/node-macos",
+          "to": "node",
+          "filter": ["**/*"]
+        }
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "identity": null,
+      "entitlements": "resources/entitlements.mac.plist",
+      "entitlementsInherit": "resources/entitlements.mac.plist",
+      "notarize": false
     },
     "dmg": {
       "title": "Dibby Wemo Manager"
@@ -84,7 +98,13 @@
         "signingHashAlgorithms": [
           "sha256"
         ]
-      }
+      },
+      "extraResources": [
+        {
+          "from": "resources/node.exe",
+          "to": "node.exe"
+        }
+      ]
     },
     "nsis": {
       "oneClick": false,
@@ -106,7 +126,14 @@
       "category": "Utility",
       "synopsis": "Belkin Wemo device manager \u00e2\u20ac\u201d local control, no cloud required",
       "description": "Control Belkin Wemo smart switches and plugs. Set schedules, countdowns and away mode. No Belkin account or internet required.",
-      "maintainer": "SRS IT"
+      "maintainer": "SRS IT",
+      "extraResources": [
+        {
+          "from": "resources/node-linux",
+          "to": "node",
+          "filter": ["**/*"]
+        }
+      ]
     },
     "deb": {
       "depends": [
@@ -151,10 +178,6 @@
       {
         "from": "out/main/scheduler-standalone.js",
         "to": "scheduler-standalone.js"
-      },
-      {
-        "from": "resources/node.exe",
-        "to": "node.exe"
       },
       {
         "from": "../../node_modules/sql.js/dist/sql-wasm.wasm",

@@ -1,22 +1,24 @@
 'use strict';
 
 /**
- * Thin helper: writes the device list to the shared ProgramData file so the
- * Windows service always has up-to-date host/port/udn mappings.
- * Kept separate so it can be required without pulling in node-windows.
+ * Thin helper: writes the device list to the shared OS-specific data dir
+ * (ProgramData on Windows, /Library/Application Support on macOS,
+ * /var/lib/dibby-wemo-manager on Linux) so the headless service / launchd
+ * daemon / systemd unit always has up-to-date host/port/udn mappings.
+ *
+ * Kept separate so it can be required without pulling in node-windows
+ * (which is Windows-only and would blow up at require time on macOS/Linux).
  */
 
-const path = require('path');
-const fs   = require('fs');
-
-const PROGRAMDATA_DIR     = path.join('C:\\ProgramData', 'DibbyWemoManager');
-const PROGRAMDATA_DEVICES = path.join(PROGRAMDATA_DIR, 'devices.json');
+const path  = require('path');
+const fs    = require('fs');
+const PATHS = require('./core/paths');
 
 function syncDevices(devices) {
   try {
-    fs.mkdirSync(PROGRAMDATA_DIR, { recursive: true });
+    fs.mkdirSync(PATHS.SHARED_DATA_DIR, { recursive: true });
     fs.writeFileSync(
-      PROGRAMDATA_DEVICES,
+      PATHS.DEVICES_FILE,
       JSON.stringify({ devices, updatedAt: new Date().toISOString() }, null, 2),
       'utf8',
     );
