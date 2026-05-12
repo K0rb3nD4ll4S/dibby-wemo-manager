@@ -1,16 +1,27 @@
 """
 JSON persistence store for Dibby Wemo.
-Saves to <ha_config_dir>/dibby-wemo.json.
-Schema-compatible with the Homebridge and desktop app stores.
+
+Saves to ``<ha_config_dir>/dibby-wemo.json`` — schema-compatible with the
+Homebridge plugin and desktop app stores.
+
+All file I/O is dispatched to Home Assistant's executor so the event loop
+is never blocked. The store is created via :meth:`DwmStore.async_create`
+(an async factory) and every mutation schedules a fire-and-forget save on
+the executor with a deep-copied snapshot of the in-memory data, so the
+executor sees a consistent view even if subsequent mutations happen
+before its write completes.
 """
 
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import os
 import time
 from typing import Any
+
+from homeassistant.core import HomeAssistant
 
 from .const import STORE_FILENAME
 
@@ -18,29 +29,45 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class DwmStore:
-    def __init__(self, config_dir: str) -> None:
+    def __init__(self, hass: HomeAssistant, config_dir: str) -> None:
+        self._hass = hass
         self._path = os.path.join(config_dir, STORE_FILENAME)
         self._data: dict[str, Any] = {}
-        self._load()
 
-    # ── Internal ──────────────────────────────────────────────────────────────
+    @classmethod
+    async def async_create(cls, hass: HomeAssistant, config_dir: str) -> "DwmStore":
+        """Async factory — runs the initial blocking read on the executor."""
+        self = cls(hass, config_dir)
+        self._data = await hass.async_add_executor_job(self._sync_load)
+        return self
 
-    def _load(self) -> None:
+    # ── Sync I/O primitives (run only inside executor) ───────────────────────
+
+    def _sync_load(self) -> dict[str, Any]:
         try:
             with open(self._path, encoding="utf-8") as f:
-                self._data = json.load(f)
+                return json.load(f)
         except FileNotFoundError:
-            self._data = {}
+            return {}
         except Exception as e:
             _LOGGER.warning("Could not load %s: %s — starting fresh", self._path, e)
-            self._data = {}
+            return {}
 
-    def _save(self) -> None:
+    def _sync_save(self, snapshot: dict[str, Any]) -> None:
         try:
             with open(self._path, "w", encoding="utf-8") as f:
-                json.dump(self._data, f, indent=2)
+                json.dump(snapshot, f, indent=2)
         except Exception as e:
             _LOGGER.error("Could not save %s: %s", self._path, e)
+
+    # ── Internal — dispatch async save ───────────────────────────────────────
+
+    def _save(self) -> None:
+        snapshot = copy.deepcopy(self._data)
+        if self._hass is not None:
+            self._hass.async_add_executor_job(self._sync_save, snapshot)
+        else:  # pragma: no cover — defensive fallback for non-HA uses
+            self._sync_save(snapshot)
 
     def _get(self, key: str, default=None):
         return self._data.get(key, default)

@@ -4,6 +4,29 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.25] — 2026-05-12
+
+### Fix: HA store I/O no longer blocks the event loop
+
+Home Assistant's loop watchdog reported two blocking `open()` calls inside `DwmStore`:
+
+- `store.py:30` — initial JSON load called synchronously from `__init__`, which itself was called from `async_setup_entry`
+- `store.py:40` — JSON save called from every `_set()`, which fires on every heartbeat (~once/second) and on every rule mutation
+
+Both ran on the asyncio loop thread and stalled HA's scheduler under load.
+
+Fix — `custom_components/dibby_wemo/store.py`:
+- `DwmStore.__init__` no longer reads the file. New `async_create(hass, config_dir)` classmethod-factory dispatches the initial read to `hass.async_add_executor_job`.
+- `_save()` now `deepcopy`s the in-memory dict and fires `hass.async_add_executor_job(_sync_save, snapshot)` — the loop returns immediately and the actual disk write happens on the executor pool. Concurrent mutations are safe because each save operates on its own immutable snapshot.
+- `_sync_load` / `_sync_save` are clearly marked as executor-only sync primitives.
+
+`__init__.py`'s `async_setup_entry` updated to `await DwmStore.async_create(...)`.
+
+### Affected packages
+All monorepo packages bumped to **2.0.25** in unified versioning.
+
+---
+
 ## [2.0.24] — 2026-05-12
 
 ### Feature: "Discover devices now" button in HA integration options

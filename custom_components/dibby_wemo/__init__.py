@@ -28,7 +28,7 @@ PLATFORMS = [Platform.SWITCH]
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Dibby Wemo from a config entry."""
-    store = DwmStore(hass.config.config_dir)
+    store = await DwmStore.async_create(hass, hass.config.config_dir)
 
     # Discover + merge devices
     timeout = entry.data.get(CONF_DISCOVERY_TIMEOUT, DEFAULT_DISCOVERY_TIMEOUT_S)

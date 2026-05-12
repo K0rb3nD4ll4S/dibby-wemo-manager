@@ -1,6 +1,6 @@
 {
   "name": "homebridge-dibby-wemo",
-  "version": "2.0.24",
+  "version": "2.0.25",
   "description": "Dibby Wemo Manager – Homebridge plugin for local Wemo control with DWM scheduling. No Belkin cloud required.",
   "main": "index.js",
   "customUi": true,

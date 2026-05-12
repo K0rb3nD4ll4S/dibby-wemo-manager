@@ -1,6 +1,6 @@
 {
   "name": "@wemo-manager/core",
-  "version": "2.0.24",
+  "version": "2.0.25",
   "private": true,
   "main": "src/index.js"
 }
