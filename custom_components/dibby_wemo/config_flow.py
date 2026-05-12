@@ -268,12 +268,67 @@ class DibbyWemoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class DibbyWemoOptionsFlow(config_entries.OptionsFlow):
-    """Handle options (re-configure after setup)."""
+    """Handle options (re-configure after setup).
+
+    Two menu paths:
+      • discover — re-run device discovery (SSDP + unicast subnet scan) and
+        reload the config entry so the coordinator picks up any newly added
+        Wemos without restarting Home Assistant.
+      • settings — adjust timeouts, polling, heartbeat, and the manual IP
+        fallback list (same as the original options form).
+    """
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         self._entry = config_entry
+        self._scan_result: list[dict] = []
 
     async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        return self.async_show_menu(
+            step_id="init",
+            menu_options=["discover", "settings"],
+        )
+
+    # ── Discover devices on demand ───────────────────────────────────────────
+
+    async def async_step_discover(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Re-run discovery; on submit, reload the config entry."""
+        if user_input is None:
+            timeout = self._entry.data.get(CONF_DISCOVERY_TIMEOUT, DEFAULT_DISCOVERY_TIMEOUT_S)
+            try:
+                self._scan_result = await wemo_client.discover_devices(timeout_s=float(timeout))
+            except Exception as e:
+                _LOGGER.warning("Re-discovery scan failed: %s", e)
+                self._scan_result = []
+
+            device_lines = "\n".join(
+                f"• {d.get('name', d['host'])} ({d['host']}:{d.get('port', 49153)})"
+                for d in self._scan_result
+            ) or (
+                "No new devices found by SSDP / unicast scan. The integration "
+                "will still pick them up via passive discovery as they come "
+                "online. You can also add IPs manually under Settings."
+            )
+
+            return self.async_show_form(
+                step_id="discover",
+                data_schema=vol.Schema({}),
+                description_placeholders={"devices": device_lines},
+            )
+
+        # Reload the entry so async_setup_entry re-runs discovery and the
+        # coordinator picks up any newly online Wemos.
+        self.hass.async_create_task(
+            self.hass.config_entries.async_reload(self._entry.entry_id)
+        )
+        return self.async_create_entry(title="", data=dict(self._entry.options))
+
+    # ── Settings (original options form) ─────────────────────────────────────
+
+    async def async_step_settings(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         if user_input is not None:
@@ -283,6 +338,10 @@ class DibbyWemoOptionsFlow(config_entries.OptionsFlow):
                 CONF_HEARTBEAT_INTERVAL: user_input[CONF_HEARTBEAT_INTERVAL],
                 CONF_MANUAL_DEVICES:    _parse_manual_devices(user_input.get(CONF_MANUAL_DEVICES, "")),
             }
+            # Trigger a reload so manual device additions take effect immediately
+            self.hass.async_create_task(
+                self.hass.config_entries.async_reload(self._entry.entry_id)
+            )
             return self.async_create_entry(title="", data=patched)
 
         # Render current manual devices as comma-separated for the text field
@@ -310,4 +369,4 @@ class DibbyWemoOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(CONF_MANUAL_DEVICES, default=manual_str): str,
             }
         )
-        return self.async_show_form(step_id="init", data_schema=schema)
+        return self.async_show_form(step_id="settings", data_schema=schema)

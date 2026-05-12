@@ -3,19 +3,29 @@
     "step": {
       "user": {
         "title": "Dibby Wemo Setup",
-        "description": "Configure discovery and polling settings. Click Submit to scan your network for Wemo devices.",
+        "description": "Home Assistant will automatically discover Wemo devices on your network via SSDP and DHCP — usually no manual setup is needed. If devices don't appear (Docker bridge networking, isolated VLAN, etc.) you can list them manually below.",
         "data": {
           "discovery_timeout": "Discovery timeout (seconds)",
-          "poll_interval": "Device poll interval (seconds)"
+          "poll_interval": "Device poll interval (seconds)",
+          "heartbeat_interval": "Heartbeat interval (seconds)",
+          "manual_devices": "Manual device IPs (optional)"
+        },
+        "data_description": {
+          "manual_devices": "Comma-separated list of Wemo IPs, e.g. 192.168.1.10, 192.168.1.11:49153"
         }
       },
       "discover": {
         "title": "Devices Found",
-        "description": "The following Wemo devices were found on your network:\n\n{devices}\n\nClick Submit to add them to Home Assistant."
+        "description": "Scan results:\n\n{devices}\n\nClick Submit to finalize. The integration will continue listening for new devices via Home Assistant's SSDP and DHCP discovery."
+      },
+      "discovery_confirm": {
+        "title": "Wemo Device Discovered",
+        "description": "Home Assistant detected a Wemo device on your network:\n\n• **{name}** at {host}\n\nClick Submit to create the Dibby Wemo integration. All your Wemo devices — including this one and others found via discovery — will be added automatically."
       }
     },
     "abort": {
-      "single_instance_allowed": "Only one Dibby Wemo integration is allowed."
+      "single_instance_allowed": "Only one Dibby Wemo integration is allowed. Use Configure on the existing entry to add more devices manually.",
+      "not_wemo_device": "Device does not appear to be a Wemo."
     },
     "error": {
       "cannot_connect": "Failed to connect to device.",
@@ -25,10 +35,28 @@
   "options": {
     "step": {
       "init": {
-        "title": "Dibby Wemo Options",
+        "title": "Dibby Wemo",
+        "description": "Choose an action:",
+        "menu_options": {
+          "discover": "Discover devices now",
+          "settings": "Edit settings"
+        }
+      },
+      "discover": {
+        "title": "Discover Wemo Devices",
+        "description": "Scan results:\n\n{devices}\n\nClick Submit to apply — the integration will reload and pick up any newly online Wemos."
+      },
+      "settings": {
+        "title": "Dibby Wemo Settings",
+        "description": "Adjust discovery + polling intervals, or add devices manually if SSDP / unicast scan isn't finding them.",
         "data": {
           "discovery_timeout": "Discovery timeout (seconds)",
-          "poll_interval": "Device poll interval (seconds)"
+          "poll_interval": "Device poll interval (seconds)",
+          "heartbeat_interval": "Heartbeat interval (seconds)",
+          "manual_devices": "Manual device IPs (optional)"
+        },
+        "data_description": {
+          "manual_devices": "Comma-separated list of Wemo IPs, e.g. 192.168.1.10, 192.168.1.11:49153"
         }
       }
     }

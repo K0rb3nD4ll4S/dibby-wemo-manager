@@ -35,8 +35,20 @@
   "options": {
     "step": {
       "init": {
-        "title": "Dibby Wemo Options",
-        "description": "Adjust discovery + polling intervals, or add devices manually if HA's SSDP isn't finding them.",
+        "title": "Dibby Wemo",
+        "description": "Choose an action:",
+        "menu_options": {
+          "discover": "Discover devices now",
+          "settings": "Edit settings"
+        }
+      },
+      "discover": {
+        "title": "Discover Wemo Devices",
+        "description": "Scan results:\n\n{devices}\n\nClick Submit to apply — the integration will reload and pick up any newly online Wemos."
+      },
+      "settings": {
+        "title": "Dibby Wemo Settings",
+        "description": "Adjust discovery + polling intervals, or add devices manually if SSDP / unicast scan isn't finding them.",
         "data": {
           "discovery_timeout": "Discovery timeout (seconds)",
           "poll_interval": "Device poll interval (seconds)",

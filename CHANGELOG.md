@@ -4,6 +4,24 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.24] — 2026-05-12
+
+### Feature: "Discover devices now" button in HA integration options
+
+After Dibby Wemo is set up, adding a new Wemo to the network required either restarting Home Assistant or waiting for HA's passive SSDP/DHCP discovery to catch the device — neither path is obvious or fast. Now the integration's **Configure** dialog opens to a menu with two paths:
+
+- **Discover devices now** — re-runs the full SSDP + multi-subnet unicast scan, shows what was found, and on Submit reloads the config entry so the coordinator picks up any newly online Wemos without an HA restart.
+- **Edit settings** — the previous options form (timeouts, polling, heartbeat, manual IP list). Saving here also triggers an entry reload so manual device additions take effect immediately.
+
+Files:
+- `custom_components/dibby_wemo/config_flow.py` — `DibbyWemoOptionsFlow` refactored to a menu (`async_show_menu`) with `async_step_discover` and `async_step_settings` paths.
+- `custom_components/dibby_wemo/strings.json` and `translations/en.json` — new menu labels and step descriptions.
+
+### Affected packages
+All monorepo packages bumped to **2.0.24** in unified versioning.
+
+---
+
 ## [2.0.23] — 2026-05-12
 
 ### Fix: HA unicast scan now finds devices when the integration runs in a container
