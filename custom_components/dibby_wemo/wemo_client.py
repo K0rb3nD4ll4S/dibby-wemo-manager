@@ -206,13 +206,36 @@ def _ssdp_discover_sync(timeout_s: float) -> list[dict]:
     return [{"location": loc} for loc in locations]
 
 
-def _local_subnet_base() -> str | None:
-    """Return the /24 base (e.g. '192.168.18.') of the host's primary LAN IP.
+def _ip_to_base(ip: str) -> str | None:
+    """'192.168.18.42' -> '192.168.18.' — return None for invalid/loopback/link-local."""
+    parts = ip.split(".")
+    if len(parts) != 4:
+        return None
+    if ip.startswith("127.") or ip.startswith("169.254."):
+        return None
+    return ".".join(parts[:3]) + "."
 
-    Uses the trick of opening a UDP socket to a public address — no packet
-    is actually sent, but the kernel selects the outbound interface and we
-    can read its IP. Returns None if detection fails.
+
+def _local_subnet_candidates() -> list[str]:
+    """Return every plausible /24 base for this host.
+
+    HAOS in a VM, HA in Docker, and bare-metal each present a different
+    interface layout, so a single 'find my IP' trick is unreliable — instead
+    we enumerate every approach we know and union the results.
+
+    Strategies:
+      1. UDP connect-trick (outbound IP for 8.8.8.8 — usually the LAN IP, but
+         in some container setups returns a Docker internal IP).
+      2. `socket.gethostbyname_ex(gethostname())` — returns every IP bound to
+         the host's name; includes the LAN IP on most Linux/HAOS installs.
+      3. Iterate `socket.getaddrinfo(gethostname(), None)` — last-resort, picks
+         up any IPv4 address the kernel knows about for this host.
+
+    Loopback (127.x) and link-local (169.254.x) bases are filtered out.
     """
+    bases: set[str] = set()
+
+    # 1. Connect trick (most accurate when it works)
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
@@ -220,12 +243,33 @@ def _local_subnet_base() -> str | None:
             ip = s.getsockname()[0]
         finally:
             s.close()
-        parts = ip.split(".")
-        if len(parts) == 4:
-            return ".".join(parts[:3]) + "."
+        b = _ip_to_base(ip)
+        if b:
+            bases.add(b)
     except Exception as e:
-        _LOGGER.debug("Local subnet detection failed: %s", e)
-    return None
+        _LOGGER.debug("Subnet detection (connect-trick) failed: %s", e)
+
+    # 2. gethostbyname_ex — common on HAOS
+    try:
+        _, _, ips = socket.gethostbyname_ex(socket.gethostname())
+        for ip in ips:
+            b = _ip_to_base(ip)
+            if b:
+                bases.add(b)
+    except Exception as e:
+        _LOGGER.debug("Subnet detection (gethostbyname_ex) failed: %s", e)
+
+    # 3. getaddrinfo — catch-all
+    try:
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            ip = info[4][0]
+            b = _ip_to_base(ip)
+            if b:
+                bases.add(b)
+    except Exception as e:
+        _LOGGER.debug("Subnet detection (getaddrinfo) failed: %s", e)
+
+    return sorted(bases)
 
 
 def _probe_wemo_ip_sync(host: str, timeout: float = 0.8) -> str | None:
@@ -244,24 +288,38 @@ def _probe_wemo_ip_sync(host: str, timeout: float = 0.8) -> str | None:
     return None
 
 
-def _unicast_subnet_scan_sync(timeout_s: float = 6.0) -> list[dict]:
-    """Probe every host on the local /24 for /setup.xml — Docker-bridge friendly.
+def _unicast_subnet_scan_sync(timeout_s: float = 8.0) -> list[dict]:
+    """Probe every host on every local /24 for /setup.xml — container-friendly.
 
-    Multicast SSDP can't cross Docker's bridge network, so fall back to
-    unicast probes which traverse the NAT just fine. Uses a thread pool to
-    finish a /24 sweep in ~5s.
+    Multicast SSDP can't cross Docker's bridge network. Even when running in
+    HAOS, the integration may live in a container whose 'primary' IP is on a
+    Docker-internal bridge (172.x), not the LAN. So we enumerate every /24
+    the host has an interface on and scan all of them in parallel.
+
+    A single /24 with 32 workers + 0.8s timeout completes in ~5s. Scanning
+    two /24s in parallel with 64 workers stays in the same budget.
     """
-    base = _local_subnet_base()
-    if not base:
+    bases = _local_subnet_candidates()
+    if not bases:
+        _LOGGER.warning("Unicast scan: could not determine any local subnet")
         return []
+
+    _LOGGER.info("Unicast scan: probing /24 base(s) %s with %.1fs budget", bases, timeout_s)
 
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    locations: set[str] = set()
-    targets = [f"{base}{i}" for i in range(1, 255)]
-    deadline_workers = max(32, min(64, len(targets)))
+    targets: list[str] = []
+    for base in bases:
+        for i in range(1, 255):
+            targets.append(f"{base}{i}")
 
-    with ThreadPoolExecutor(max_workers=deadline_workers) as pool:
+    if not targets:
+        return []
+
+    workers = min(96, max(32, len(targets) // 8))
+    locations: set[str] = set()
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {pool.submit(_probe_wemo_ip_sync, ip): ip for ip in targets}
         try:
             for fut in as_completed(futures, timeout=timeout_s):
@@ -272,8 +330,12 @@ def _unicast_subnet_scan_sync(timeout_s: float = 6.0) -> list[dict]:
                 if url:
                     locations.add(url)
         except Exception as e:
-            _LOGGER.debug("Subnet scan reached timeout: %s", e)
+            _LOGGER.debug("Unicast scan hit timeout boundary: %s", e)
 
+    _LOGGER.info(
+        "Unicast scan: probed %d hosts across %d subnet(s), found %d Wemo URL(s)",
+        len(targets), len(bases), len(locations),
+    )
     return [{"location": loc} for loc in locations]
 
 
@@ -315,10 +377,11 @@ async def discover_devices(timeout_s: float = 10.0) -> list[dict]:
     """
     loop = asyncio.get_event_loop()
     raw = await loop.run_in_executor(None, lambda: _ssdp_discover_sync(timeout_s))
+    _LOGGER.info("SSDP M-SEARCH returned %d location(s)", len(raw))
 
     if not raw:
         _LOGGER.info("SSDP returned no devices — falling back to unicast subnet scan")
-        scan_budget = max(5.0, min(timeout_s, 15.0))
+        scan_budget = max(6.0, min(timeout_s, 20.0))
         raw = await loop.run_in_executor(
             None, lambda: _unicast_subnet_scan_sync(timeout_s=scan_budget)
         )

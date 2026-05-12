@@ -4,6 +4,26 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.23] — 2026-05-12
+
+### Fix: HA unicast scan now finds devices when the integration runs in a container
+
+v2.0.22's unicast scan used a single "find my IP" trick (UDP connect to 8.8.8.8 → read local end). In HAOS-in-a-VM and HA-in-Docker layouts the integration's Python process often sits behind a docker-internal interface (172.x), so the trick returned an IP whose /24 has nothing to do with the user's Wemo LAN. Scanning 172.30.32.0/24 finds zero Wemos no matter how long the timeout.
+
+Fix — `custom_components/dibby_wemo/wemo_client.py`:
+- `_local_subnet_candidates()` (new) enumerates every plausible /24 the host has an interface on. Three strategies are union'd:
+  1. UDP connect-trick (primary outbound IP)
+  2. `socket.gethostbyname_ex(gethostname())` — picks up the LAN-side IP in HAOS
+  3. `socket.getaddrinfo(gethostname(), None)` — last-resort
+- Loopback (127.x) and link-local (169.254.x) are filtered out.
+- `_unicast_subnet_scan_sync()` now scans **every** candidate /24 in parallel with a 32–96 worker thread pool; a 2-subnet sweep still completes in ~5–6 seconds.
+- INFO log lines now report which subnets were scanned and how many Wemos were found — visible by enabling `logger: dibby_wemo: info` in `configuration.yaml`.
+
+### Affected packages
+All monorepo packages bumped to **2.0.23** in unified versioning.
+
+---
+
 ## [2.0.22] — 2026-05-11
 
 ### Fix: Home Assistant integration discovers devices in Docker bridge mode
