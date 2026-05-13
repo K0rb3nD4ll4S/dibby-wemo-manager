@@ -44,9 +44,12 @@ jobs:
         run: ls -la packages/synology-spk/dist/
 
       - name: Attach .spk files to the GitHub release
-        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
+          # Always attach to the v<version> release, regardless of whether
+          # this run was triggered by a tag push or a manual workflow_dispatch.
+          tag_name: v${{ steps.vars.outputs.version }}
           files: packages/synology-spk/dist/*.spk
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
