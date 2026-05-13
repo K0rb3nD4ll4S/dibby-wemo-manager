@@ -71,9 +71,26 @@ Once installed, open the plugin settings in Homebridge UI. The plugin provides a
 
 ### 📱 Devices Tab
 
-- Lists all discovered Wemo devices with their model, firmware version, and IP address
-- Toggle any device on or off directly from the UI
-- **Discover** button re-runs SSDP discovery and updates the device list
+Top-of-tab controls (new in v2.0.28):
+
+- **Wemo Devices** heading rendered in bold green so the section is easy to find at a glance.
+- **Timeout** dropdown right next to the Discover button — pick how long SSDP should listen for responses: **10 s, 20 s, 30 s (default), 45 s, or 60 s**. Longer values catch quieter / slower-responding Wemos on busy LANs. The previous fixed 10 s was too short on many networks; per-scan override now means you don't need to edit `config.json` between scans.
+- 🔍 **Discover** button — broadcasts SSDP and merges the result into the cached device list. Already-known devices keep their HomeKit identity (UUIDs and rule references are preserved).
+
+A dedicated **Add by IP** row sits directly below the Discover button. Use it whenever multicast SSDP can't reach a Wemo (VLAN isolation, Docker bridge networking, hostile router):
+
+1. Enter the device IP (e.g. `192.168.1.42`).
+2. Optionally change the port (default `49153`).
+3. Click **+ Add Device**.
+
+The server probes `/setup.xml` on that exact IP via the same client used by SSDP, so only a real Wemo answer is accepted — the device's UDN, model, friendly name, and firmware version are all read from the response. The new card appears immediately with the on/off toggle wired up.
+
+Device list behaviour:
+
+- Lists every Wemo currently in the store with its model, firmware version, host, and port. Device names are rendered in **bold white** with brighter subtitles for legibility on every Homebridge UI theme.
+- Toggle any device on or off directly — the toggle reflects the live HomeKit state and the change propagates back to HomeKit immediately.
+- **Sticky devices**: once a Wemo has been detected (via SSDP or manual add), it stays in the list permanently. A re-scan or a Homebridge restart never removes anything — devices that are offline, on a different VLAN, or unreachable for any reason keep their cached record verbatim. Their toggle is greyed-out while unreachable and re-lights as soon as the device responds again.
+- Plugin upgrades preserve devices too — the store file lives outside the npm package (see [Data Storage](#data-storage)).
 
 ### ⏰ DWM Rules Tab
 
@@ -200,12 +217,31 @@ All plugin data is stored in the Homebridge storage directory (default `~/.homeb
 **`dibby-wemo.json`** — main plugin store:
 ```json
 {
-  "location": { "lat": 0, "lng": 0, "city": "...", "country": "..." },
-  "devices": [...],
-  "dwmRules": [...],
+  "location":     { "lat": 0, "lng": 0, "city": "...", "country": "..." },
+  "devices":      [ /* sticky — never removed by a re-scan */ ],
+  "deviceOrder":  [ /* UI ordering */ ],
+  "deviceGroups": [ /* UI grouping */ ],
+  "dwmRules":     [ /* every Schedule / Countdown / Away / AlwaysOn / Trigger rule */ ],
+  "disabledRules": { /* per-device firmware-rule backups */ },
   "schedulerHeartbeat": { "running": true, "ts": "...", "upcoming": [...] }
 }
 ```
+
+### Upgrade-survival guarantee
+
+This file lives **outside** the npm package directory, so `npm update -g homebridge-dibby-wemo` (and every UI-driven update) never touches it:
+
+- ✅ Devices stay
+- ✅ DWM rules stay
+- ✅ Device ordering, groupings, location, and disabled-rule backups stay
+
+To make this verifiable, the plugin emits a one-line summary on every Homebridge startup:
+
+```
+[Store] Loaded from /var/lib/homebridge/dibby-wemo.json — 12 device(s), 7 DWM rule(s).
+```
+
+If either count is unexpectedly different after an upgrade, that log line surfaces the regression immediately. (Devices that go offline don't change this count — they stay in the file until you manually delete them.)
 
 No data is sent outside your local network.
 

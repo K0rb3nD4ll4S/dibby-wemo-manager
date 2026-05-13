@@ -283,17 +283,41 @@
     </p>
 
     <h3>Automatic discovery</h3>
-    <p>Click <strong>🔍 Discover</strong> at the top of the device list. The app broadcasts a signal
-    on your network and all Wemo devices respond within a few seconds.</p>
+    <p>Click <strong>🔍 Discover</strong> at the top of the device list. The app broadcasts an SSDP
+    M-SEARCH request on your network; every Wemo replies with a location URL, the app then fetches
+    <code>/setup.xml</code> from each replying device to read its name, model, UDN, and firmware
+    version. New devices are added to your list; existing ones get their host/port/firmware
+    refreshed if anything changed.</p>
+
+    <p>If your network is busy or you've just plugged in a new Wemo that's still booting,
+    use the <strong>Timeout</strong> control next to the Discover button to extend how long the
+    scan listens for responses — pick anywhere from <strong>10 to 60 seconds</strong>
+    (default 30). Longer values catch slower-responding devices but make you wait longer for the
+    scan to finish.</p>
 
     <h3>Manual add</h3>
-    <p>If a device isn't found automatically (for example, it's on a different network segment),
-    click the <strong>+</strong> button and enter the device's IP address and port number.
-    Your router's admin page usually shows connected device IP addresses.</p>
+    <p>Sometimes SSDP can't reach a device — common reasons include the Wemo being on a different
+    VLAN, the network using Docker bridge mode, or the router blocking multicast. In those cases:</p>
+    <ol>
+      <li>Click the <strong>+</strong> button (or use the <strong>Add by IP</strong> row on the
+      Devices tab in the Homebridge / Web UI).</li>
+      <li>Enter the device's IPv4 address (your router's admin page lists it). Most Wemos use
+      the default port <code>49153</code>; only change it if you've manually reconfigured the
+      device.</li>
+      <li>Click <strong>+ Add Device</strong>. The app probes <code>/setup.xml</code> on that
+      exact IP — only a valid Wemo response is accepted, so you won't accidentally add a
+      non-Wemo device.</li>
+    </ol>
+    <p>The new device appears immediately in your list with the correct name and model, ready
+    to control.</p>
 
     <div class="note">
-      <strong>Note:</strong> Discovered devices are remembered between app sessions.
-      You only need to run discovery again when you add new devices to your home.
+      <strong>Sticky devices:</strong> Once a Wemo has been detected (by Discover or by Manual
+      Add), it stays in your device list permanently. A re-scan never removes devices — even
+      if they're offline, unplugged, or temporarily unreachable. Their toggle is greyed-out
+      while unreachable and re-lights as soon as the device responds again. App and plugin
+      upgrades also preserve your list, since the device data lives in your user-data folder,
+      not inside the app itself.
     </div>
 
     <!-- ═══════════════════════ TRAY ═══════════════════════ -->

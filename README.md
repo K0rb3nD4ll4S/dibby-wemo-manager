@@ -137,6 +137,28 @@ Then add to your Homebridge `config.json`:
 
 Restart Homebridge. Devices appear in HomeKit automatically.
 
+#### Devices tab in the Homebridge UI
+
+Open the plugin's custom UI in Homebridge UI → **Plugins → DibbyWemo → Settings**:
+
+- **Wemo Devices** heading at the top of the Devices tab, rendered in bold green so the section is easy to spot.
+- **Timeout** dropdown (10 / 20 / 30 / 45 / 60 s — default 30) right next to the Discover button — pick how long SSDP listens for replies on each scan. Longer values catch slower-responding Wemos on busy LANs.
+- 🔍 **Discover** button — broadcasts SSDP, merges any new responses, never removes existing devices.
+- **Add by IP** row — enter `192.168.x.y` plus optional port (default `49153`) and click **+ Add Device**. The server probes `/setup.xml` on that exact IP, so only a real Wemo answer is accepted. Useful for Wemos on a different VLAN or anywhere multicast SSDP can't reach.
+- Device names are rendered in **bold white** with brighter subtitles for legibility on every Homebridge UI theme.
+
+##### Sticky devices + DWM rules guarantee
+
+Once a Wemo is detected (by SSDP or by Manual Add), it stays in your device list permanently. Re-scans never remove anything; offline / unreachable / VLAN-isolated devices keep their cached record verbatim and re-light as soon as they respond again.
+
+The same applies across plugin upgrades: device list, DWM rules, device groupings/ordering, location, and disabled-rule backups all live in `<homebridge-storage>/dibby-wemo.json` — **outside** the npm package — so `npm update -g homebridge-dibby-wemo` (and every UI-driven update) never touches them. On every Homebridge startup the plugin logs:
+
+```
+[Store] Loaded from /var/lib/homebridge/dibby-wemo.json — 12 device(s), 7 DWM rule(s).
+```
+
+If either count is unexpectedly different after an upgrade, that single line surfaces the regression in your Homebridge log immediately.
+
 ### HOOBS
 
 The Homebridge plugin is fully HOOBS-compatible. In HOOBS:
