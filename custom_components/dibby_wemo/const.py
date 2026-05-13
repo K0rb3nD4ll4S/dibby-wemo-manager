@@ -11,7 +11,7 @@ CATCHUP_WINDOW_S = 600  # 10 minutes
 # Default SSDP / discovery
 SSDP_MULTICAST = "239.255.255.250"
 SSDP_PORT = 1900
-DEFAULT_DISCOVERY_TIMEOUT_S = 10
+DEFAULT_DISCOVERY_TIMEOUT_S = 60
 DEFAULT_POLL_INTERVAL_S = 30
 
 # Wemo device port candidates (tried in order)

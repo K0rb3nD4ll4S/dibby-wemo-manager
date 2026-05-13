@@ -4,6 +4,33 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.26] — 2026-05-12
+
+### Fix: HA integration now actually registers discovered Wemos as entities
+
+After v2.0.23/.24 got SSDP working in the HAOS VM (9 locations returned), the integration still showed zero entities. Cause: `setup.xml` was being fetched and XML-parsed successfully, but every field lookup returned an empty string — including `UDN`, which we use as the unique key. Devices without a UDN were silently dropped, so the coordinator started with 0 devices and no switch entities were registered.
+
+Root cause: Wemo's `setup.xml` declares `xmlns="urn:Belkin:device-1-0"`, **not** the UPnP standard `urn:schemas-upnp-org:device-1-0` that the parser was looking up. Every `find(".//d:UDN", ns)` returned `None`.
+
+Fix — `custom_components/dibby_wemo/wemo_client.py`:
+- `_fetch_setup_xml_sync` now matches tags via the `{*}` wildcard namespace (Python 3.8+), so any namespace Belkin's firmware uses (current or future) resolves correctly.
+- Added warning-level logs when `setup.xml` parses but UDN is empty, plus a summary `discover_devices: N raw -> M device(s) (failed_fetch=…, missing_udn=…)` line so the path from SSDP packet to registered entity is visible.
+- `async_setup_entry` now logs the device count handed to the coordinator and the list of `name@host` entries, making any future "discovery worked but entities didn't appear" issue trivially diagnosable.
+
+### Tweak: default discovery timeout raised to 60 s
+
+`DEFAULT_DISCOVERY_TIMEOUT_S` bumped from 10 → 60 in `const.py`. Wemos can take a while to respond on busy or noisy LANs, and the unicast subnet scan benefits from the extra budget when multiple /24s have to be swept. Existing installs keep whatever value they already saved; only new setups get the new default.
+
+### Docs: README rewrite for the HA integration
+
+- "Remove HA's built-in `wemo` integration" is now a numbered **Step 1 prerequisite** above the HACS install steps, with explicit consequences listed (duplicate entities, racing pollers, discovery hijack).
+- New section **"Adding more Wemos later — the Discover devices now button"** walks through the seven-step Configure flow for picking up new Wemos without restarting Home Assistant.
+
+### Affected packages
+All monorepo packages bumped to **2.0.26** in unified versioning.
+
+---
+
 ## [2.0.25] — 2026-05-12
 
 ### Fix: HA store I/O no longer blocks the event loop

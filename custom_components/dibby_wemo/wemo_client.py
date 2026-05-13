@@ -347,11 +347,17 @@ def _fetch_setup_xml_sync(location: str) -> dict | None:
         resp = conn.getresponse()
         text = resp.read().decode(errors="replace")
         conn.close()
+        if resp.status != 200:
+            _LOGGER.warning("setup.xml %s returned HTTP %s", location, resp.status)
+            return None
         root = ET.fromstring(text)
-        ns = {"d": "urn:schemas-upnp-org:device-1-0"}
 
+        # Wemo's setup.xml uses xmlns="urn:Belkin:device-1-0", NOT the UPnP
+        # schema we initially assumed (urn:schemas-upnp-org:device-1-0). To be
+        # robust against either namespace (and future firmware changes), match
+        # the tag in any namespace via the {*} wildcard (Python 3.8+).
         def find(tag: str) -> str:
-            el = root.find(f".//d:{tag}", ns)
+            el = root.find(f".//{{*}}{tag}")
             return el.text.strip() if el is not None and el.text else ""
 
         return {
@@ -363,7 +369,7 @@ def _fetch_setup_xml_sync(location: str) -> dict | None:
             "firmware": find("firmwareVersion"),
         }
     except Exception as e:
-        _LOGGER.debug("setup.xml fetch failed for %s: %s", location, e)
+        _LOGGER.warning("setup.xml fetch failed for %s: %s", location, e)
         return None
 
 
@@ -388,15 +394,32 @@ async def discover_devices(timeout_s: float = 10.0) -> list[dict]:
 
     devices: list[dict] = []
     seen_udns: set[str] = set()
+    failed = 0
+    no_udn = 0
 
     for item in raw:
         dev = await loop.run_in_executor(
             None, lambda loc=item["location"]: _fetch_setup_xml_sync(loc)
         )
-        if dev and dev["udn"] and dev["udn"] not in seen_udns:
-            seen_udns.add(dev["udn"])
-            devices.append(dev)
+        if dev is None:
+            failed += 1
+            continue
+        if not dev.get("udn"):
+            no_udn += 1
+            _LOGGER.warning("setup.xml at %s parsed but UDN was empty (name=%r)",
+                            item["location"], dev.get("name"))
+            continue
+        if dev["udn"] in seen_udns:
+            continue
+        seen_udns.add(dev["udn"])
+        devices.append(dev)
 
+    _LOGGER.info(
+        "discover_devices: %d raw location(s) -> %d device(s) "
+        "(failed_fetch=%d, missing_udn=%d, duplicates=%d)",
+        len(raw), len(devices), failed, no_udn,
+        len(raw) - len(devices) - failed - no_udn,
+    )
     return devices
 
 

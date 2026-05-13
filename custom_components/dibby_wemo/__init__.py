@@ -43,7 +43,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if md.get("host"):
             fresh.append({"host": md["host"], "port": md.get("port", 49153)})
 
-    devices = store.merge_devices(fresh) if fresh else store.get_devices()
+    cached_before = list(store.get_devices())
+    devices = store.merge_devices(fresh) if fresh else cached_before
+    _LOGGER.info(
+        "async_setup_entry: %d fresh + %d cached -> %d device(s) for coordinator",
+        len(fresh), len(cached_before), len(devices),
+    )
+    if devices:
+        _LOGGER.info(
+            "Devices going to coordinator: %s",
+            [f"{d.get('name', '?')}@{d.get('host', '?')}" for d in devices],
+        )
 
     poll_interval = entry.data.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL_S)
     heartbeat_s   = entry.data.get(CONF_HEARTBEAT_INTERVAL, HEARTBEAT_S)

@@ -148,28 +148,53 @@ The Homebridge plugin is fully HOOBS-compatible. In HOOBS:
 
 ### Home Assistant (HACS)
 
-1. Open **HACS** → **Integrations** → **⋮** → **Custom repositories**
-2. Add `https://github.com/K0rb3nD4ll4S/dibby-wemo-manager` as category **Integration**
-3. Search for **Dibby Wemo** → Install → Restart Home Assistant
-4. ⚠️ **Disable HA's built-in Wemo integration first** (see below)
-5. **Settings** → **Devices & Services** → discovery cards for Wemos appear within ~60 s
-6. Click **Configure** on the Dibby Wemo discovery card → done
-
-Once the HACS default repository picks up this integration, the custom-repository step will no longer be needed.
-
-#### ⚠️ Important — disable HA's built-in `wemo` integration
+#### ⚠️ Step 1 — REQUIRED PREREQUISITE: remove HA's built-in `wemo` integration
 
 Home Assistant ships a built-in `wemo` integration that uses the **same SSDP / DHCP discovery patterns** as Dibby Wemo. Running both at the same time causes:
 
-- **Duplicate switch entities** for every Wemo (`switch.family_room_lamp` AND `switch.family_room_lamp_2`)
+- **Duplicate switch entities** for every Wemo (`switch.family_room_lamp` and `switch.family_room_lamp_2`)
 - **Competing pollers** — extra LAN traffic, occasional state-flapping
 - **Toggle commands race** — turn-on from automations sometimes lands on the wrong handler
+- **Discovery hijack** — the built-in integration may claim the SSDP packet before Dibby Wemo's config flow sees it, leaving Dibby Wemo's "Devices Found" dialog empty
 
-**To disable it:**
-- **Settings → Devices & Services** → find the **Belkin Wemo** card (HA built-in) → click → **⋮ → Delete**
-- Don't re-add it; the "Belkin Wemo" entry in the "Not configured" list can be left alone (it won't auto-add)
+**Remove it before installing Dibby Wemo:**
 
-Dibby Wemo will then claim every Wemo on the LAN via its own discovery (SSDP/DHCP/unique-id) and you'll see your devices under **Dibby Wemo** only. The DWM scheduling engine, day-of-week fix, bundle DayID support, and firmware rule read/write are only available in Dibby Wemo — that's the value of switching.
+1. Open **Settings → Devices & Services**
+2. Look for a card titled **"Belkin Wemo"** (this is HA's built-in integration). If present:
+   - Click the card → ⋮ → **Delete**
+3. After deletion, the **"Not configured"** row may still list "Belkin Wemo" — leave it alone, it won't auto-add itself
+
+If you've never set up the built-in integration there's nothing to remove and you can proceed.
+
+#### Step 2 — install Dibby Wemo via HACS
+
+1. Open **HACS** → **Integrations** → **⋮** → **Custom repositories**
+2. Add `https://github.com/K0rb3nD4ll4S/dibby-wemo-manager` as category **Integration**
+3. Search for **Dibby Wemo** → Install → restart Home Assistant
+4. **Settings → Devices & Services → + Add Integration** → search **Dibby Wemo** → Submit
+5. The "Devices Found" dialog lists every Wemo discovered via SSDP and the unicast subnet scan — click **Submit** to register them
+6. Devices appear under the new **Dibby Wemo** card; switches show up on the Overview dashboard automatically
+
+Once the HACS default repository picks up this integration, the custom-repository step will no longer be needed.
+
+#### Adding more Wemos later — the "Discover devices now" button
+
+You don't need to reinstall, restart, or touch YAML when you plug in a new Wemo. The integration's **Configure** menu has a one-click rediscovery flow that scans the LAN and merges any new devices into the existing setup:
+
+1. Plug the new Wemo in and pair it with your Wi-Fi using the Belkin app (or any other normal Wemo setup method). Wait ~30 seconds for it to come online.
+2. In Home Assistant: **Settings → Devices & Services**.
+3. Find the **Dibby Wemo** card → click **Configure**.
+4. You'll see a two-button menu:
+   - **Discover devices now** — re-runs the full SSDP + multi-subnet unicast scan
+   - **Edit settings** — change timeouts / poll interval / manual IP list
+5. Pick **Discover devices now** → wait ~15–30 seconds (depending on your **Discovery timeout** setting; default 60 s).
+6. A **Scan results** dialog lists every Wemo found. New devices show in the list; previously known devices are merged with their existing entity IDs and history.
+7. Click **Submit**. The integration reloads in place — no HA restart needed — and the new devices appear as switch entities within a few seconds.
+
+If a Wemo doesn't show up in the scan results:
+- Confirm you can `ping` it from another machine on the same subnet
+- Make sure it's not on a different VLAN than Home Assistant
+- As a fallback, **Configure → Edit settings → Manual device IPs** accepts a comma-separated list like `192.168.1.42, 192.168.1.43:49153`. Manual entries are merged with discovery results on every reload.
 
 ### Node-RED Nodes
 
