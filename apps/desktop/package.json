@@ -1,7 +1,7 @@
 {
   "name": "dibby-wemo-manager",
   "productName": "Dibby Wemo Manager",
-  "version": "2.0.27",
+  "version": "2.0.28",
   "private": true,
   "description": "Belkin Wemo device manager \u00e2\u20ac\u201c local control, no cloud required",
   "author": "SRS IT",

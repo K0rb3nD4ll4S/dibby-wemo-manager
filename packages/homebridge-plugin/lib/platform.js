@@ -30,8 +30,18 @@ class WemoPlatform {
     this._accessories = new Map();   // uuid → PlatformAccessory
     this._handlers    = new Map();   // uuid → WemoSwitchAccessory
 
-    // Store in Homebridge's user storage directory
+    // Store in Homebridge's user storage directory.  The file lives at
+    // `<storagePath>/dibby-wemo.json`, OUTSIDE the npm package directory, so
+    // it survives every `npm update -g homebridge-dibby-wemo` cycle — DWM
+    // rules, device list, and disabled-rule backups are all preserved on
+    // upgrade.  The startup log lines below let users verify this.
     this._store = new DwmStore(api.user.storagePath());
+    const _rulesAtStartup    = this._store.getDwmRules().length;
+    const _devicesAtStartup  = this._store.getDevices().length;
+    log.info(
+      `[Store] Loaded from ${api.user.storagePath()}/dibby-wemo.json — ` +
+      `${_devicesAtStartup} device(s), ${_rulesAtStartup} DWM rule(s).`
+    );
 
     // Location is set via the custom UI settings panel (city search) and stored
     // in the plugin's DwmStore — no raw lat/lng in config.json needed.

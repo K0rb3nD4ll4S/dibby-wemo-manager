@@ -58,6 +58,43 @@ class DibbyWemoUiServer extends HomebridgePluginUiServer {
       return this._store.getDevices();
     });
 
+    // Manual add — probe a user-supplied IP[:port] for /setup.xml and, if
+    // a real Wemo answers, merge it into the cached device list.  Returns
+    // { devices, added?, existing? } so the UI can show what happened.
+    this.onRequest('/devices/addManual', async ({ host, port } = {}) => {
+      if (!host) throw new Error('host is required');
+      const portNum = Number(port) || 49153;
+
+      let info;
+      try {
+        info = await wemoClient.getDeviceInfo(host, portNum);
+      } catch (e) {
+        throw new Error(`No Wemo device responding at ${host}:${portNum} (${e.message})`);
+      }
+      if (!info || !info.udn) {
+        throw new Error(`Probed ${host}:${portNum} but UDN was empty — not a Wemo?`);
+      }
+
+      // getDeviceInfo doesn't echo host/port back, so use the user-supplied
+      // values for de-dupe matching and storage.
+      const existing = this._store.getDevices().find(
+        (d) => d.udn === info.udn || (d.host === host && d.port === portNum)
+      );
+
+      this._store.mergeDevices([{
+        host,
+        port:            portNum,
+        udn:             info.udn,
+        friendlyName:    info.friendlyName || host,
+        productModel:    info.productModel || 'Wemo Device',
+        firmwareVersion: info.firmwareVersion ?? null,
+      }]);
+
+      const devices = this._store.getDevices();
+      if (existing) return { devices, existing };
+      return { devices, added: devices.find((d) => d.udn === info.udn) };
+    });
+
     this.onRequest('/devices/state', async ({ host, port }) => {
       return await wemoClient.getBinaryState(host, Number(port));
     });

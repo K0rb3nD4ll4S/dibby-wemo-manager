@@ -113,16 +113,61 @@ async function loadDevices() {
 }
 
 async function discoverDevices() {
-  const btn = document.getElementById('btn-discover');
+  const btn      = document.getElementById('btn-discover');
+  const timeoutEl = document.getElementById('discover-timeout');
+  // Honour the user-selected timeout from the dropdown (10 / 20 / 30 / 45 / 60 s)
+  // — falls back to 30 s if the element is missing for any reason.
+  const timeoutMs = Math.max(3000, Math.min(60000, parseInt(timeoutEl?.value, 10) || 30000));
   btn.disabled = true;
-  showStatus('devices-status', spinner() + ' Scanning for devices (up to 10 s)…', 'info');
+  if (timeoutEl) timeoutEl.disabled = true;
+  showStatus('devices-status', spinner() + ` Scanning for devices (up to ${Math.round(timeoutMs / 1000)} s)…`, 'info');
   try {
-    _devices = await homebridge.request('/devices/discover', { timeout: 10000 });
+    _devices = await homebridge.request('/devices/discover', { timeout: timeoutMs });
     renderDevices();
     showStatus('devices-status', `Found ${_devices.length} device(s)`, 'success');
     refreshWemoDeviceSelect();
   } catch (e) {
     showStatus('devices-status', 'Discovery failed: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    if (timeoutEl) timeoutEl.disabled = false;
+  }
+}
+
+// Manual add — accepts a single IP[:port], probes /setup.xml on the server
+// side, and merges the result into the cached device list.  Useful when SSDP
+// can't reach the target (VLAN isolation, Docker bridge, hostile router).
+async function addManualDevice() {
+  const ipEl   = document.getElementById('manual-ip');
+  const portEl = document.getElementById('manual-port');
+  const btn    = document.getElementById('btn-add-manual');
+
+  const host = (ipEl?.value || '').trim();
+  const port = parseInt(portEl?.value, 10) || 49153;
+
+  // Crude but adequate IPv4 sanity check; the server probe will reject any
+  // address that isn't actually a Wemo, so we just guard against the empty
+  // / clearly-malformed cases here.
+  if (!/^[0-9]{1,3}(\.[0-9]{1,3}){3}$/.test(host)) {
+    showStatus('devices-status', 'Enter a valid IPv4 address (e.g. 192.168.1.42).', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  showStatus('devices-status', spinner() + ` Probing ${host}:${port}…`, 'info');
+  try {
+    const result = await homebridge.request('/devices/addManual', { host, port });
+    _devices = result.devices;
+    renderDevices();
+    refreshWemoDeviceSelect();
+    if (result.added) {
+      showStatus('devices-status', `Added ${esc(result.added.friendlyName || host)} (${esc(result.added.productModel || 'Wemo')}).`, 'success');
+      if (ipEl) ipEl.value = '';
+    } else {
+      showStatus('devices-status', `Already known: ${esc(result.existing?.friendlyName || host)}`, 'info');
+    }
+  } catch (e) {
+    showStatus('devices-status', `Could not add ${host}:${port} — ${e.message}`, 'error');
   } finally {
     btn.disabled = false;
   }
@@ -183,6 +228,10 @@ async function setDeviceState(idx, on) {
 }
 
 document.getElementById('btn-discover').addEventListener('click', discoverDevices);
+document.getElementById('btn-add-manual')?.addEventListener('click', addManualDevice);
+document.getElementById('manual-ip')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); addManualDevice(); }
+});
 
 // ---------------------------------------------------------------------------
 // DWM Rules tab

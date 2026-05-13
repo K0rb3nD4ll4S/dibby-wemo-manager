@@ -69,8 +69,12 @@
       justify-content: space-between;
       gap: 12px;
     }
-    .card-title { font-weight: 600; font-size: 0.95rem; }
-    .card-subtitle { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+    /* Device-card title: forced to a high-contrast white because the
+       Homebridge UI host stylesheet sometimes overrides .card-title via
+       Bootstrap utility classes.  Explicit values + !important guarantee
+       legibility on every theme. */
+    .card-title { font-weight: 700 !important; font-size: 1.05rem !important; color: #ffffff !important; line-height: 1.3; }
+    .card-subtitle { font-size: 0.82rem; color: #cbd5e1; margin-top: 4px; }
 
     /* Buttons */
     .btn {
@@ -203,10 +207,40 @@
 <!-- ── Devices Tab ──────────────────────────────────────────────────────── -->
 <div id="tab-devices" class="tab-panel active">
   <div class="flex-row" style="margin-bottom:16px">
-    <h2 style="margin:0">Wemo Devices</h2>
+    <h2 style="margin:0;color:#4ade80;font-weight:700">Wemo Devices</h2>
     <div class="spacer"></div>
-    <button class="btn btn-primary" id="btn-discover">🔍 Discover</button>
+
+    <!-- Discovery: choose how long to listen for SSDP responses, then scan.
+         Longer values catch quieter / slower-responding devices on busy LANs. -->
+    <label for="discover-timeout" style="font-size:0.8rem;color:var(--muted);margin:0 6px 0 0">Timeout:</label>
+    <select id="discover-timeout" class="btn btn-ghost btn-sm" style="padding:6px 10px;min-width:90px">
+      <option value="10000">10 s</option>
+      <option value="20000">20 s</option>
+      <option value="30000" selected>30 s</option>
+      <option value="45000">45 s</option>
+      <option value="60000">60 s</option>
+    </select>
+    <button class="btn btn-primary" id="btn-discover" style="margin-left:8px">🔍 Discover</button>
   </div>
+
+  <!-- Manual add — for devices on a different VLAN, isolated subnet, or that
+       multicast SSDP can't reach (Docker bridge, etc.). The IP is probed via
+       /setup.xml exactly like a discovered device, so model + UDN are real. -->
+  <div class="card" style="margin-bottom:14px;background:var(--bg2)">
+    <div class="flex-row" style="gap:10px;flex-wrap:wrap">
+      <label for="manual-ip" style="font-size:0.85rem;color:var(--text);margin:0;white-space:nowrap">Add by IP:</label>
+      <input type="text" id="manual-ip" placeholder="192.168.1.42"
+             style="flex:1;min-width:160px;max-width:240px;padding:6px 10px" />
+      <input type="number" id="manual-port" placeholder="49153" value="49153" min="1" max="65535"
+             style="width:90px;padding:6px 10px" />
+      <button class="btn btn-success btn-sm" id="btn-add-manual">+ Add Device</button>
+    </div>
+    <div style="font-size:0.78rem;color:var(--muted);margin-top:6px">
+      Useful for Wemos on a different VLAN, behind Docker bridge networks,
+      or simply not responding to SSDP. Default port is <code>49153</code>.
+    </div>
+  </div>
+
   <div id="devices-status"></div>
   <div id="devices-list"><div class="empty">Click Discover to find Wemo devices on your network.</div></div>
 </div>

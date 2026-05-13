@@ -4,6 +4,53 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.28] — 2026-05-13
+
+### Homebridge plugin — three UI improvements + persistence guarantee
+
+#### 1. Configurable discovery timeout on the Discover button
+
+The Discover button on the **Devices** tab now exposes a per-scan timeout dropdown (10 / 20 / 30 / 45 / 60 s, default 30 s) right next to it. Previously the button was hardcoded to 10 s, which was too short on busy LANs or networks with slow-responding Wemos. The button's status line also reflects the chosen budget so users see what they're waiting on.
+
+`packages/homebridge-plugin/homebridge-ui/public/index.html` + `index.js`.
+
+#### 2. Manual IP add — for VLAN-isolated or SSDP-unfriendly Wemos
+
+A new **Add by IP** row sits below the Discover button on the same Devices tab: enter `192.168.x.y` + optional port (default 49153), click **+ Add Device**, and the server probes `/setup.xml` on the supplied IP via the existing `wemoClient.getDeviceInfo()`. On success the device is merged into the cached list and appears immediately as a switch tile.
+
+This is the path for Wemos on a different VLAN, behind a Docker bridge, or otherwise unreachable by multicast SSDP — exactly the same problem the HA integration's manual-fallback solves.
+
+New `/devices/addManual` handler in `packages/homebridge-plugin/homebridge-ui/server.js`.
+
+#### 3. Card title legibility + green "Wemo Devices" heading
+
+The **Bonus Room Pot Light** / **Deck Master** etc. titles on each device card were rendering near-black on dark blue because the Homebridge UI host stylesheet (Bootstrap utility classes) was overriding `.card-title`. CSS now uses explicit `color: #ffffff !important`, font-size `1.05rem`, weight `700`, and a brighter `#cbd5e1` for the subtitle — high contrast on every Homebridge UI theme.
+
+The **Wemo Devices** section heading at the top of the Devices tab is now rendered in bold green (`#4ade80`, weight 700) so it pops against the navy background and matches the on-state accent used elsewhere.
+
+`packages/homebridge-plugin/homebridge-ui/public/index.html`.
+
+#### 4. Sticky devices + DWM rules survive plugin upgrades
+
+Both the device list **and** DWM rules now have an explicit upgrade-survival guarantee:
+
+- **Storage location** — `<homebridge-storage>/dibby-wemo.json`. This path is in Homebridge's storagePath, **outside** the npm package directory, so `npm update -g homebridge-dibby-wemo` has never touched it and never will.
+- **Sticky-device rule** — `DwmStore.mergeDevices()` now carries an explicit doc-comment guarantee: once a Wemo has been detected, it stays in the cached list permanently. A re-scan only refreshes host/port/name/firmware on existing records — offline or unreachable devices are kept exactly as cached, so a network blip during a Discover never wipes anything. Manual-add additions are merged the same way.
+- **Verification log** — `WemoPlatform` now logs the rule + device count loaded from the store on every Homebridge startup, e.g.:
+
+  ```
+  [Store] Loaded from /var/lib/homebridge/dibby-wemo.json — 12 device(s), 7 DWM rule(s).
+  ```
+
+  If either number changes unexpectedly after an upgrade, that log line surfaces the regression immediately.
+
+`packages/homebridge-plugin/lib/platform.js`, `packages/homebridge-plugin/lib/store.js`.
+
+### Affected packages
+All monorepo packages bumped to **2.0.28** in unified versioning. Only `homebridge-dibby-wemo@2.0.28` ships functional changes in this release.
+
+---
+
 ## [2.0.27] — 2026-05-13
 
 ### Feature: Synology NAS support (DSM 7+) — Docker image + native `.spk`

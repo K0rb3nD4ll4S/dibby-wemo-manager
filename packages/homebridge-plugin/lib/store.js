@@ -58,10 +58,23 @@ class DwmStore {
 
   /**
    * Merge freshly discovered devices into the cached list.
-   * - Existing devices are updated with fresh data (host/port/name/firmware).
-   * - Previously cached devices NOT in the new scan are kept as-is (offline ≠ removed).
-   * - Newly found devices are appended.
-   * Returns the merged list.
+   *
+   * STICKY-DEVICE GUARANTEE — once a Wemo has been detected and stored, it
+   * stays in the device list permanently.  A re-scan never removes anything:
+   * if a device is offline / unreachable / on a different VLAN, its cached
+   * record is preserved exactly as-is (host, port, UDN, friendlyName, model,
+   * firmwareVersion).  Plugin upgrades (`npm update -g homebridge-dibby-wemo`)
+   * leave this file untouched because it lives in Homebridge's storagePath,
+   * outside the npm package directory.
+   *
+   * Behaviour:
+   * - Existing devices get their host/port/name/firmware refreshed if a new
+   *   scan returned newer values; everything else on the record is kept.
+   * - Previously cached devices NOT in the new scan are kept verbatim
+   *   (offline ≠ removed).
+   * - Brand-new devices are appended.
+   *
+   * Returns the merged list (= the new on-disk state).
    */
   mergeDevices(fresh) {
     const d       = this._load();
