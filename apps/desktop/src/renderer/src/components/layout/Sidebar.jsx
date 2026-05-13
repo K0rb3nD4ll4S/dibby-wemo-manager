@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import DeviceCard from '../device/DeviceCard';
 import Modal from '../shared/Modal';
+import VoiceCommandButton from '../voice/VoiceCommandButton';
 import useDeviceStore from '../../store/devices';
 import useSettingsStore from '../../store/settings';
 
@@ -210,6 +211,7 @@ export default function Sidebar({ onOpenSettings }) {
           >
             +
           </button>
+          <VoiceCommandButton />
           <button
             className="btn btn-ghost btn-sm"
             title="Settings"

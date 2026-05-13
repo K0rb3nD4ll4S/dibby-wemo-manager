@@ -112,6 +112,51 @@ async function handleRequest(req, res) {
       }
     }
 
+    // ── Voice aliases (per-device training) ────────────────────────────────
+    //
+    // Each device may have a `voiceAliases: string[]` field listing extra
+    // names the user has trained.  See voice-commands.js for how these are
+    // scored against live speech transcripts.
+
+    const voiceAliasesMatch = url.match(/^\/api\/devices\/([^/]+)\/(\d+)\/voice-aliases$/);
+    if (voiceAliasesMatch) {
+      const [, host, port] = voiceAliasesMatch;
+      const portN = Number(port);
+
+      if (method === 'GET') {
+        const dev = store.getDevices().find((d) => d.host === host && Number(d.port) === portN);
+        return json(res, dev?.voiceAliases ?? []);
+      }
+      if (method === 'POST') {
+        const alias = String(body.alias || '').trim().toLowerCase();
+        if (!alias) return jsonErr(res, 'alias is required', 400);
+        const devices = store.getDevices();
+        const idx = devices.findIndex((d) => d.host === host && Number(d.port) === portN);
+        if (idx === -1) return jsonErr(res, 'device not found', 404);
+        const aliases = Array.isArray(devices[idx].voiceAliases) ? devices[idx].voiceAliases.slice() : [];
+        if (!aliases.includes(alias)) aliases.push(alias);
+        devices[idx] = { ...devices[idx], voiceAliases: aliases };
+        store.saveDevices(devices);
+        return json(res, aliases);
+      }
+    }
+
+    const voiceAliasDeleteMatch = url.match(/^\/api\/devices\/([^/]+)\/(\d+)\/voice-aliases\/(\d+)$/);
+    if (voiceAliasDeleteMatch && method === 'DELETE') {
+      const [, host, port, idxStr] = voiceAliasDeleteMatch;
+      const portN = Number(port);
+      const aliasIdx = Number(idxStr);
+      const devices = store.getDevices();
+      const idx = devices.findIndex((d) => d.host === host && Number(d.port) === portN);
+      if (idx === -1) return jsonErr(res, 'device not found', 404);
+      const aliases = Array.isArray(devices[idx].voiceAliases) ? devices[idx].voiceAliases.slice() : [];
+      if (aliasIdx < 0 || aliasIdx >= aliases.length) return jsonErr(res, 'alias index out of range', 400);
+      aliases.splice(aliasIdx, 1);
+      devices[idx] = { ...devices[idx], voiceAliases: aliases };
+      store.saveDevices(devices);
+      return json(res, aliases);
+    }
+
     // ── DWM Rules ──────────────────────────────────────────────────────────
 
     if (url === '/api/dwm-rules') {
@@ -166,6 +211,22 @@ async function handleRequest(req, res) {
       fs.readFile(file, (e, data) => {
         if (e) { res.writeHead(404); res.end(); return; }
         res.writeHead(200, { 'Content-Type': 'image/png' });
+        res.end(data);
+      });
+      return;
+    }
+
+    // Voice-command JS modules — must serve with the correct content-type so
+    // the browser parses them as scripts (the index.html fallback below would
+    // otherwise return them as HTML).
+    if ((url === '/voice-commands.js' || url === '/voice-trainer.js') && method === 'GET') {
+      const file = path.join(WEB_DIR, url.slice(1));
+      fs.readFile(file, (e, data) => {
+        if (e) { res.writeHead(404); res.end(); return; }
+        res.writeHead(200, {
+          'Content-Type':  'application/javascript; charset=utf-8',
+          'Cache-Control': 'public, max-age=300',
+        });
         res.end(data);
       });
       return;

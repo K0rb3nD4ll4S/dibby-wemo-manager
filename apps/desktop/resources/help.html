@@ -379,6 +379,90 @@
       each device card has a small power indicator on the right side.
     </p>
 
+    <!-- ═══════════════════════ VOICE ═══════════════════════ -->
+    <h2 id="voice">Voice commands</h2>
+    <p>
+      Click the 🎤 button in the top toolbar (next to the Discover button on the web UI,
+      or in the sidebar header on the desktop app) to start hands-free voice control.
+      First-time activation shows a one-line privacy note explaining how speech recognition
+      works — see the section below.
+    </p>
+
+    <h3>What you can say</h3>
+    <p>Every command starts with the wake-word <strong>"dibby"</strong>. This stops the app
+    from acting on random conversations. The grammar is intentionally forgiving:</p>
+    <ul>
+      <li><strong>dibby turn on bonus room pot light</strong> — switches one device on</li>
+      <li><strong>dibby turn off deck master</strong> — switches one device off</li>
+      <li><strong>dibby toggle dining room pot lights</strong> — flips current state</li>
+      <li><strong>dibby bonus room on</strong> — terse alternative ("&lt;device&gt; on/off")</li>
+      <li><strong>dibby turn everything off</strong> — bulk command across all known devices</li>
+      <li><strong>dibby turn all the lights on</strong> — same as above, more natural phrasing</li>
+    </ul>
+    <p>
+      Device names don't have to be spoken perfectly. The matcher uses a fuzzy comparison —
+      saying "deck mister" still hits "Deck Master" because they're 60%+ similar.
+    </p>
+
+    <h3 id="voice-training">Training a voice name for a device (accents and nicknames)</h3>
+    <p>
+      Sometimes you don't want to say the full device name. Or your accent makes the
+      speech engine consistently transcribe the same word differently each time. The
+      training feature solves this by letting you record one (or more) <strong>voice aliases</strong>
+      per device.
+    </p>
+    <ol>
+      <li>Select the device in the list. The Info tab shows a <strong>Voice Names</strong> row
+      with any existing aliases and a <strong>🎤 add voice name</strong> link.</li>
+      <li>Click <strong>🎤 add voice name</strong> and say the phrase the way you'd actually
+      say it — "deck light", "outside", "garage", anything natural.</li>
+      <li>The app transcribes your recording and shows what it heard, then asks you to
+      confirm before saving.</li>
+      <li>Once saved, future commands that match that exact phrase (within the same fuzzy
+      tolerance) will fire that device — even if the phrase has nothing to do with the
+      Wemo's actual friendly name.</li>
+    </ol>
+    <p>
+      You can add as many aliases per device as you want. Click the × on any alias chip to
+      remove it.
+    </p>
+
+    <h3>Why training works for accents</h3>
+    <p>
+      The alias is stored as <em>whatever your speech engine transcribed your recording as</em>
+      — not as the English spelling. If your Chrome transcribes your spoken "deck light"
+      as "tek light" because of accent or background noise, the alias becomes "tek light".
+      When you later say "deck light" the engine produces the same "tek light" transcript,
+      which matches the stored alias exactly. The matcher never sees the literal English
+      spelling at all, so accents round-trip through cleanly.
+    </p>
+
+    <h3>Privacy and where audio goes</h3>
+    <div class="note">
+      <strong>Important:</strong> Voice recognition is performed by your browser's
+      built-in speech API. Different browsers handle this differently:
+      <ul style="margin-top:8px">
+        <li><strong>Chrome / Edge</strong> stream audio to Google or Microsoft cloud services
+        for transcription. Audio leaves your local network. Neither vendor stores audio
+        long-term by default, but check the browser's vendor privacy policy if this matters
+        to you.</li>
+        <li><strong>Safari</strong> uses Apple's on-device recognition. Audio stays on the
+        Mac/iOS device.</li>
+        <li><strong>Firefox</strong> does not ship speech recognition by default — the 🎤
+        button is disabled with a tooltip suggesting another browser.</li>
+        <li><strong>Dibby Wemo</strong> itself never records, stores, or transmits audio.
+        Only the transcript (the words your browser returned) is used.</li>
+      </ul>
+    </div>
+    <p>If you'd rather not have audio leave your network at all, use Safari on a Mac/iPad,
+    or simply don't enable voice — every voice action is also available as a normal click.</p>
+
+    <h3>Disabling voice or clearing the privacy notice</h3>
+    <p>To stop listening: click the 🎤 button again — the pulse animation disappears and
+    transcription stops. To reset the one-time privacy disclosure (so the modal shows again):
+    open your browser's developer tools, run <code>localStorage.removeItem('dwm.voice.privacyAck')</code>,
+    and refresh the page.</p>
+
     <!-- ═══════════════════════ INFO ═══════════════════════ -->
     <h2 id="info">Device information</h2>
     <p>Select a device and click the <strong>Info</strong> tab to see all details about it:</p>

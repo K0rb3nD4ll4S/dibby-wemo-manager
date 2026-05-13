@@ -4,6 +4,102 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.29] — 2026-05-13
+
+### Feature: voice commands + per-device voice training
+
+Voice control of every Wemo from two surfaces — the **Windows desktop app** and the **Docker / Synology web UI** (which also runs on the macOS / Linux desktop builds via Electron's renderer). One shared library, two thin wrappers, zero new native dependencies.
+
+#### How it works
+
+- New `apps/desktop/resources/web/voice-commands.js` — a self-contained, vendor-cloud-aware speech-recognition wrapper plus a pure-function intent parser. Bound to `window.WemoVoice` so both vanilla-JS and React callers can use it. Mirrored at `apps/desktop/src/renderer/src/voice/voice-commands.js` so Vite can inline it under the desktop renderer's strict CSP.
+- New `apps/desktop/resources/web/voice-trainer.js` — small "record one phrase, return the transcript" helper used by both UI surfaces for per-device alias training.
+- Built on the browser-native `webkitSpeechRecognition` / `SpeechRecognition` API. Works in Electron's Chromium renderer, plus Chrome / Edge / Safari when accessing the web UI from any device on the LAN (phone, tablet, laptop). Firefox shows a disabled-mic button with a "try Chrome/Edge/Safari" tooltip — no broken state.
+
+#### Command grammar
+
+Continuous-listen mode picks up everything in the room, but only acts when a sentence starts with the wake-word **"dibby"** (configurable, can be disabled for push-to-talk only). Supported intents:
+
+| Spoken | Action |
+|--------|--------|
+| `dibby turn on <device>` | Set device on |
+| `dibby turn off <device>` | Set device off |
+| `dibby toggle <device>` | Flip current state |
+| `dibby <device> on` / `<device> off` | Terse form |
+| `dibby turn everything on` / `all off` | Bulk command across every cached device |
+
+Device names are matched **fuzzily** using Levenshtein distance against `device.friendlyName`. "deck mister" matches "Deck Master" (score ≤ 0.4 = at least 60% similar); "purple unicorn" doesn't and surfaces a "didn't recognise" toast instead of firing the wrong device.
+
+#### Per-device voice training (the accent-friendly part)
+
+Fuzzy matching against `friendlyName` is great for typos but breaks down on accents, nicknames, and language mismatches. Each device now carries an optional `voiceAliases: string[]` field that competes with `friendlyName` on equal footing during matching, and which the user populates by **recording phrases**:
+
+1. Open the device detail panel (desktop) or expand the device card (web UI).
+2. Click **🎤 add voice name**.
+3. Say the phrase you'll use ("deck light", "outside switch", whatever feels natural).
+4. The speech engine transcribes your recording and shows it back: *"Heard: deck light — save?"*.
+5. On save the transcript is appended to that device's `voiceAliases` list. Multiple aliases per device are supported — Deck Master Switch can answer to "deck", "deck light", **and** "outside light" simultaneously.
+
+The key insight: the alias is **whatever the user's own STT engine actually returned** when they spoke the phrase. If Chrome transcribes a user's "deck light" as "tek light" because of their accent, the stored alias becomes "tek light" — and that's exactly what comes back at command time. The alias and the live command go through the **same** transcription pipeline, so they match cleanly even when the literal English doesn't.
+
+Algorithm at command time:
+
+```
+candidates = []
+for each device:
+    push { device, score = lev(spoken, friendlyName) / friendlyName.length, source: 'name' }
+    for each alias in device.voiceAliases:
+        push { device, score = lev(spoken, alias) / alias.length, source: 'alias' }
+best = min(candidates)
+if best.score <= 0.4: dispatch(best.device)   // 60%+ similar
+else:                 toast("Didn't recognise that device")
+```
+
+Aliases compete with the friendlyName on equal footing — a perfect alias match wins over a slightly-fuzzy name and vice-versa. Aliases survive plugin upgrades because they're stored in the same `<homebridge-storage>/dibby-wemo.json` (Homebridge) or `<user-data>/devices.json` (desktop) file as the device list itself.
+
+#### Backend additions
+
+- `docker/server.js` — new endpoints:
+  - `GET    /api/devices/<host>/<port>/voice-aliases` → list
+  - `POST   /api/devices/<host>/<port>/voice-aliases` body `{alias}` → add
+  - `DELETE /api/devices/<host>/<port>/voice-aliases/<index>` → remove
+  - Plus explicit static handlers for `/voice-commands.js` and `/voice-trainer.js` with the right `Content-Type: application/javascript` header (the fallback `index.html` route would otherwise mis-serve them as HTML).
+- `apps/desktop/src/main/ipc/devices.ipc.js` — new IPC channels `get-voice-aliases`, `add-voice-alias`, `remove-voice-alias` calling the existing `DwmStore.saveDevices` (additive — the `voiceAliases` field rides along with the rest of the device record).
+- `apps/desktop/src/preload/index.js` — bridge exposes `window.wemoAPI.{getVoiceAliases, addVoiceAlias, removeVoiceAlias}`.
+
+#### Privacy
+
+The first time voice is enabled on a given browser/device, a one-shot modal explains the data flow:
+
+> Chrome and Edge stream audio to Google/Microsoft to transcribe it; Safari uses on-device recognition. Dibby Wemo never records, stores, or transmits audio itself.
+
+Dismissal is persisted in `localStorage` under `dwm.voice.privacyAck` so the modal shows once per browser, not once per session. `apps/desktop/resources/help.html` gains a permanent **Voice Commands & Privacy** section with the same disclosure plus the full command grammar and training walkthrough.
+
+#### UI additions
+
+- **Web UI** (`apps/desktop/resources/web/index.html`):
+  - 🎤 toggle button in the Devices toolbar next to **⟳ Scan**
+  - Live transcript bubble below the toolbar while listening (interim in muted text, final in white with a ✓)
+  - Per-card voice-alias chips with × delete + "🎤 add voice name" link
+  - Pulsing red glow on the toolbar button while the engine is active
+- **Electron desktop renderer**:
+  - `apps/desktop/src/renderer/src/components/voice/VoiceCommandButton.jsx` — Sidebar mic button with the same pulse animation
+  - `apps/desktop/src/renderer/src/components/voice/VoiceAliasManager.jsx` — embedded in DeviceInfoTab; lists chips, records new aliases, deletes existing ones
+- **Help doc** (`apps/desktop/resources/help.html`) — new section walks through enabling voice, the command grammar, training aliases, and the privacy story
+- **README.md** — short blurb under Desktop App + Synology install sections
+
+#### What's NOT in this release (deferred)
+
+- Offline STT (whisper.cpp / vosk) — would bloat the install by 100+ MB. Re-evaluate when users specifically ask for offline mode.
+- Voice authoring of DWM rules ("dibby schedule deck master on at sunset") — defer to a future release.
+- Hardware-style always-on wake-word detection (Porcupine / picovoice) — needs a paid licence or a 30 MB tflite model. The current soft wake-word ("dibby ..." prefix) is a reasonable compromise.
+- Voice in the Homebridge plugin UI — separate iframe sandbox + different mic-permission model. Add later if requested.
+
+### Affected packages
+All monorepo packages bumped to **2.0.29** in unified versioning. Functional changes ship in the desktop app and the Docker image / Synology `.spk`; npm Homebridge + Node-RED packages get the version bump but no functional change.
+
+---
+
 ## [2.0.28] — 2026-05-13
 
 ### Homebridge plugin — three UI improvements + persistence guarantee

@@ -91,6 +91,25 @@
   .btn-sm      { padding: 5px 10px; font-size: 12px; border-radius: 8px; }
   .btn:disabled { opacity: .4; cursor: default; }
   /* ── Empty state ── */
+  /* Voice alias chips on device cards */
+  .voice-chip {
+    display: inline-flex; align-items: center;
+    background: rgba(0,169,213,0.12); color: var(--accent);
+    border: 1px solid rgba(0,169,213,0.35); border-radius: 999px;
+    padding: 2px 8px; font-size: 11px; line-height: 1.4;
+  }
+  /* Active-listening pulse on the 🎤 button */
+  #btn-voice.voice-active {
+    background: #e94560 !important; color: #fff !important;
+    box-shadow: 0 0 0 0 rgba(233,69,96,0.6);
+    animation: voicePulse 1.4s ease-out infinite;
+  }
+  @keyframes voicePulse {
+    0%   { box-shadow: 0 0 0 0   rgba(233,69,96,0.6); }
+    70%  { box-shadow: 0 0 0 12px rgba(233,69,96,0); }
+    100% { box-shadow: 0 0 0 0   rgba(233,69,96,0); }
+  }
+
   .empty { text-align: center; padding: 60px 20px; color: var(--text2); }
   .empty .icon { font-size: 48px; margin-bottom: 12px; }
   .empty p { font-size: 14px; line-height: 1.6; }
@@ -196,8 +215,19 @@
   <div id="page-devices" class="page active">
     <div class="toolbar">
       <h2>Devices</h2>
+      <div style="flex:1"></div>
+      <!-- 🎤 Voice toggle.  Disabled when SpeechRecognition isn't available
+           in this browser (e.g. Firefox).  When active the button glows red. -->
+      <button class="btn btn-ghost" id="btn-voice" title="Toggle voice commands" onclick="toggleVoice()" style="margin-right:6px">🎤</button>
       <button class="btn btn-primary" id="btn-discover" onclick="discoverDevices()">⟳ Scan</button>
     </div>
+
+    <!-- Live transcript bubble — only visible while the mic is listening. -->
+    <div id="voice-bubble" style="display:none;margin:8px 0 12px;padding:10px 14px;background:var(--card);border-left:4px solid #e94560;border-radius:6px;font-size:13px;color:var(--text);box-shadow:var(--shadow)">
+      <span style="color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:0.5px">Heard</span>
+      <div id="voice-bubble-text" style="margin-top:2px;font-style:italic">listening…</div>
+    </div>
+
     <div id="page-header-devices" class="page-header">
       <span class="ws-dot" id="ws-dot-d"></span>
       <span id="ws-label-d">Connecting…</span>
@@ -561,6 +591,10 @@ function renderDevices() {
   }
   el.innerHTML = devices.map((d, i) => {
     const name = d.friendlyName || d.name || d.host;
+    const aliases = Array.isArray(d.voiceAliases) ? d.voiceAliases : [];
+    const aliasChips = aliases.map((a, ai) =>
+      `<span class="voice-chip" title="Voice alias">${esc(a)} <a href="#" onclick="removeVoiceAlias(${i},${ai},event)" style="margin-left:4px;color:#e94560;text-decoration:none">×</a></span>`
+    ).join('');
     return `
       <div class="card" id="dev-${i}">
         <div style="font-size:24px;flex-shrink:0">💡</div>
@@ -568,6 +602,11 @@ function renderDevices() {
           <div class="card-name">${esc(name)}</div>
           <div class="card-meta">${esc(d.host)}:${d.port}
             ${d.productModel ? ' · ' + esc(d.productModel) : ''}
+          </div>
+          <div class="voice-aliases" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center">
+            ${aliasChips}
+            <a href="#" class="voice-train-link" onclick="trainVoiceAlias(${i},event)"
+               style="font-size:11px;color:var(--accent);text-decoration:none">🎤 add voice name</a>
           </div>
         </div>
         <label class="toggle" id="dtog-${i}" onclick="toggleDevice(${i},event)">
@@ -1096,5 +1135,161 @@ connectWS();
 loadDevices();
 updateServerCard();
 </script>
+<!-- ────────────────────────────────────────────────────────────────────
+     Voice commands — shared library + per-page glue
+     ──────────────────────────────────────────────────────────────────── -->
+<script src="/voice-commands.js"></script>
+<script src="/voice-trainer.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // Initial state: disabled if the engine isn't available in this browser.
+  const btn = document.getElementById('btn-voice');
+  const bubble = document.getElementById('voice-bubble');
+  const bubbleText = document.getElementById('voice-bubble-text');
+  if (!btn) return;
+
+  if (!window.WemoVoice || !window.WemoVoice.isSupported()) {
+    btn.disabled = true;
+    btn.title = 'Voice not supported in this browser — try Chrome, Edge, or Safari.';
+    return;
+  }
+
+  // One-time privacy disclosure.  Stored in localStorage so it shows
+  // once per browser profile.
+  function showPrivacyOnce() {
+    return new Promise((resolve) => {
+      if (localStorage.getItem('dwm.voice.privacyAck') === '1') return resolve(true);
+      const ok = confirm(
+        'Voice commands use your browser\'s built-in speech recognition.\n\n' +
+        'Chrome and Edge stream audio to Google/Microsoft to transcribe it; ' +
+        'Safari uses on-device recognition.\n\n' +
+        'Dibby Wemo never records, stores, or transmits audio itself.\n\n' +
+        'Click OK to enable voice commands.'
+      );
+      if (ok) localStorage.setItem('dwm.voice.privacyAck', '1');
+      resolve(ok);
+    });
+  }
+
+  const commander = new window.WemoVoice.VoiceCommander({
+    getDevices: () => devices,
+    wakeWord:   localStorage.getItem('dwm.voice.wakeWord') ?? 'dibby',
+    continuous: true,
+  });
+
+  commander.onStateChange((running) => {
+    btn.classList.toggle('voice-active', running);
+    bubble.style.display = running ? 'block' : 'none';
+    if (running) bubbleText.textContent = 'listening…';
+  });
+
+  commander.onTranscript((text, isFinal) => {
+    bubbleText.textContent = text || 'listening…';
+    bubbleText.style.color = isFinal ? 'var(--text)' : 'var(--text2)';
+  });
+
+  commander.onIntent(async (intent, text) => {
+    bubbleText.textContent = '✓ ' + text;
+    try {
+      if (intent.kind === 'bulk') {
+        for (const d of devices) {
+          try { await api('POST', `/api/devices/${d.host}/${d.port}/state`, { on: intent.on }); } catch {}
+        }
+        toast(`All devices ${intent.on ? 'on' : 'off'}.`, 'info');
+        renderDevices();
+      } else if (intent.kind === 'set' || intent.kind === 'toggle') {
+        let target = intent.on;
+        if (intent.kind === 'toggle') {
+          try {
+            const cur = await api('GET', `/api/devices/${intent.device.host}/${intent.device.port}/state`);
+            target = !cur;
+          } catch { target = true; }
+        }
+        await api('POST', `/api/devices/${intent.device.host}/${intent.device.port}/state`, { on: target });
+        toast(`${intent.device.friendlyName || intent.device.host} → ${target ? 'on' : 'off'}` +
+              (intent.source === 'alias' ? ` (alias "${intent.alias}")` : ''), 'info');
+        // Repaint state checkbox for that device
+        const idx = devices.indexOf(intent.device);
+        const chk = idx >= 0 ? document.getElementById('dchk-' + idx) : null;
+        if (chk) chk.checked = !!target;
+      } else if (intent.kind === 'no-match') {
+        toast(`Didn't recognise device: "${intent.spoken}"`, 'info');
+      }
+    } catch (e) {
+      toast('Voice command failed: ' + e.message, 'error');
+    }
+  });
+
+  commander.onError((err) => {
+    // "no-speech" is normal in continuous mode; ignore it.
+    const name = typeof err === 'string' ? err : (err?.error || err?.message || '');
+    if (name && name !== 'no-speech' && name !== 'aborted') {
+      toast('Voice: ' + name, 'info');
+    }
+  });
+
+  // Toolbar button toggles the listener.  Privacy disclosure runs on
+  // the FIRST activation only.
+  window.toggleVoice = async function () {
+    if (commander.isRunning()) return commander.stop();
+    if (!(await showPrivacyOnce())) return;
+    commander.start();
+  };
+
+  // ── Per-device alias training ─────────────────────────────────────────
+  window.trainVoiceAlias = async function (i, ev) {
+    if (ev) ev.preventDefault();
+    const dev = devices[i];
+    if (!dev) return;
+    if (!window.WemoVoiceTrainer) return toast('Trainer not loaded.', 'error');
+    if (!(await showPrivacyOnce())) return;
+
+    // Pause the live commander while we record so the two engines don't fight.
+    const wasRunning = commander.isRunning();
+    if (wasRunning) commander.stop();
+
+    toast(`Say a name for "${dev.friendlyName || dev.host}" now…`, 'info', 1500);
+    try {
+      const transcript = await window.WemoVoiceTrainer.recordAlias({
+        maxMs: 4000,
+        onInterim: (t) => { bubble.style.display = 'block'; bubbleText.textContent = '🎤 ' + t; },
+      });
+      if (!transcript) throw new Error('No speech heard.');
+
+      const confirmSave = confirm(`Heard: "${transcript}"\n\nSave as a voice name for "${dev.friendlyName || dev.host}"?`);
+      if (!confirmSave) {
+        toast('Cancelled.', 'info');
+      } else {
+        const updated = await api('POST', `/api/devices/${dev.host}/${dev.port}/voice-aliases`, { alias: transcript });
+        devices[i].voiceAliases = updated;
+        renderDevices();
+        toast(`Alias added: "${transcript}".`, 'info');
+      }
+    } catch (e) {
+      toast('Training failed: ' + (e.message || e), 'error');
+    } finally {
+      bubble.style.display = wasRunning ? 'block' : 'none';
+      bubbleText.textContent = 'listening…';
+      if (wasRunning) commander.start();
+    }
+  };
+
+  window.removeVoiceAlias = async function (deviceIdx, aliasIdx, ev) {
+    if (ev) ev.preventDefault();
+    const dev = devices[deviceIdx];
+    if (!dev) return;
+    try {
+      const updated = await api('DELETE', `/api/devices/${dev.host}/${dev.port}/voice-aliases/${aliasIdx}`);
+      devices[deviceIdx].voiceAliases = updated;
+      renderDevices();
+    } catch (e) {
+      toast('Could not remove alias: ' + e.message, 'error');
+    }
+  };
+})();
+</script>
+
 </body>
 </html>

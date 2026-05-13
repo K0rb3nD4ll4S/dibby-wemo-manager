@@ -27,6 +27,11 @@ contextBridge.exposeInMainWorld('wemoAPI', {
   getDeviceGroups:    ()             => invoke('get-device-groups'),
   saveDeviceGroups:   (groups)       => invoke('save-device-groups', groups),
 
+  // Voice aliases (per-device training — used by voice-commands.js)
+  getVoiceAliases:    (args)         => invoke('get-voice-aliases', args),
+  addVoiceAlias:      (args)         => invoke('add-voice-alias', args),
+  removeVoiceAlias:   (args)         => invoke('remove-voice-alias', args),
+
   // Wemo device rules (read-only source, Wemo Rules tab)
   getRules:           (args)         => invoke('get-rules', args),
   createRule:         (args)         => invoke('create-rule', args),

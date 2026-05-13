@@ -95,4 +95,43 @@ module.exports = function registerDeviceIpc() {
   ipcMain.handle('save-device-order',     (_e, order) => store.saveDeviceOrder(order));
   ipcMain.handle('get-device-groups',     () => store.getDeviceGroups());
   ipcMain.handle('save-device-groups',    (_e, groups) => store.saveDeviceGroups(groups));
+
+  // ── Voice aliases (per-device training) ─────────────────────────────────
+  //
+  // Each Wemo can carry a `voiceAliases: string[]` field used by the speech
+  // recognition layer (apps/desktop/resources/web/voice-commands.js).  These
+  // helpers mutate the in-place device record so the rest of the system
+  // (HomeKit bridge sync, scheduler, etc.) keeps seeing the same device
+  // identity — only the alias list is touched.
+
+  ipcMain.handle('get-voice-aliases', (_e, { host, port }) => {
+    const dev = store.getDevices().find((d) => d.host === host && Number(d.port) === Number(port));
+    return Array.isArray(dev?.voiceAliases) ? dev.voiceAliases : [];
+  });
+
+  ipcMain.handle('add-voice-alias', (_e, { host, port, alias }) => {
+    const aliasNorm = String(alias || '').trim().toLowerCase();
+    if (!aliasNorm) throw new Error('alias is required');
+    const devices = store.getDevices();
+    const idx = devices.findIndex((d) => d.host === host && Number(d.port) === Number(port));
+    if (idx === -1) throw new Error('device not found');
+    const aliases = Array.isArray(devices[idx].voiceAliases) ? devices[idx].voiceAliases.slice() : [];
+    if (!aliases.includes(aliasNorm)) aliases.push(aliasNorm);
+    devices[idx] = { ...devices[idx], voiceAliases: aliases };
+    store.saveDevices(devices);
+    return aliases;
+  });
+
+  ipcMain.handle('remove-voice-alias', (_e, { host, port, aliasIndex }) => {
+    const devices = store.getDevices();
+    const idx = devices.findIndex((d) => d.host === host && Number(d.port) === Number(port));
+    if (idx === -1) throw new Error('device not found');
+    const aliases = Array.isArray(devices[idx].voiceAliases) ? devices[idx].voiceAliases.slice() : [];
+    const i = Number(aliasIndex);
+    if (i < 0 || i >= aliases.length) throw new Error('alias index out of range');
+    aliases.splice(i, 1);
+    devices[idx] = { ...devices[idx], voiceAliases: aliases };
+    store.saveDevices(devices);
+    return aliases;
+  });
 };

@@ -3,6 +3,7 @@ import CopyField from '../shared/CopyField';
 import SignalMeter from './SignalMeter';
 import ConfirmDialog from '../shared/ConfirmDialog';
 import Modal from '../shared/Modal';
+import VoiceAliasManager from '../voice/VoiceAliasManager';
 import useDeviceStore from '../../store/devices';
 import useSettingsStore from '../../store/settings';
 
@@ -118,6 +119,19 @@ export default function DeviceInfoTab({ device }) {
         <CopyField label="Serial Number" value={combined.serialNumber} mono />
         <CopyField label="Firmware" value={combined.firmwareVersion} mono />
         <CopyField label="Hardware" value={combined.hwVersion || info?.hwVersion || '—'} mono />
+
+        {/* Trained voice aliases for this device — additive metadata; matched
+            against live speech alongside friendlyName.  See
+            apps/desktop/src/renderer/src/voice/voice-commands.js. */}
+        <div className="info-row" style={{ alignItems: 'flex-start' }}>
+          <span className="info-label">Voice Names</span>
+          <span className="info-value" style={{ flex: 1 }}>
+            <VoiceAliasManager
+              device={device}
+              onAliasesChanged={(list) => updateDevice(device.udn, { voiceAliases: list })}
+            />
+          </span>
+        </div>
 
         <div className="info-row">
           <span className="info-label">Signal Strength</span>

@@ -266,6 +266,13 @@ label { font-size: 12px; color: var(--text2); display: block; margin-bottom: 4px
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Voice-command mic pulse — applied by VoiceCommandButton while listening. */
+@keyframes voicePulse {
+  0%   { box-shadow: 0 0 0 0   rgba(233,69,96,0.6); }
+  70%  { box-shadow: 0 0 0 12px rgba(233,69,96,0); }
+  100% { box-shadow: 0 0 0 0   rgba(233,69,96,0); }
+}
+
 /* ── Empty state ─────────────────────────────────── */
 .empty-state {
   display: flex; flex-direction: column; align-items: center; justify-content: center;

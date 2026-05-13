@@ -336,6 +336,8 @@ Once the web UI loads at `http://<NAS-IP>:3456`:
   - Confirmed working on F7C027 firmware (flat params, AES-encrypted password, double-send)
 - **Web remote** — optional local web interface accessible from your phone
 - **Sunrise/sunset support** — location-aware scheduling via city search
+- **Voice commands** — say "*dibby turn on bonus room*", "*dibby toggle deck master*", or "*dibby turn everything off*" from either the desktop app or the web UI (Synology / Docker / phone browser). Wake-word **"dibby"** prevents false triggers; bulk commands act on every cached device.
+- **Per-device voice training** — record one or more spoken aliases for each Wemo so accents and nicknames work as well as the official friendly name. "Outside light", "deck", or whatever you actually say. The alias is whatever your browser's speech engine transcribed your recording as, so it round-trips through accent variations cleanly. Aliases are stored alongside the device list and survive every plugin / app upgrade.
 
 **Platforms:** Windows 10+ (x64) · Linux x64 · Linux ARM64 (Raspberry Pi 4/5)
 
