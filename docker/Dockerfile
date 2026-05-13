@@ -56,9 +56,11 @@ LABEL org.opencontainers.image.vendor="SRS IT"
 # Synology run-as-user model, curl for HEALTHCHECK.
 RUN apk add --no-cache tini su-exec curl
 
-# Non-root run user (mapped at container start to host UID via PUID/PGID envs)
-RUN addgroup -g 1000 dibby && \
-    adduser  -D -u 1000 -G dibby -h /app -s /sbin/nologin dibby
+# Non-root run user (mapped at container start to host UID via PUID/PGID envs).
+# Use GID/UID 1500 — Alpine's base image already ships a `node` user owning
+# 1000, and Synology bind-mounts are remapped at runtime via PUID/PGID anyway.
+RUN addgroup -g 1500 dibby && \
+    adduser  -D -u 1500 -G dibby -h /app -s /sbin/nologin dibby
 
 WORKDIR /app
 

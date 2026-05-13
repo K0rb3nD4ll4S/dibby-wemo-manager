@@ -32,6 +32,9 @@ jobs:
       - name: Install build helpers
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends curl xz-utils tar
 
+      - name: Ensure scripts are executable (git on Windows sometimes drops the bit)
+        run: chmod +x packages/synology-spk/build-spk.sh packages/synology-spk/scripts/*
+
       - name: Build .spk for every supported DSM arch
         env:
           VERSION: ${{ steps.vars.outputs.version }}
