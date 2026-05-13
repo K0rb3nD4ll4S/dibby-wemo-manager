@@ -1,0 +1,49 @@
+name: Build & Attach Synology .spk
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+jobs:
+  build-spk:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Determine version
+        id: vars
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          [ -z "$VERSION" ] && VERSION="$(node -p "require('./package.json').version")"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Version: $VERSION"
+
+      - name: Install build helpers
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends curl xz-utils tar
+
+      - name: Build .spk for every supported DSM arch
+        env:
+          VERSION: ${{ steps.vars.outputs.version }}
+        run: ./packages/synology-spk/build-spk.sh
+
+      - name: List artifacts
+        run: ls -la packages/synology-spk/dist/
+
+      - name: Attach .spk files to the GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: packages/synology-spk/dist/*.spk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

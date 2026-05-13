@@ -1,0 +1,12 @@
+#!/bin/sh
+# postupgrade — DSM calls this after the new files are in place but before
+# start-stop-status is invoked.  Ensure permissions remain correct on the
+# data dir (which DSM preserves across upgrades).
+
+DATA_DIR="/volume1/@appstore/dibby-wemo-manager/data"
+RUN_USER="dibby-wemo"
+
+chown -R "$RUN_USER:users" "$DATA_DIR" 2>/dev/null || true
+chmod 755 "/var/packages/dibby-wemo-manager/target/bin/node" 2>/dev/null || true
+
+exit 0

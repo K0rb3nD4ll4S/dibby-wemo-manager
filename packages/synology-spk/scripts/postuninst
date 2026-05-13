@@ -1,0 +1,11 @@
+#!/bin/sh
+# postuninst — keeps user data (devices.json, dwm-rules.json) intact unless
+# the user requests a full purge in Package Center's uninstall confirmation.
+
+DATA_DIR="/volume1/@appstore/dibby-wemo-manager/data"
+
+if [ "${SYNOPKG_PKG_STATUS:-}" = "PURGE" ]; then
+    rm -rf "$DATA_DIR"
+fi
+
+exit 0

@@ -1,0 +1,77 @@
+#!/bin/sh
+# ────────────────────────────────────────────────────────────────────────────────
+#  start-stop-status — DSM 7 lifecycle script
+#
+#  Called by Package Center to start, stop, restart, query, or report logs
+#  for the Dibby Wemo Manager daemon.  Signals the daemon politely so the
+#  Wemo scheduler can flush its heartbeat before exit.
+# ────────────────────────────────────────────────────────────────────────────────
+
+PACKAGE_DIR="/var/packages/dibby-wemo-manager/target"
+APP_DIR="$PACKAGE_DIR/app"
+NODE_BIN="$PACKAGE_DIR/bin/node"
+DATA_DIR="/volume1/@appstore/dibby-wemo-manager/data"
+LOG_FILE="$DATA_DIR/dibby-wemo-manager.log"
+PID_FILE="/var/packages/dibby-wemo-manager/var/dibby-wemo-manager.pid"
+RUN_USER="dibby-wemo"
+
+mkdir -p "$DATA_DIR" "$(dirname "$PID_FILE")"
+chown "$RUN_USER:users" "$DATA_DIR" "$(dirname "$PID_FILE")" 2>/dev/null || true
+
+start_daemon() {
+    if is_running; then
+        echo "Already running (PID $(cat "$PID_FILE"))"
+        return 0
+    fi
+
+    cd "$APP_DIR" || exit 1
+
+    PORT=3456 DATA_DIR="$DATA_DIR" NODE_ENV=production \
+        /sbin/start-stop-daemon --start --background \
+            --pidfile "$PID_FILE" --make-pidfile \
+            --chuid "$RUN_USER" \
+            --exec "$NODE_BIN" -- "$APP_DIR/server.js" \
+            >>"$LOG_FILE" 2>&1
+
+    # start-stop-daemon writes the wrapper PID, not node's — give it a moment
+    sleep 1
+    is_running && echo "Started" && return 0
+    echo "Failed to start — see $LOG_FILE" >&2
+    return 1
+}
+
+stop_daemon() {
+    if ! is_running; then
+        echo "Not running"
+        rm -f "$PID_FILE"
+        return 0
+    fi
+
+    /sbin/start-stop-daemon --stop --pidfile "$PID_FILE" --retry 10 --quiet
+    rm -f "$PID_FILE"
+    echo "Stopped"
+}
+
+is_running() {
+    [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null
+}
+
+case "$1" in
+    start)   start_daemon ;;
+    stop)    stop_daemon  ;;
+    restart) stop_daemon; sleep 1; start_daemon ;;
+    status)
+        if is_running; then
+            echo "running"; exit 0
+        else
+            echo "stopped"; exit 1
+        fi
+        ;;
+    log)
+        echo "$LOG_FILE"
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status|log}" >&2
+        exit 1
+        ;;
+esac

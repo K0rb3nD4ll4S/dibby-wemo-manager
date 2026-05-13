@@ -1,0 +1,17 @@
+{
+  "data_share": {
+    "shares": [
+      {
+        "name": "dibby-wemo",
+        "permanent": true,
+        "build_in": true
+      }
+    ]
+  },
+  "port-config": {
+    "protocol-file": "app/port.conf"
+  },
+  "syslog-config": {
+    "rsyslog-file": "app/rsyslog.conf"
+  }
+}

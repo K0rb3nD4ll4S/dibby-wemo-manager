@@ -1,0 +1,14 @@
+#!/bin/sh
+# postinst — runs once, immediately after the package files have been laid down.
+
+PACKAGE_DIR="/var/packages/dibby-wemo-manager/target"
+DATA_DIR="/volume1/@appstore/dibby-wemo-manager/data"
+RUN_USER="dibby-wemo"
+
+mkdir -p "$DATA_DIR"
+chown -R "$RUN_USER:users" "$DATA_DIR"  "$PACKAGE_DIR" 2>/dev/null || true
+
+# Ensure the bundled node binary is executable.
+chmod 755 "$PACKAGE_DIR/bin/node" 2>/dev/null || true
+
+exit 0

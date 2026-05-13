@@ -1,0 +1,15 @@
+{
+  ".url": {
+    "com.srsit.dibbywemomanager": {
+      "type": "url",
+      "allUsers": true,
+      "title": "Dibby Wemo Manager",
+      "desc": "Belkin Wemo local control — DWM rules, HomeKit bridge, web UI",
+      "icon": "images/icon_{0}.png",
+      "url": "http://:3456",
+      "port": 3456,
+      "allow_redirect": true,
+      "protocol": "http"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+# ────────────────────────────────────────────────────────────────────────────────
+#  Dibby Wemo Manager — Synology DSM 7 Container Manager template
+#
+#  How to use (DSM 7 + Container Manager):
+#    1. File Station → /volume1/docker → create folder `dibby-wemo`
+#    2. Inside it, create another folder `data` (this is where settings live)
+#    3. Container Manager → Project → Create
+#       - Project name:   dibby-wemo
+#       - Path:           /volume1/docker/dibby-wemo
+#       - Source:         "Create docker-compose.yml" — paste this whole file
+#    4. Next → Done.  Container Manager pulls the image and starts it.
+#    5. Browse to  http://<your-NAS-IP>:3456  → the Dibby Wemo web UI loads.
+#
+#  Why network_mode: host?
+#    HomeKit (mDNS / Bonjour broadcast) and SSDP discovery (multicast) cannot
+#    cross a Docker bridge network — packets are filtered out.  Host networking
+#    lets the container see the LAN exactly the way the NAS does.  No port
+#    publishing is needed in this mode (the `ports:` section is intentionally
+#    absent).
+# ────────────────────────────────────────────────────────────────────────────────
+
+services:
+  dibby-wemo:
+    image: ghcr.io/k0rb3nd4ll4s/dibby-wemo-manager:latest
+    container_name: dibby-wemo
+    restart: unless-stopped
+
+    # Host networking — required for HomeKit pairing + Wemo SSDP discovery.
+    network_mode: host
+
+    # PUID/PGID — DSM creates docker bind-mounts owned by your DSM user.
+    # Find yours via SSH:   id   (or accept the 1026/100 default for shared
+    # users in the `users` group, which is the typical Synology layout).
+    environment:
+      PUID: 1026
+      PGID: 100
+      PORT: 3456
+      TZ: America/New_York         # set to your timezone for rule scheduling
+
+    volumes:
+      - /volume1/docker/dibby-wemo/data:/data

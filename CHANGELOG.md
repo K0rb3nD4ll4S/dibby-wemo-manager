@@ -4,6 +4,47 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.27] — 2026-05-13
+
+### Feature: Synology NAS support (DSM 7+) — Docker image + native `.spk`
+
+A Synology NAS is now a first-class always-on host for Dibby Wemo. Two install paths are shipped with this release, both fully compatible with DSM 7:
+
+#### Path A — Container Manager / Docker (recommended)
+
+Multi-arch image (`linux/amd64` + `linux/arm64`) published to GitHub Container Registry on every `v*.*.*` tag.
+
+- `docker/Dockerfile` — multi-stage Alpine build using **real** Node 20 LTS (not Electron's BoringSSL, which lacks the `chacha20-poly1305` cipher needed by `hap-nodejs` for HomeKit). Stage 1 assembles the bundle from `docker/server.js`, `packages/homebridge-plugin/lib/`, and `apps/desktop/resources/web/`; stage 2 is a minimal runtime image with `tini`, `su-exec`, and `curl` for healthchecks.
+- `docker/entrypoint.sh` — honours `PUID`/`PGID` envs so a bind-mounted `/volume1/docker/dibby-wemo/data` is writable by the DSM user (Synology defaults to UID 1026 / GID 100). Drops privileges to the non-root `dibby` user before exec'ing the Node server.
+- `docker/synology-compose.yml` — Synology-tuned Compose template with the mandatory `network_mode: host` (required for HomeKit's mDNS and Wemo's SSDP multicast — Docker's bridge network filters both).
+- `docker/build-multiarch.sh` — local `docker buildx` wrapper for amd64 + arm64.
+- `.github/workflows/build-docker.yml` — updated to use the new `docker/Dockerfile` path, build multi-arch via QEMU, and push to `ghcr.io/k0rb3nd4ll4s/dibby-wemo-manager:<version>` on every tag.
+
+#### Path B — Native Package Center `.spk`
+
+Installable directly from DSM 7 **Package Center → Manual Install** for users who prefer native packages or whose NAS can't run containers.
+
+- `packages/synology-spk/` — full DSM 7 package skeleton: `INFO.tmpl`, `conf/{resource,privilege}` for the DSM-7-mandatory non-root run user, lifecycle scripts (`start-stop-status`, `postinst`, `postuninst`, `preupgrade`, `postupgrade`), and a `ui/config` shortcut that registers the web UI in DSM's app launcher.
+- `packages/synology-spk/build-spk.sh` — per-arch builder that downloads the matching Node 20 LTS binary, installs runtime deps via `npm install --omit=dev`, and packages everything into a `.spk` tarball for each supported DSM arch:
+  - `apollolake` (DS418play, DS918+, DS1019+)
+  - `geminilake` (DS220+, DS420+, DS720+, DS920+, DS1520+)
+  - `denverton` (DS1819+, DS3018xs, RS1619xs+)
+  - `broadwell` (DS3617xs, RS3617xs, RS18017xs+)
+  - `rtd1296` (DS124, DS223, DS223j, DS423)
+- `.github/workflows/build-synology-spk.yml` — builds all arches on tag push and attaches the `.spk` artifacts to the matching GitHub release.
+
+Both paths deploy the **same** JS bundle (scheduler, store, HomeKit bridge, web UI) — packaging is the only difference, so feature parity is guaranteed.
+
+### Docs
+
+- `README.md` — new **Synology NAS (DSM 7+)** section under the install paths, with a copy-paste-ready Compose template, an arch-to-NAS-model lookup table for the `.spk` path, the "why `network_mode: host`" explanation, and first-run setup steps.
+- `packages/synology-spk/README.md` — packaging-internals doc for contributors who need to rebuild `.spk` files locally.
+
+### Affected packages
+All monorepo packages bumped to **2.0.27** in unified versioning.
+
+---
+
 ## [2.0.26] — 2026-05-12
 
 ### Fix: HA integration now actually registers discovered Wemos as entities

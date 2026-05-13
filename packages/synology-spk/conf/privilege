@@ -1,0 +1,12 @@
+{
+  "defaults": {
+    "run-as": "package"
+  },
+  "username": "dibby-wemo",
+  "groupname": "users",
+  "join-groups": [
+    {
+      "name": "users"
+    }
+  ]
+}

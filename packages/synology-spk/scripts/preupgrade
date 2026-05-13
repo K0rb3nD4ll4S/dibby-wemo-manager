@@ -1,0 +1,11 @@
+#!/bin/sh
+# preupgrade — DSM calls this before swapping in the new package version.
+# Stop the daemon cleanly so its heartbeat write completes.
+
+PIDF="/var/packages/dibby-wemo-manager/var/dibby-wemo-manager.pid"
+if [ -f "$PIDF" ] && kill -0 "$(cat "$PIDF")" 2>/dev/null; then
+    /sbin/start-stop-daemon --stop --pidfile "$PIDF" --retry 10 --quiet
+    rm -f "$PIDF"
+fi
+
+exit 0

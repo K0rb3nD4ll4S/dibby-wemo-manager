@@ -217,6 +217,79 @@ docker compose up -d
 
 The bridge publishes each Wemo device's state to MQTT with Home Assistant auto-discovery topics — devices appear automatically in HA's MQTT integration without any config flow.
 
+### Synology NAS (DSM 7+)
+
+A Synology NAS is an ideal always-on host for Dibby Wemo — the same box that already hosts your media also runs the schedule engine and HomeKit bridge, with zero extra hardware. Two install paths are supported, both fully compatible with **DSM 7**.
+
+#### Path A — Container Manager / Docker (recommended)
+
+The container image is multi-arch (`linux/amd64` + `linux/arm64`) and works on every DSM-7 capable Synology model.
+
+1. **DSM → Package Center** → install **Container Manager** if not already present.
+2. **File Station** → in `/volume1/docker/` create a new folder `dibby-wemo` and inside it a sub-folder `data`.
+3. **Container Manager → Project → Create**:
+   - **Project name:** `dibby-wemo`
+   - **Path:** `/volume1/docker/dibby-wemo`
+   - **Source:** *"Create docker-compose.yml"* — paste the template from [`docker/synology-compose.yml`](docker/synology-compose.yml) (also reproduced below)
+4. Click **Next** → **Done**. Container Manager pulls the image and starts it.
+5. Open `http://<your-NAS-IP>:3456` — the Dibby Wemo web UI loads.
+
+Minimal compose template:
+
+```yaml
+services:
+  dibby-wemo:
+    image: ghcr.io/k0rb3nd4ll4s/dibby-wemo-manager:latest
+    container_name: dibby-wemo
+    restart: unless-stopped
+    network_mode: host          # MANDATORY for HomeKit + SSDP discovery
+    environment:
+      PUID: 1026                # your DSM user ID (run `id` over SSH)
+      PGID: 100
+      TZ: America/New_York
+    volumes:
+      - /volume1/docker/dibby-wemo/data:/data
+```
+
+**Why `network_mode: host`?** HomeKit's mDNS broadcast and Wemo's SSDP multicast cannot cross Docker's bridge network — packets get filtered before reaching the LAN. Host mode lets the container share the NAS's network stack so discovery and pairing Just Work.
+
+To upgrade later: **Container Manager → Project → dibby-wemo → Action → Stop → Build → Start.** The image tag `latest` will pull the newest version on rebuild.
+
+#### Path B — Native Package Center (`.spk`)
+
+For users who prefer a native install or whose NAS can't run containers, every release ships a `.spk` per DSM architecture as a GitHub release artifact.
+
+1. Visit the [latest release](https://github.com/K0rb3nD4ll4S/dibby-wemo-manager/releases/latest) and download the `.spk` matching your NAS arch:
+
+   | DSM arch  | CPU                 | Example models                              |
+   |-----------|---------------------|---------------------------------------------|
+   | apollolake| Celeron J3455       | DS418play, DS918+, DS1019+                  |
+   | geminilake| Celeron J4115       | DS220+, DS420+, DS720+, DS920+, DS1520+     |
+   | denverton | Atom C3538          | DS1819+, DS3018xs, RS1619xs+                |
+   | broadwell | Xeon                | DS3617xs, RS3617xs, RS18017xs+              |
+   | rtd1296   | Realtek (aarch64)   | DS124, DS223, DS223j, DS423                 |
+
+   Not sure? **DSM → Control Panel → Info Center → CPU** lists the chip; match it to the table above.
+
+2. **Package Center → ⋮ (top right) → Manual Install**.
+3. Upload the downloaded `.spk` → Next → Apply.
+4. After install, click the Dibby Wemo icon in Package Center to launch the web UI on port `3456`.
+
+Data persists at `/volume1/@appstore/dibby-wemo-manager/data/` and survives package upgrades. To remove all data, tick **"Delete data and configuration"** during uninstall.
+
+#### Either path — first-run setup
+
+Once the web UI loads at `http://<NAS-IP>:3456`:
+
+1. Click **Discover Devices** — the scanner does an SSDP broadcast + unicast `/24` sweep and lists every Wemo on the LAN.
+2. Select each device → it appears in the dashboard with an on/off toggle.
+3. Optional: enable the **HomeKit bridge** in Settings to make every Wemo appear in Apple Home. Pair using the QR code shown in the web UI.
+
+#### Updating
+
+- **Docker:** redeploy the container — Container Manager → Project → Stop → Build → Start.
+- **`.spk`:** download the new `.spk` from the release page → Package Center → Manual Install (DSM detects an upgrade and preserves data).
+
 ---
 
 ## Features
