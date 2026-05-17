@@ -1,12 +1,20 @@
 name: Build & Upload Windows Packages
 
 on:
+  # Auto-build the portable .exe + NSIS installer on every release tag.
+  push:
+    tags:
+      - 'v*.*.*'
+
+  # Manual dispatch — useful when a tag was already pushed but the build
+  # needs to be re-run (e.g. icon refresh, signing change, or a previously
+  # failed run).
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag to upload assets to (e.g. v2.0.1)'
-        required: true
-        default: 'v2.0.1'
+        description: 'Release tag to upload assets to (defaults to current ref tag)'
+        required: false
+        default: ''
 
 jobs:
   build-win:
@@ -45,11 +53,29 @@ jobs:
       - name: List build output
         run: dir apps\desktop\dist\
 
+      - name: Resolve target release tag
+        id: vars
+        shell: bash
+        run: |
+          # Prefer manual-dispatch input; otherwise use the pushed git tag.
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Resolved tag: ${{ steps.vars.outputs.tag }}"
+
       - name: Upload Windows packages to release
+        if: steps.vars.outputs.tag != ''
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.tag }}
+          tag_name: ${{ steps.vars.outputs.tag }}
           files: |
             apps/desktop/dist/*.exe
+            apps/desktop/dist/*.exe.blockmap
+            apps/desktop/dist/latest.yml
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
