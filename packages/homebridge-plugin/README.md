@@ -1,3 +1,5 @@
+<p align="center"><img src="icon.png" alt="Dibby Wemo Manager" width="128" /></p>
+
 # homebridge-dibby-wemo
 
 [![verified-by-homebridge](https://img.shields.io/badge/homebridge-verified-blueviolet?color=%23491F59&style=flat&logoColor=%23FFFFFF&logo=homebridge)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)

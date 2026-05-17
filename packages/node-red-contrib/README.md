@@ -1,3 +1,5 @@
+<p align="center"><img src="icon.png" alt="Dibby Wemo Manager" width="128" /></p>
+
 # node-red-contrib-dibby-wemo
 
 **Node-RED nodes for local Belkin Wemo device control — no cloud required.**

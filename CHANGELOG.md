@@ -4,6 +4,36 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.30] — 2026-05-17
+
+### Visual: unified 7G-dark-flat icon across every surface
+
+The Dibby Wemo Manager artwork is refreshed to the new **7G dark flat** mark, and the same image is now distributed across every shipping surface so the brand looks consistent in Windows taskbars, DSM Package Center, Home Assistant entity cards, Homebridge plugin listings, npm package pages, and the in-app web UI alike.
+
+**Where the new icon lives:**
+
+| Path | Format / size | Used by |
+|------|---------------|---------|
+| `apps/desktop/resources/icon.ico` | Multi-resolution `.ico` | Windows installer, taskbar, exe-resource |
+| `apps/desktop/resources/icon.png` | 512×512 PNG | Linux .deb / .rpm / AppImage, web UI fallback, Docker container `icon.png`, Homebridge plugin icon |
+| `custom_components/dibby_wemo/icon.png` | 256×256 PNG | HACS card + HA Integrations tile |
+| `custom_components/dibby_wemo/brand/icon.png` | 256×256 PNG | HA brands repo source-of-truth |
+| `custom_components/dibby_wemo/brand/logo.png` | 256×256 PNG | HA brands repo wordmark slot |
+| `packages/synology-spk/PACKAGE_ICON.PNG` | 72×72 PNG (downscaled via Pillow) | DSM Package Center thumbnail in the package list |
+| `packages/synology-spk/PACKAGE_ICON_256.PNG` | 256×256 PNG | DSM Package Center full-size install screen |
+| `packages/homebridge-plugin/icon.png` | 256×256 PNG | npm package page header + Homebridge UI plugin marketplace |
+| `packages/node-red-contrib/icon.png` | 256×256 PNG | npm package page header + Node-RED palette browser |
+| `packages/mqtt-bridge/icon.png` | 256×256 PNG | bundled in Docker image, available for future container-registry display |
+
+**Why one image everywhere?** Verified via `npm pack --dry-run` for both `homebridge-dibby-wemo` and `node-red-contrib-dibby-wemo` that `icon.png` is now in the published tarballs (29 KB each). Verified via the Synology SPK build that both `PACKAGE_ICON.PNG` and `PACKAGE_ICON_256.PNG` are pulled into the archive at build time. The Docker image's `COPY apps/desktop/resources/icon.png ./icon.png` step picks up the new file automatically — no Dockerfile change needed.
+
+The 7G dark flat artwork is sourced from the user-supplied complete icon pack at `Dibby_Wemo_Manager_7G_COMPLETE_ICON_PACK/7G_dark_flat/`; every output size is taken from that pack except the 72×72 SPK thumb which is downscaled from the pack's 128×128 PNG via Pillow's LANCZOS filter.
+
+### Affected packages
+All monorepo packages bumped to **2.0.30** in unified versioning. No code changes in this release — only branding assets and plugin README headers (which now show the icon at the top via `<p align="center"><img src="icon.png" width="128"/></p>` so npm and the GitHub repo display it).
+
+---
+
 ## [2.0.29] — 2026-05-13
 
 ### Feature: voice commands + per-device voice training
