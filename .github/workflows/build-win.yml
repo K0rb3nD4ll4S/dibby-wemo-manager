@@ -34,6 +34,23 @@ jobs:
       - name: Install workspace dependencies
         run: npm install --legacy-peer-deps
 
+      - name: Download bundled Node.exe for the DibbyWemoService
+        # The headless service can't reuse Electron's BoringSSL build —
+        # hap-nodejs needs the chacha20-poly1305 cipher exposed, which only
+        # real OpenSSL Node provides.  Drop the matching Node LTS binary at
+        # apps/desktop/resources/node.exe so electron-builder's
+        # extraResources copy step picks it up.
+        shell: pwsh
+        run: |
+          $NODE_VER = (node --version) -replace '^v',''
+          Write-Host "Bundling Node $NODE_VER for Windows x64"
+          $url = "https://nodejs.org/dist/v$NODE_VER/node-v$NODE_VER-win-x64.zip"
+          $tmp = Join-Path $env:RUNNER_TEMP "node-win.zip"
+          Invoke-WebRequest -Uri $url -OutFile $tmp -UseBasicParsing
+          Expand-Archive -Path $tmp -DestinationPath $env:RUNNER_TEMP -Force
+          Copy-Item -Force "$env:RUNNER_TEMP\node-v$NODE_VER-win-x64\node.exe" "apps\desktop\resources\node.exe"
+          Get-Item apps\desktop\resources\node.exe | Format-List Name, Length, VersionInfo
+
       - name: Vite build
         run: npx electron-vite build
         working-directory: apps/desktop
