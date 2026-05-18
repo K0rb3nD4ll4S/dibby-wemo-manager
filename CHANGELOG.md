@@ -6,27 +6,74 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ## [2.0.32] — 2026-05-17
 
-### Visual: zoomed icon framing so the mark matches surrounding Windows icons
+### Critical fix: desktop app now actually launches its window (regression dating back to v2.0.30)
 
-User feedback on v2.0.30/.31 — the 7G dark-flat icon looked **noticeably smaller** on the Windows desktop than its neighbours (WinRAR, Git Bash, Claude, etc.), because those apps push their visible mark right to the canvas edges while the 7G design left the corners "rounded into" empty space. Even though the source PNG already fills 100 % of its 1024×1024 canvas, the rounded-square outline plus the dense central mark made the optical weight ~15 % smaller than peers.
+A latent build-pipeline bug was silently shipping every desktop installer since **v2.0.30** without the `out/main/core/paths.js` module. The bug was: `electron.vite.config.js`'s `rollupOptions.input` map listed `core/sun` and `core/types` as explicit entries, but **omitted `core/paths`**. Five main-process files (`ipc/homekit.ipc.js`, `ipc/rules.ipc.js`, `scheduler-standalone.js`, `service-manager.js`, `service-manager-sync.js`) do a runtime `require('./core/paths')`; without an explicit input entry the tree-shaker dropped the module from the bundled output.
 
-Fix:
+Symptom: install completed cleanly, the .exe ran (Task Manager showed three Electron processes), but the **main window never appeared**. Root cause was an unhandled rejection during IPC handler registration:
 
-1. Took the 1024×1024 master from the 7G pack.
-2. Resampled it up 1.18× via Pillow `LANCZOS`, then centre-cropped back to 1024×1024 — effectively zooming the artwork by ~18 % so the rounded square fills more of the canvas and the central mark gains visual weight.
-3. Regenerated **every** sized PNG (16, 24, 32, 48, 64, 72, 96, 128, 144, 192, 256, 512, 1024) and the multi-resolution `icon.ico` from the new zoomed master.
-4. Re-distributed all assets across the 10 file paths last updated in v2.0.30 (desktop `.ico` + `.png`, HA + brand, Synology `.spk`, Homebridge + Node-RED + MQTT bridge npm tarballs, web UI fallback, Docker image bundle).
+```
+[main] unhandledRejection: Error: Cannot find module '../core/paths'
+Require stack:
+  - out/main/ipc/rules.ipc.js
+  - out/main/index.js
+```
 
-Side benefit: the 256×256 layer in `icon.ico` is now visibly tighter when Windows uses it for the Start menu Jump-List, taskbar pin, and Alt-Tab thumbnail.
+The BrowserWindow was constructed with `show: false` waiting on the `ready-to-show` event that the crashed renderer never fired, so the window stayed hidden forever.
+
+Fix — single line in `apps/desktop/electron.vite.config.js`:
+
+```js
+'core/paths':           resolve(__dirname, 'src/main/core/paths.js'),
+```
+
+Verified end-to-end: `npm run dev` produces a window titled "Dibby Wemo Manager" with a valid `MainWindowHandle`; freshly-built `Dibby Wemo Manager Setup 2.0.32.exe` installs and launches on Windows 11 with no further intervention.
+
+This bug affected **every** desktop installer published since v2.0.30 — Windows / macOS / Linux. Users on v2.0.30 or v2.0.31 should upgrade to v2.0.32.
+
+### Visual: switched icon to the 7G `green_bg` variant for full-canvas fill
+
+Earlier feedback was that the icon looked smaller than its neighbours on the Windows desktop. Investigation showed the previously-chosen `7G_dark_flat` variant only fills **42 %** of its 1024 × 1024 canvas — the bright badge sits in the middle, the surrounding 58 % is transparent / dark padding. Three variants in the icon pack fill the entire canvas:
+
+| Variant | Visible badge | Vertical fill |
+|---------|---------------|---------------|
+| `7G_dark_flat` *(was)*  | 628 × 432 | **42 %** |
+| `7G_glow_black`         | 628 × 432 | 42 % |
+| `7G_soft_glow`          | 632 × 436 | 43 % |
+| **`7G_green_bg`** *(now)* | 1020 × 1020 | **100 %** |
+| `7G_purple_bg`          | 1020 × 1020 | 100 % |
+| `7G_white_bg`           | 1020 × 1020 | 100 % |
+
+`7G_green_bg` was picked — same artwork, on the lime-green background that matches the "wemo" wordmark already inside the badge. Every sized PNG (16, 24, 32, 48, 64, 72, 96, 128, 144, 192, 256, 512, 1024) and the multi-resolution `icon.ico` (16/24/32/48/64/128/256 layers) were regenerated from the 1024 × 1024 `green_bg` master via Pillow `LANCZOS`. Distributed to all 10 icon paths (desktop `.ico` + `.png`, HA + `brand/`, Synology `.spk` 72 × 72 + 256 × 256, Homebridge / Node-RED / MQTT bridge npm tarballs, Docker bundle).
+
+Optical weight now matches every other Windows desktop icon (WinRAR, Git Bash, etc.).
+
+### CI: Windows build auto-triggers on tag push + bundles real Node.exe + skips code-signing on the runner
+
+Three workflow fixes from the v2.0.30 attempt that previously needed manual dispatch:
+
+1. `.github/workflows/build-win.yml` now triggers on every `v*.*.*` tag push, the same way macOS / Docker / Synology workflows already did.
+2. The job downloads the matching Node 20 LTS Windows x64 binary and places it at `apps/desktop/resources/node.exe` before `electron-builder` runs — needed so the headless `DibbyWemoService` ships with a real OpenSSL Node for HomeKit's chacha20-poly1305 cipher (Electron's BoringSSL doesn't expose it).
+3. A PowerShell step strips the `build.win.signtoolOptions` block from `package.json` in place before `electron-builder` runs in CI — the real SRS IT PFX isn't on the runner and CLI overrides like `--config.win.certificateFile=""` don't take effect once `signtoolOptions` is set. CI produces an **unsigned** portable `.exe` + NSIS installer (Windows SmartScreen warns the first time the user runs it; the file works); locally-built releases keep the unmodified `package.json` and sign normally with the SRS IT cert.
+
+### README — Quick Start updated
+
+- Filenames bumped from `2.0.19` → `2.0.32` across every download example.
+- New **"24/7 always-on host options"** subsection lists Synology (Docker + `.spk`), generic Linux Docker, Homebridge, and Home Assistant as alternatives to leaving a laptop running.
+- "Headless 24/7 mode on Linux planned for v2.0.20" note removed — that functionality is delivered via the Synology / Docker path.
 
 ### Affected packages
 
-All monorepo packages bumped to **2.0.32** in unified versioning. Pure asset refresh — no functional code changes.
+All monorepo packages bumped to **2.0.32** in unified versioning. The desktop fix is in the **desktop installers only**; `homebridge-dibby-wemo@2.0.32` / `node-red-contrib-dibby-wemo@2.0.32` get the version bump + new icon but no functional change beyond that.
 
 ### Upgrade
 
-- **Desktop (Windows):** download the new portable `.exe` or NSIS installer from the v2.0.32 release page after CI finishes. Existing installs auto-pick the new icon at the next launch.
-- **Docker / Synology / Homebridge / Node-RED / HA:** the new icon ships in v2.0.32; usual upgrade flow on each surface picks it up.
+- **Desktop (Windows / macOS / Linux):** **important** — upgrade from v2.0.30/v2.0.31 to v2.0.32 to actually be able to see the app window. Download the installer for your platform from the v2.0.32 release page once CI finishes attaching artifacts.
+- **Synology Container Manager / Docker:** Stop → Build → Start (pulls `:latest`).
+- **Synology `.spk`:** download the new `.spk` for your arch → Package Center → Manual Install.
+- **Homebridge:** `npm install -g homebridge-dibby-wemo@2.0.32` then restart Homebridge.
+- **Node-RED:** `npm install -g node-red-contrib-dibby-wemo@2.0.32` then restart Node-RED.
+- **HACS:** ⋮ → Reload data → Dibby Wemo → ⋮ → Redownload → 2.0.32 → restart HA.
 
 ---
 

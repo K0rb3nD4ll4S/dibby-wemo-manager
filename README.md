@@ -92,11 +92,11 @@ dibby-wemo-manager/
 Download the latest installer from [Releases](../../releases):
 
 **Windows:**
-- **`Dibby Wemo Manager Setup 2.0.19.exe`** — NSIS installer (recommended)
-- **`Dibby Wemo Manager 2.0.19.exe`** — Portable single-file executable
+- **`Dibby Wemo Manager Setup 2.0.32.exe`** — NSIS installer (recommended)
+- **`Dibby Wemo Manager 2.0.32.exe`** — Portable single-file executable
 
 **macOS (universal — Intel + Apple Silicon):**
-- **`Dibby Wemo Manager-2.0.19.dmg`** — Drag to Applications
+- **`Dibby Wemo Manager-2.0.32.dmg`** — Drag to Applications
 
 The .dmg is **ad-hoc signed** (not notarised by Apple). On first launch, macOS shows "Dibby Wemo Manager can't be opened because Apple cannot check it for malicious software." To open it the first time:
 1. **Right-click** the app in Applications → **Open** → confirm in the dialog
@@ -104,17 +104,24 @@ The .dmg is **ad-hoc signed** (not notarised by Apple). On first launch, macOS s
 3. Service install via Settings → 🏠 HomeKit Bridge prompts for your macOS admin password (standard system dialog) to install the LaunchDaemon
 
 **Linux (x64):**
-- **`Dibby Wemo Manager-2.0.19.AppImage`** — Universal AppImage, runs anywhere
-- **`dibby-wemo-manager_2.0.19_amd64.deb`** — Debian / Ubuntu
-- **`dibby-wemo-manager-2.0.19.x86_64.rpm`** — Fedora / RHEL
+- **`Dibby Wemo Manager-2.0.32.AppImage`** — Universal AppImage, runs anywhere
+- **`dibby-wemo-manager_2.0.32_amd64.deb`** — Debian / Ubuntu
+- **`dibby-wemo-manager-2.0.32.x86_64.rpm`** — Fedora / RHEL
 
 **Linux (ARM64 — Raspberry Pi 4/5):**
-- **`Dibby Wemo Manager-2.0.19-arm64.AppImage`**
-- **`dibby-wemo-manager_2.0.19_arm64.deb`**
+- **`Dibby Wemo Manager-2.0.32-arm64.AppImage`**
+- **`dibby-wemo-manager_2.0.32_arm64.deb`**
 
-> **Headless 24/7 mode on Linux** (systemd service) is not yet implemented — planned for v2.0.20. The desktop app still works fine for device control + DWM rule editing while open.
+> **Headless 24/7 mode on Linux** — implemented via the Synology / Docker path below. The desktop app works fine for interactive device control + DWM rule editing while open; the Docker image (next section) is the recommended always-on host on Linux.
 
-Run the installer (Windows) / drag-to-Applications (macOS) / AppImage (Linux). Wemo devices are discovered automatically via SSDP on your local network.
+Run the installer (Windows) / drag-to-Applications (macOS) / AppImage (Linux). Wemo devices are discovered automatically via SSDP on your local network. The full app — device dashboard, DWM rules editor, HomeKit bridge, voice commands, per-device voice training — works on every platform.
+
+**24/7 always-on host options (no laptop required):**
+
+- **Synology NAS (DSM 7+)** — Docker via Container Manager (recommended, multi-arch) or native `.spk` for Package Center. See the [Synology NAS](#synology-nas-dsm-7) install section below for the one-screen recipe.
+- **Generic Linux Docker host** — `docker pull ghcr.io/k0rb3nd4ll4s/dibby-wemo-manager:latest` and run with `network_mode: host` so HomeKit's mDNS + Wemo's SSDP can reach the LAN.
+- **Homebridge** — install `homebridge-dibby-wemo` (next section). Devices appear in HomeKit + a full custom UI panel exposes the rule engine.
+- **Home Assistant** — install via HACS (Home Assistant section below). The DWM scheduler runs inside HA itself.
 
 ### Homebridge Plugin
 

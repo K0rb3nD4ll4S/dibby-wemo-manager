@@ -35,6 +35,13 @@ export default defineConfig({
           'firewall':             resolve(__dirname, 'src/main/firewall.js'),
           'core/sun':             resolve(__dirname, 'src/main/core/sun.js'),
           'core/types':           resolve(__dirname, 'src/main/core/types.js'),
+          // Five main-process modules (homekit.ipc, rules.ipc, scheduler-
+          // standalone, service-manager, service-manager-sync) do a runtime
+          // `require('./core/paths')`. Without this explicit input the
+          // tree-shaker drops the module entirely; the main process then
+          // crashes at startup with "Cannot find module '../core/paths'"
+          // and the BrowserWindow never reaches ready-to-show -> no GUI.
+          'core/paths':           resolve(__dirname, 'src/main/core/paths.js'),
         },
       },
     },
