@@ -59,8 +59,26 @@ jobs:
         run: node scripts/bundle-standalone.js
         working-directory: apps/desktop
 
-      - name: Build Windows x64 packages
-        run: npx electron-builder --win --x64 --publish never --config.win.certificateFile="" --config.win.certificatePassword=""
+      - name: Strip code-signing config for CI builds
+        # The real SRS IT code-signing PFX never lands on a CI runner.
+        # electron-builder reads `build.win.signtoolOptions.certificateFile`
+        # from package.json and tries to sign the .exe with it; the missing
+        # file fails the whole build.  Remove the signtoolOptions block in
+        # place so electron-builder produces an unsigned .exe instead.
+        # CI artifacts are unsigned — locally-built releases re-add the cert
+        # via the unmodified package.json.
+        shell: pwsh
+        working-directory: apps/desktop
+        run: |
+          $pkg = Get-Content package.json -Raw | ConvertFrom-Json
+          if ($pkg.build.win.PSObject.Properties.Name -contains 'signtoolOptions') {
+            $pkg.build.win.PSObject.Properties.Remove('signtoolOptions')
+            $pkg | ConvertTo-Json -Depth 60 | Set-Content package.json -Encoding UTF8
+            Write-Host "Stripped build.win.signtoolOptions for CI build."
+          }
+
+      - name: Build Windows x64 packages (unsigned)
+        run: npx electron-builder --win --x64 --publish never
         working-directory: apps/desktop
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
