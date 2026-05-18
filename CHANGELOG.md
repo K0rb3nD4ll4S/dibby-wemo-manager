@@ -4,6 +4,32 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.32] — 2026-05-17
+
+### Visual: zoomed icon framing so the mark matches surrounding Windows icons
+
+User feedback on v2.0.30/.31 — the 7G dark-flat icon looked **noticeably smaller** on the Windows desktop than its neighbours (WinRAR, Git Bash, Claude, etc.), because those apps push their visible mark right to the canvas edges while the 7G design left the corners "rounded into" empty space. Even though the source PNG already fills 100 % of its 1024×1024 canvas, the rounded-square outline plus the dense central mark made the optical weight ~15 % smaller than peers.
+
+Fix:
+
+1. Took the 1024×1024 master from the 7G pack.
+2. Resampled it up 1.18× via Pillow `LANCZOS`, then centre-cropped back to 1024×1024 — effectively zooming the artwork by ~18 % so the rounded square fills more of the canvas and the central mark gains visual weight.
+3. Regenerated **every** sized PNG (16, 24, 32, 48, 64, 72, 96, 128, 144, 192, 256, 512, 1024) and the multi-resolution `icon.ico` from the new zoomed master.
+4. Re-distributed all assets across the 10 file paths last updated in v2.0.30 (desktop `.ico` + `.png`, HA + brand, Synology `.spk`, Homebridge + Node-RED + MQTT bridge npm tarballs, web UI fallback, Docker image bundle).
+
+Side benefit: the 256×256 layer in `icon.ico` is now visibly tighter when Windows uses it for the Start menu Jump-List, taskbar pin, and Alt-Tab thumbnail.
+
+### Affected packages
+
+All monorepo packages bumped to **2.0.32** in unified versioning. Pure asset refresh — no functional code changes.
+
+### Upgrade
+
+- **Desktop (Windows):** download the new portable `.exe` or NSIS installer from the v2.0.32 release page after CI finishes. Existing installs auto-pick the new icon at the next launch.
+- **Docker / Synology / Homebridge / Node-RED / HA:** the new icon ships in v2.0.32; usual upgrade flow on each surface picks it up.
+
+---
+
 ## [2.0.31] — 2026-05-17
 
 ### Fix: Homebridge UI plugin tile now shows the 7G dark-flat icon
