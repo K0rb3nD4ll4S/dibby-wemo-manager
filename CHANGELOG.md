@@ -4,7 +4,7 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
-## [2.0.32] — 2026-05-17
+## [2.0.33] — 2026-05-17
 
 ### Critical fix: desktop app now actually launches its window (regression dating back to v2.0.30)
 
@@ -27,9 +27,9 @@ Fix — single line in `apps/desktop/electron.vite.config.js`:
 'core/paths':           resolve(__dirname, 'src/main/core/paths.js'),
 ```
 
-Verified end-to-end: `npm run dev` produces a window titled "Dibby Wemo Manager" with a valid `MainWindowHandle`; freshly-built `Dibby Wemo Manager Setup 2.0.32.exe` installs and launches on Windows 11 with no further intervention.
+Verified end-to-end: `npm run dev` produces a window titled "Dibby Wemo Manager" with a valid `MainWindowHandle`; freshly-built `Dibby Wemo Manager Setup 2.0.33.exe` installs and launches on Windows 11 with no further intervention.
 
-This bug affected **every** desktop installer published since v2.0.30 — Windows / macOS / Linux. Users on v2.0.30 or v2.0.31 should upgrade to v2.0.32.
+This bug affected **every** desktop installer published since v2.0.30 — Windows / macOS / Linux. Users on v2.0.30 or v2.0.31 should upgrade to v2.0.33.
 
 ### Visual: switched icon to the 7G `green_bg` variant for full-canvas fill
 
@@ -58,22 +58,22 @@ Three workflow fixes from the v2.0.30 attempt that previously needed manual disp
 
 ### README — Quick Start updated
 
-- Filenames bumped from `2.0.19` → `2.0.32` across every download example.
+- Filenames bumped from `2.0.19` → `2.0.33` across every download example.
 - New **"24/7 always-on host options"** subsection lists Synology (Docker + `.spk`), generic Linux Docker, Homebridge, and Home Assistant as alternatives to leaving a laptop running.
 - "Headless 24/7 mode on Linux planned for v2.0.20" note removed — that functionality is delivered via the Synology / Docker path.
 
 ### Affected packages
 
-All monorepo packages bumped to **2.0.32** in unified versioning. The desktop fix is in the **desktop installers only**; `homebridge-dibby-wemo@2.0.32` / `node-red-contrib-dibby-wemo@2.0.32` get the version bump + new icon but no functional change beyond that.
+All monorepo packages bumped to **2.0.33** in unified versioning. The desktop fix is in the **desktop installers only**; `homebridge-dibby-wemo@2.0.33` / `node-red-contrib-dibby-wemo@2.0.33` get the version bump + new icon but no functional change beyond that.
 
 ### Upgrade
 
-- **Desktop (Windows / macOS / Linux):** **important** — upgrade from v2.0.30/v2.0.31 to v2.0.32 to actually be able to see the app window. Download the installer for your platform from the v2.0.32 release page once CI finishes attaching artifacts.
+- **Desktop (Windows / macOS / Linux):** **important** — upgrade from v2.0.30/v2.0.31 to v2.0.33 to actually be able to see the app window. Download the installer for your platform from the v2.0.33 release page once CI finishes attaching artifacts.
 - **Synology Container Manager / Docker:** Stop → Build → Start (pulls `:latest`).
 - **Synology `.spk`:** download the new `.spk` for your arch → Package Center → Manual Install.
-- **Homebridge:** `npm install -g homebridge-dibby-wemo@2.0.32` then restart Homebridge.
-- **Node-RED:** `npm install -g node-red-contrib-dibby-wemo@2.0.32` then restart Node-RED.
-- **HACS:** ⋮ → Reload data → Dibby Wemo → ⋮ → Redownload → 2.0.32 → restart HA.
+- **Homebridge:** `npm install -g homebridge-dibby-wemo@2.0.33` then restart Homebridge.
+- **Node-RED:** `npm install -g node-red-contrib-dibby-wemo@2.0.33` then restart Node-RED.
+- **HACS:** ⋮ → Reload data → Dibby Wemo → ⋮ → Redownload → 2.0.33 → restart HA.
 
 ---
 
