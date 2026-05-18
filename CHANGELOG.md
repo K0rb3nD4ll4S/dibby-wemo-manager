@@ -4,6 +4,38 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.34] — 2026-05-18
+
+### Visual: hand-authored `icon.ico` replaces the auto-generated 7G_green_bg variant
+
+User-supplied `icon.ico` (432 KB, RGBA, **nine** embedded layers — 16 / 24 / 32 / 48 / 64 / 72 / 96 / 128 / 256) is now the canonical Dibby Wemo mark on every surface. SHA-256 of the in-repo copy at `apps/desktop/resources/icon.ico` matches the source byte-for-byte (`1174600D…E107`), so the embedded artwork is exactly the user-authored mark — no Pillow downscale, no LANCZOS resample, no alpha conversion.
+
+Every other surface (HA card, Synology `.spk` 72 + 256, Homebridge / Node-RED / MQTT-bridge npm tarballs, Docker bundle, `brand/`) is rendered from the .ico's own 256 × 256 layer extracted via Pillow, so the cross-platform PNGs are pixel-identical to what Windows displays.
+
+| Path | Source |
+|------|--------|
+| `apps/desktop/resources/icon.ico` | **direct binary copy** of user's hand-authored `icon.ico` — all 9 layers preserved |
+| `apps/desktop/resources/icon.png` (512 × 512) | 256-layer upscale via LANCZOS |
+| Everything else (10 PNG paths across HA / SPK / Homebridge / Node-RED / MQTT) | derived from the .ico's own 256 × 256 layer |
+
+Verified via `Get-FileHash`: the 432 254-byte `.ico` on disk and the source on Desktop have identical SHA-256, and the built `dist\win-unpacked\Dibby Wemo Manager.exe` was `rcedit`-stamped with this exact .ico (electron-builder `win.icon` field). The installer .exe, the portable .exe, the installed app .exe, and the desktop + Start-menu shortcuts NSIS creates all derive from this one source.
+
+### Affected packages
+
+All monorepo packages bumped to **2.0.34** in unified versioning. Pure asset refresh — no functional code changes; carries forward the v2.0.33 desktop-launch fix (critical missing `core/paths.js` bundle), voice commands, sticky devices, manual add, Synology support, etc.
+
+### Upgrade
+
+- **Desktop (Windows):** download `Dibby Wemo Manager Setup 2.0.34.exe` (NSIS) or `Dibby Wemo Manager 2.0.34.exe` (portable). **Uninstall the prior version first** so Windows refreshes its icon cache for this app — Windows caches icons aggressively by file path.
+- **macOS:** download the new `.dmg` from this release.
+- **Docker / Synology Container Manager:** Stop → Build → Start (`:latest` now points at 2.0.34).
+- **Synology `.spk`:** download the new `.spk` for your arch → Package Center → Manual Install.
+- **Homebridge:** `npm install -g homebridge-dibby-wemo@2.0.34` then restart Homebridge.
+- **Node-RED:** `npm install -g node-red-contrib-dibby-wemo@2.0.34`.
+- **HACS:** ⋮ → Reload data → Dibby Wemo → ⋮ → Redownload → 2.0.34 → restart HA.
+
+---
+
 ## [2.0.33] — 2026-05-17
 
 ### Critical fix: desktop app now actually launches its window (regression dating back to v2.0.30)
