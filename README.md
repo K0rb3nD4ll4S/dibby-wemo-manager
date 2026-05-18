@@ -516,14 +516,14 @@ Each [GitHub Release](../../releases) includes:
 
 | File | OS | Description |
 |---|---|---|
-| `Dibby Wemo Manager Setup 2.0.18.exe` | Windows | NSIS installer (recommended) |
-| `Dibby Wemo Manager 2.0.18.exe` | Windows | Portable executable |
-| `Dibby Wemo Manager-2.0.18.AppImage` | Linux x64 | Universal AppImage |
-| `dibby-wemo-manager_2.0.18_amd64.deb` | Linux x64 | Debian / Ubuntu package |
-| `dibby-wemo-manager-2.0.18.x86_64.rpm` | Linux x64 | Fedora / RHEL package |
-| `Dibby Wemo Manager-2.0.18-arm64.AppImage` | Linux ARM64 | Raspberry Pi 4/5 AppImage |
-| `dibby-wemo-manager_2.0.18_arm64.deb` | Linux ARM64 | Raspberry Pi OS package |
-| `homebridge-dibby-wemo-2.0.18.tgz` | Any | Homebridge plugin npm package |
+| `Dibby Wemo Manager Setup 2.0.33.exe` | Windows | NSIS installer (recommended) |
+| `Dibby Wemo Manager 2.0.33.exe` | Windows | Portable executable |
+| `Dibby Wemo Manager-2.0.33.AppImage` | Linux x64 | Universal AppImage |
+| `dibby-wemo-manager_2.0.33_amd64.deb` | Linux x64 | Debian / Ubuntu package |
+| `dibby-wemo-manager-2.0.33.x86_64.rpm` | Linux x64 | Fedora / RHEL package |
+| `Dibby Wemo Manager-2.0.33-arm64.AppImage` | Linux ARM64 | Raspberry Pi 4/5 AppImage |
+| `dibby-wemo-manager_2.0.33_arm64.deb` | Linux ARM64 | Raspberry Pi OS package |
+| `homebridge-dibby-wemo-2.0.33.tgz` | Any | Homebridge plugin npm package |
 
 ---
 
