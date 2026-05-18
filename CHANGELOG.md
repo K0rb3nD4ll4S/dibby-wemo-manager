@@ -4,6 +4,34 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.31] — 2026-05-17
+
+### Fix: Homebridge UI plugin tile now shows the 7G dark-flat icon
+
+v2.0.30 shipped `icon.png` inside the npm tarball (verified via `npm pack --dry-run`), but Homebridge UI v5+ doesn't read images from the tarball. It looks for an explicit `icon` URL in the plugin's `package.json`, or falls back to the default house icon — which is what was rendering on every user's Plugins page.
+
+Three fixes:
+
+1. **`packages/homebridge-plugin/package.json`** — added a top-level `icon` field pointing to the raw-GitHub URL of the bundled `icon.png`:
+   ```json
+   "icon": "https://raw.githubusercontent.com/K0rb3nD4ll4S/dibby-wemo-manager/main/packages/homebridge-plugin/icon.png"
+   ```
+   Homebridge UI's plugin-tile renderer reads this field directly from the npm registry metadata, so the new icon appears on every user's Plugins page after the next plugin-metadata refresh.
+
+2. **`displayName`** — set to `"Dibby Wemo"` so the plugin's friendly name on the tile says **Dibby Wemo** instead of the auto-derived **Homebridge Dibby Wemo**. Cleaner, matches the desktop / web / DSM / HA branding.
+
+3. **`packages/homebridge-plugin/config.schema.json`** — `headerDisplay` now leads with the icon as a 96 px centred image plus the existing description text, so the settings dialog also shows the brand mark when users click into Configure.
+
+### Affected packages
+All monorepo packages bumped to **2.0.31** in unified versioning. Only `homebridge-dibby-wemo@2.0.31` ships functional metadata changes in this release; every other surface (desktop apps, Synology `.spk`, Docker image, HA integration, Node-RED, MQTT bridge) gets the version bump but already had the new icon from v2.0.30.
+
+### Upgrade
+
+- **Homebridge:** `npm install -g homebridge-dibby-wemo@2.0.31`, then in Homebridge UI: **Plugins → Search → Dibby Wemo** (or refresh the page) — the icon updates after the next metadata fetch from the npm registry. May take 1–2 minutes for the npm CDN + Homebridge UI cache to pick up the new metadata.
+- Everything else: no action required for this release.
+
+---
+
 ## [2.0.30] — 2026-05-17
 
 ### Visual: unified 7G-dark-flat icon across every surface

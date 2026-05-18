@@ -3,7 +3,7 @@
   "pluginType": "platform",
   "singular": true,
   "customUi": true,
-  "headerDisplay": "**Dibby Wemo Manager** – Local Wemo control with DWM scheduling. No Belkin cloud required.",
+  "headerDisplay": "<p align=\"center\"><img src=\"https://raw.githubusercontent.com/K0rb3nD4ll4S/dibby-wemo-manager/main/packages/homebridge-plugin/icon.png\" alt=\"Dibby Wemo Manager\" width=\"96\" /></p>\n\n**Dibby Wemo Manager** – Local Wemo control with DWM scheduling. No Belkin cloud required.",
   "schema": {
     "type": "object",
     "properties": {
