@@ -4,6 +4,41 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.35] — 2026-05-18
+
+### Fix: Synology / Docker "EACCES: permission denied, open '/data/dibby-wemo.json'" on Scan
+
+Synology DSM bind-mounted shared folders frequently carry filesystem ACLs that block the container from `chown`-ing the mount — even as root. The previous `docker/entrypoint.sh` chowned `/data` best-effort, swallowed the failure (`2>/dev/null || true`), then unconditionally dropped privileges to the unprivileged `dibby` user via `su-exec`. When the chown silently failed, `/data` stayed root-owned and the dropped-privilege Node process couldn't write — so the first **Scan** (which persists discovered devices to `/data/dibby-wemo.json`) failed with:
+
+```
+Scan failed: {"error":"EACCES: permission denied, open '/data/dibby-wemo.json'"}
+```
+
+The container also appeared to "not create the data folder" because the write that would have populated it never succeeded.
+
+Fix — `docker/entrypoint.sh` now **probes writability and falls back to root**:
+
+1. `mkdir -p $DATA_DIR` (handles Docker auto-creating a bind-mount source as root).
+2. Remap the `dibby` user to `PUID`/`PGID` and best-effort `chown` as before.
+3. **Probe**: attempt `touch $DATA_DIR/.dwm-write-test` as `dibby`. If it works, run unprivileged as before.
+4. If the probe fails, retry after a `chmod`, then re-probe. If still not writable (the Synology ACL case), **run the server as root** so the data store is always writable — a working root-owned install beats a "secure" install that can't save anything.
+5. Final guard: if even root can't write `$DATA_DIR`, exit with a clear message pointing at the host bind-mount permissions instead of letting Node throw the cryptic EACCES at Scan time.
+
+`docker/synology-compose.yml` updated with: a clearer instruction to pre-create the `data` folder in File Station (so it's owned by your DSM user), a sixth step confirming where settings persist, and a "Permissions note" explaining the root fallback.
+
+No change to the unprivileged path on normal Linux Docker hosts — the probe passes there and the server still runs as `dibby`.
+
+### Affected packages
+
+All monorepo packages bumped to **2.0.35** in unified versioning. The fix is in the **Docker image entrypoint only** (rebuilt by CI on this tag); desktop installers, npm packages, and the HA integration are unchanged beyond the version bump and carry forward v2.0.34's hand-authored icon.
+
+### Upgrade
+
+- **Synology Container Manager / Docker:** Project → `dibby-wemo` → **Stop → Build → Start** to pull the rebuilt `:latest` (now 2.0.35). After it restarts, click **Scan** — discovery now persists to `/volume1/docker/dibby-wemo/data/dibby-wemo.json` without the EACCES error.
+- All other surfaces: version bump only; upgrade at your convenience.
+
+---
+
 ## [2.0.34] — 2026-05-18
 
 ### Visual: hand-authored `icon.ico` replaces the auto-generated 7G_green_bg variant

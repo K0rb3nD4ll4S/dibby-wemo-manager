@@ -3,13 +3,19 @@
 #
 #  How to use (DSM 7 + Container Manager):
 #    1. File Station → /volume1/docker → create folder `dibby-wemo`
-#    2. Inside it, create another folder `data` (this is where settings live)
+#    2. Inside it, create another folder `data` (this is where settings live).
+#       IMPORTANT: create this `data` folder yourself in File Station so it's
+#       owned by your DSM user.  If you skip it, Docker auto-creates it as
+#       root and the container falls back to running as root to stay writable
+#       (works fine, just less tidy).
 #    3. Container Manager → Project → Create
 #       - Project name:   dibby-wemo
 #       - Path:           /volume1/docker/dibby-wemo
 #       - Source:         "Create docker-compose.yml" — paste this whole file
 #    4. Next → Done.  Container Manager pulls the image and starts it.
 #    5. Browse to  http://<your-NAS-IP>:3456  → the Dibby Wemo web UI loads.
+#    6. Click "Scan" to discover Wemos.  Settings persist to
+#       /volume1/docker/dibby-wemo/data/dibby-wemo.json
 #
 #  Why network_mode: host?
 #    HomeKit (mDNS / Bonjour broadcast) and SSDP discovery (multicast) cannot
@@ -17,6 +23,16 @@
 #    lets the container see the LAN exactly the way the NAS does.  No port
 #    publishing is needed in this mode (the `ports:` section is intentionally
 #    absent).
+#
+#  Permissions note:
+#    On Synology, bind-mounted shared folders sometimes carry DSM ACLs that
+#    block the container from chown-ing the folder — which previously caused
+#    "EACCES: permission denied, open '/data/dibby-wemo.json'" when you hit
+#    Scan.  The container now probes whether it can write the data dir as the
+#    PUID/PGID user and, if not, automatically runs as root so the data store
+#    is always writable.  Set PUID/PGID below to your DSM user (run `id` over
+#    SSH) for tidy ownership, or leave the defaults and let the root fallback
+#    handle it.
 # ────────────────────────────────────────────────────────────────────────────────
 
 services:
