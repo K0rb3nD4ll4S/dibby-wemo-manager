@@ -240,20 +240,54 @@ class DibbyWemoUiServer extends HomebridgePluginUiServer {
     });
 
     this.onRequest('/location/search', async ({ query }) => {
+      const q = String(query || '').trim();
+      if (!q) return { results: [], error: 'empty query' };
+
+      // Nominatim's usage policy requires a valid User-Agent that identifies
+      // the application — the previous value had a typo ("homebrige") which
+      // Nominatim's anti-abuse filter sometimes rejects.  Use a stable,
+      // namespaced identifier with a contact URL per their guidelines.
+      const UA = 'homebridge-dibby-wemo (+https://github.com/K0rb3nD4ll4S/dibby-wemo-manager)';
+
       try {
         const res = await axios.get('https://nominatim.openstreetmap.org/search', {
-          params: { q: query, format: 'json', limit: 8, addressdetails: 1 },
-          headers: { 'User-Agent': 'homebrige-dibby-wemo/1.0' },
+          params:  { q, format: 'json', limit: 8, addressdetails: 1 },
+          headers: { 'User-Agent': UA, 'Accept-Language': 'en' },
           timeout: 8000,
+          // Treat 4xx/5xx as errors so the catch block can report them
+          validateStatus: (s) => s >= 200 && s < 300,
         });
-        return (res.data || []).map((r) => ({
-          lat: parseFloat(r.lat),
-          lng: parseFloat(r.lon),
-          label: r.display_name,
-          city: r.address?.city || r.address?.town || r.address?.village || '',
+        const results = (res.data || []).map((r) => ({
+          lat:     parseFloat(r.lat),
+          lng:     parseFloat(r.lon),
+          label:   r.display_name,
+          city:    r.address?.city || r.address?.town || r.address?.village || '',
           country: r.address?.country || '',
         }));
-      } catch { return []; }
+        // Return an object so the UI can distinguish "no matches" from an
+        // upstream error.  Old UI clients that expect an array still work
+        // because results is the canonical key — see the array-shaped
+        // adapter in index.js for the legacy code path.
+        return { results, error: null, count: results.length };
+      } catch (e) {
+        // Surface the actual failure cause so the UI can show it to the user
+        // (previously this returned [] and the input field just appeared dead).
+        const status = e.response?.status;
+        const detail = e.response?.statusText || e.code || e.message || 'unknown';
+        let userMsg;
+        if (e.code === 'ENOTFOUND' || e.code === 'EAI_AGAIN') {
+          userMsg = 'Cannot reach OpenStreetMap (Nominatim) — the Homebridge host has no internet connection.';
+        } else if (status === 429) {
+          userMsg = 'OpenStreetMap (Nominatim) rate-limited the request. Wait a few seconds and try again.';
+        } else if (status === 403) {
+          userMsg = 'OpenStreetMap (Nominatim) rejected the request. Try a different query or update the plugin.';
+        } else if (e.code === 'ETIMEDOUT' || e.code === 'ECONNABORTED') {
+          userMsg = 'Location search timed out. Check the Homebridge host\'s internet connection.';
+        } else {
+          userMsg = `Location search failed: ${detail}`;
+        }
+        return { results: [], error: userMsg, count: 0 };
+      }
     });
 
     this.ready();

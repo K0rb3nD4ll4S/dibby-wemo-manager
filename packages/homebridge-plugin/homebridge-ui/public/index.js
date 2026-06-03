@@ -1038,10 +1038,29 @@ document.getElementById('location-search-input').addEventListener('input', funct
 });
 
 async function searchLocation(query) {
+  const statusEl = document.getElementById('location-status');
+  if (statusEl) statusEl.textContent = '';
   try {
-    const results = await homebridge.request('/location/search', { query });
+    const resp = await homebridge.request('/location/search', { query });
+    // Server now returns { results, error, count }; legacy clients may still
+    // receive a bare array.  Normalise both shapes here.
+    const results = Array.isArray(resp) ? resp : (resp?.results || []);
+    const error   = Array.isArray(resp) ? null : (resp?.error || null);
+    if (error) {
+      if (statusEl) statusEl.textContent = error;
+      hideAutocomplete();
+      return;
+    }
+    if (!results.length) {
+      if (statusEl) statusEl.textContent = `No matches for "${query}".`;
+      hideAutocomplete();
+      return;
+    }
     showAutocomplete(results);
-  } catch { hideAutocomplete(); }
+  } catch (e) {
+    if (statusEl) statusEl.textContent = 'Search failed: ' + (e?.message || 'unknown');
+    hideAutocomplete();
+  }
 }
 
 function showAutocomplete(results) {

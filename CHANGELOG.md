@@ -4,6 +4,58 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.36] — 2026-05-28
+
+### Critical: stop the Homebridge plugin from destroying DWM rules + device list on upgrade
+
+User-reported regression on the Homebridge plugin: after upgrading the npm package via the Homebridge UI, DWM rules and the cached device list **disappear**. Investigation traced this to two compounding bugs in `packages/homebridge-plugin/lib/store.js`:
+
+1. **Silent catch-all in `_load()`** — every read error (file locked, partial write, EBUSY, JSON parse failure) was caught and turned into `{ ...DEFAULTS }`. The very next mutation (`saveHeartbeat`, a device toggle, a discovery merge — anything) then persisted those empty defaults via `_save()`, **permanently overwriting the user's real data**.
+
+2. **Non-atomic writes** — `_save()` was a single `fs.writeFileSync()`. The Homebridge plugin runtime and the Settings UI process both have their own `DwmStore` instance pointing at the same file; on slow disks (NAS, SD card) or under any concurrent-write race, a reader can catch the file mid-write, get partial JSON, fall into the silent catch-all above, and trigger the destruction cycle.
+
+The fix in `lib/store.js` is comprehensive:
+
+- **`_load()` distinguishes the three failure modes:**
+  - File missing (`ENOENT`) → return `DEFAULTS`, mark safe to save.
+  - File unreadable (`EACCES`, `EBUSY`, `EIO`, etc.) → return `DEFAULTS` **but flip `_safeToSave = false`**, refusing all subsequent writes until a clean read succeeds. Cannot destroy data we couldn't read.
+  - File present but unparseable JSON → quarantine it to `dibby-wemo.json.corrupt-<unix-ts>`, attempt recovery from `dibby-wemo.json.bak`, and only fall through to `DEFAULTS` if both are bad.
+
+- **Atomic `_save()` via tmp + rename:** writes to `dibby-wemo.json.tmp`, then `fs.renameSync()` over the target. Renames are atomic on POSIX and effectively-atomic on NTFS, so readers never see a partially-written file again.
+
+- **`.bak` rolling backup:** the previous-good file is `copyFileSync`'d to `dibby-wemo.json.bak` immediately before every successful rename. One rename away from disaster recovery if the main file ever gets damaged.
+
+- **Empty-write guard:** if the in-memory state about to be persisted is empty (no devices, no rules, no location, no groups, no order) **and** the last known on-disk state was non-empty, the save is **blocked** with a console warning naming the most likely cause (plugin-runtime/UI-server process race). This is the single most effective protection against the original symptom.
+
+### Fix: location search in Homebridge plugin Settings panel
+
+Two bugs in `homebridge-ui/server.js`'s `/location/search` handler:
+
+1. User-Agent header had a typo (`homebrige-dibby-wemo`) which Nominatim's anti-abuse filter occasionally rejected, causing the search to fail silently.
+2. Errors were swallowed by `catch { return []; }`, so the user saw an apparently-dead input field with no clue why nothing appeared.
+
+Fix:
+- Corrected User-Agent to `homebridge-dibby-wemo (+https://github.com/K0rb3nD4ll4S/dibby-wemo-manager)` per Nominatim's usage policy (must identify the application + contact URL).
+- Response shape changed from a bare array to `{ results, error, count }` so the UI can distinguish "no matches" from "upstream error" and show specific, actionable error messages (no internet on the Homebridge host, rate-limited by Nominatim, timeout, etc.). The UI client (`public/index.js`) now normalises both shapes for backwards compatibility.
+
+### Recovery for already-affected users
+
+Users whose Homebridge `dibby-wemo.json` was already overwritten by the v2.0.35-and-earlier bug have no in-place recovery — the wipe happens silently and there's no pre-fix `.bak` to roll back to. Workaround:
+
+- If you have a Homebridge config backup (Homebridge UI → Backup), restore it; the backup ZIP includes the storage directory and therefore the pre-wipe `dibby-wemo.json`.
+- Otherwise, recreate rules manually one time; from v2.0.36 onward they're protected by atomic writes + the `.bak` rolling backup, so this cannot happen again.
+
+### Affected packages
+
+All monorepo packages bumped to **2.0.36** in unified versioning. Functional changes are isolated to **`homebridge-dibby-wemo@2.0.36`**; the desktop apps, Synology `.spk`, Docker image, Node-RED package, MQTT bridge, and HA integration get the version bump but no functional change beyond carrying forward v2.0.35's Synology root-fallback fix.
+
+### Upgrade
+
+- **Homebridge:** `npm install -g homebridge-dibby-wemo@2.0.36` → restart Homebridge. Watch the log for `[Store] Loaded from /var/lib/homebridge/dibby-wemo.json — N device(s), M DWM rule(s).` to confirm.
+- All other surfaces: version bump only; upgrade at your convenience.
+
+---
+
 ## [2.0.35] — 2026-05-18
 
 ### Fix: Synology / Docker "EACCES: permission denied, open '/data/dibby-wemo.json'" on Scan
