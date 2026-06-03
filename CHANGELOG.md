@@ -4,6 +4,29 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.37] — 2026-06-03
+
+### Fix: location search still appeared broken after v2.0.36 (client-cache regression)
+
+v2.0.36 changed the `/location/search` response shape from a bare `Array` to `{ results, error, count }` so the UI could distinguish "no matches" from "upstream error." That change broke users whose browser had cached the v2.0.35 client code against the now-v2.0.36 server: the old client called `if (!results.length)` on the response object — `length` is `undefined` on a plain object — so the autocomplete dropdown was always hidden and search appeared dead, identical to the original v2.0.35 bug.
+
+Two fixes:
+
+1. **Backwards-compatible hybrid response** — `homebridge-ui/server.js` now returns an `Array` (which is what every cached client expects when reading `.length`), with `.error` and `.count` attached as bonus enumerable properties. Both old cached clients and new clients work; new clients still get the actionable error message via `resp.error`.
+
+2. **Permanent cache-busting on the script tag** — `homebridge-ui/public/index.html` no longer hard-codes `<script src="index.js">`. It now `document.write`s the tag with `?cb=<Date.now()>` so every fresh open of the Settings panel pulls the latest `index.js` even when the browser would otherwise re-use a stale copy from before the most recent plugin upgrade. Homebridge UI iframes share the browser cache and `@homebridge/plugin-ui-utils`' static-file server sends no cache-control header — without this guard, any future response-shape change between versions would silently break the UI for users who left the Settings tab open across the upgrade.
+
+### Affected packages
+
+All monorepo packages bumped to **2.0.37** in unified versioning. Functional changes are confined to **`homebridge-dibby-wemo@2.0.37`**; carries forward v2.0.36's atomic `DwmStore` writes + rolling `.bak` + empty-write guard (the actual data-loss fix), plus v2.0.35's Synology Docker root-fallback.
+
+### Upgrade
+
+- **Homebridge:** `npm install -g homebridge-dibby-wemo@2.0.37` → restart Homebridge. The cache-busting now ships in the bundle, so no manual browser hard-refresh should be needed; opening the Settings panel after the restart always loads fresh JS.
+- All other surfaces: version bump only.
+
+---
+
 ## [2.0.36] — 2026-05-28
 
 ### Critical: stop the Homebridge plugin from destroying DWM rules + device list on upgrade

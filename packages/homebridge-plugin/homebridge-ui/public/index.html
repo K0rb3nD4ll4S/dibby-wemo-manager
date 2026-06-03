@@ -696,6 +696,19 @@
 </div>
 
 
-<script src="index.js"></script>
+<!--
+  Cache-bust the plugin script so every fresh open of the Settings panel
+  pulls the latest `index.js` instead of a stale copy from before the most
+  recent plugin upgrade.  Homebridge UI iframes share the browser cache and
+  there's no cache-control header from `@homebridge/plugin-ui-utils`'s
+  static-file server — without this an old client + new server combo (e.g.
+  Settings tab kept open across an upgrade) silently breaks the location
+  search and any other API whose response shape changes between versions.
+-->
+<script>
+  document.write(
+    '<scr' + 'ipt src="index.js?cb=' + Date.now() + '"></scr' + 'ipt>'
+  );
+</script>
 </body>
 </html>

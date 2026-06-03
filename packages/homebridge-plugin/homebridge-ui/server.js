@@ -241,13 +241,35 @@ class DibbyWemoUiServer extends HomebridgePluginUiServer {
 
     this.onRequest('/location/search', async ({ query }) => {
       const q = String(query || '').trim();
-      if (!q) return { results: [], error: 'empty query' };
 
       // Nominatim's usage policy requires a valid User-Agent that identifies
       // the application — the previous value had a typo ("homebrige") which
       // Nominatim's anti-abuse filter sometimes rejects.  Use a stable,
       // namespaced identifier with a contact URL per their guidelines.
       const UA = 'homebridge-dibby-wemo (+https://github.com/K0rb3nD4ll4S/dibby-wemo-manager)';
+
+      // Helper — returns an Array with bonus `.error` / `.count` properties so
+      // BOTH client styles keep working through cache-staleness:
+      //
+      //   v2.0.35 client (cached after a v2.0.36 upgrade):
+      //     `if (!results.length) hideAutocomplete()`
+      //         → reads .length off the array → works correctly
+      //
+      //   v2.0.37+ client:
+      //     `Array.isArray(resp)` → true → uses array directly; reads
+      //     `resp.error` for upstream-failure messages.
+      //
+      // Without this hybrid shape, a v2.0.35-cached client against a
+      // v2.0.36 server saw `{results, error, count}.length === undefined`,
+      // hid the dropdown unconditionally, and search appeared dead.
+      function reply(results, error) {
+        const arr = results || [];
+        arr.error = error || null;
+        arr.count = arr.length;
+        return arr;
+      }
+
+      if (!q) return reply([], 'empty query');
 
       try {
         const res = await axios.get('https://nominatim.openstreetmap.org/search', {
@@ -264,11 +286,7 @@ class DibbyWemoUiServer extends HomebridgePluginUiServer {
           city:    r.address?.city || r.address?.town || r.address?.village || '',
           country: r.address?.country || '',
         }));
-        // Return an object so the UI can distinguish "no matches" from an
-        // upstream error.  Old UI clients that expect an array still work
-        // because results is the canonical key — see the array-shaped
-        // adapter in index.js for the legacy code path.
-        return { results, error: null, count: results.length };
+        return reply(results, null);
       } catch (e) {
         // Surface the actual failure cause so the UI can show it to the user
         // (previously this returned [] and the input field just appeared dead).
@@ -286,7 +304,7 @@ class DibbyWemoUiServer extends HomebridgePluginUiServer {
         } else {
           userMsg = `Location search failed: ${detail}`;
         }
-        return { results: [], error: userMsg, count: 0 };
+        return reply([], userMsg);
       }
     });
 
