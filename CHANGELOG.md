@@ -4,6 +4,56 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.38] — 2026-06-03
+
+### Fix: scheduled OFF rules now self-enforce instead of giving up after one shot
+
+**Symptom (user-reported):** A scheduled rule had Family Room Lamp + Kitchen Island Light as targets, both set to turn off at the same time each evening. Two nights in a row, the Lamp went off correctly but the Kitchen Island Light stayed on overnight.
+
+**Root cause** in `packages/homebridge-plugin/lib/scheduler.js`: a Schedule rule fired a single `setBinaryState` per target device, confirmed once after 3 s, retried once if the confirm came back wrong, then **walked away forever**. Once `_fire()` returned and the device was marked in `_firedToday`, nothing in the scheduler ever compared the device's actual state to the rule's intended state again. Three real-world failure paths produced the user's exact symptom:
+
+1. **Silent manual re-toggle.** Someone presses the physical Wemo button, taps it in Apple Home, or hits it from the Wemo app between the rule firing and morning. No enforcement layer = device stays in the wrong state.
+2. **Past-retry failure.** The single retry happens 5 s after the initial confirm fails. If that retry also throws (network blip, switch radio asleep, SOAP timeout), the catch block swallows the error and the device is stuck.
+3. **Confirm-read race.** Wemo's `GetBinaryState` occasionally reports stale state for a second or two after `SetBinaryState`. The current code accepts the confirm as authoritative and never re-checks.
+
+**Fix — continuous state enforcement via the existing 10-second health poll, Schedule rules only:**
+
+- **`_intendedState: Map<host:port, {on, ruleId, ruleName, since}>`** is populated by `_fire()` immediately for any entry flagged `isSchedule: true`. The map records the intended state up-front, so even if the SOAP call throws the scheduler still knows the correct target.
+- **`_pollDeviceHealth()`** (which already polls every 10 s) now consults `_intendedState` after each `getBinaryState`. If the actual state differs from the intended state and the device is not under an AlwaysOn rule, it issues a corrective `setBinaryState` and emits a log line:
+
+  ```
+  [enforce] Kitchen Island Light was ON — turned OFF (rule "Evening Off") ✓
+  ```
+
+- **`_seedIntendedState()`** runs at scheduler start, walking today's past-fired Schedule entries in chronological order and seeding `_intendedState` with the most recent one per device. This catches drift that accumulated while Homebridge was stopped — restart Homebridge at 11 PM after a 9:30 PM OFF rule, and the very first health poll corrects any device a manual toggle (or silent SOAP failure) left in the wrong state.
+
+**What's deliberately NOT enforced:**
+
+- **Countdown rules** — they have a fluctuating intended state (on-for-N-minutes-then-off) and their own scheduler tick handles the off side.
+- **Away rules** — randomised on/off by design; enforcement would defeat the purpose.
+- **Trigger rules** — driven reactively by other devices' state changes.
+- **AlwaysOn rules** — already enforced via the existing `alwaysOnSet` path; the new enforcement defers to it for any device that has an AlwaysOn target.
+
+So **manual toggles on non-scheduled devices still work normally** — only devices that have a Schedule entry today get auto-corrected back to the rule's intended state.
+
+### What this means in practice
+
+- After a 9:30 PM OFF rule fires for two devices, if anyone turns one of them back on (physical button, Apple Home, Wemo app, voice command via Siri), the scheduler notices within 10 s and turns it off again. The "off" stays off until the next Schedule entry for that device flips the intended state (e.g. a 6 AM ON rule the next morning).
+- If you want a device to stay ON after a Schedule OFF rule fired, the right answer is to disable or edit the rule — not to fight the system from another UI. The behaviour matches the user's stated expectation: *"it should always turn the device off."*
+
+### Affected packages
+
+All monorepo packages bumped to **2.0.38** in unified versioning. Functional change is **confined to `homebridge-dibby-wemo@2.0.38`**. The desktop apps, Synology Docker, Synology `.spk`, HA integration, and Node-RED package get the version bump only — they carry forward v2.0.37's location-search fix, v2.0.36's `DwmStore` atomic-write protection, and v2.0.35's Synology container root-fallback.
+
+The desktop / standalone / HA schedulers have the same one-shot pattern in their own codepaths; if the same symptom shows up there, the fix pattern ports directly. Scoped to Homebridge for v2.0.38 to limit blast radius until the user confirms the fix works for the reported regression.
+
+### Upgrade
+
+- **Homebridge:** `npm install -g homebridge-dibby-wemo@2.0.38` → restart Homebridge. Watch the log: when a Schedule rule fires you'll see `"Evening Off" → OFF (192.168.x.y) ✓` as before; if anything drifts later you'll see a follow-up `[enforce] DeviceName was ON — turned OFF (rule "Evening Off") ✓` from the next 10-second poll.
+- All other surfaces: version bump only.
+
+---
+
 ## [2.0.37] — 2026-06-03
 
 ### Fix: location search still appeared broken after v2.0.36 (client-cache regression)

@@ -16,8 +16,8 @@ Download the latest release from [GitHub Releases](../../releases):
 
 | File | Description |
 |---|---|
-| `Dibby Wemo Manager Setup 2.0.37.exe` | **NSIS installer** — recommended, installs to Program Files, adds Start Menu shortcut |
-| `Dibby Wemo Manager 2.0.37.exe` | **Portable** — single executable, no installation, runs from any folder |
+| `Dibby Wemo Manager Setup 2.0.38.exe` | **NSIS installer** — recommended, installs to Program Files, adds Start Menu shortcut |
+| `Dibby Wemo Manager 2.0.38.exe` | **Portable** — single executable, no installation, runs from any folder |
 
 Run the installer or portable exe. The app opens and immediately begins discovering Wemo devices on your network.
 
@@ -25,26 +25,26 @@ Run the installer or portable exe. The app opens and immediately begins discover
 
 | File | Description |
 |---|---|
-| `Dibby Wemo Manager-2.0.37.AppImage` | **AppImage** — universal, runs on any modern Linux distro. No install needed. |
-| `dibby-wemo-manager_2.0.37_amd64.deb` | **Debian / Ubuntu** package |
-| `dibby-wemo-manager-2.0.37.x86_64.rpm` | **Fedora / RHEL / openSUSE** package |
-| `Dibby Wemo Manager-2.0.37-arm64.AppImage` | **AppImage (ARM64)** — Raspberry Pi 4/5, Apple Silicon VMs |
-| `dibby-wemo-manager_2.0.37_arm64.deb` | **Debian ARM64** — Raspberry Pi OS |
+| `Dibby Wemo Manager-2.0.38.AppImage` | **AppImage** — universal, runs on any modern Linux distro. No install needed. |
+| `dibby-wemo-manager_2.0.38_amd64.deb` | **Debian / Ubuntu** package |
+| `dibby-wemo-manager-2.0.38.x86_64.rpm` | **Fedora / RHEL / openSUSE** package |
+| `Dibby Wemo Manager-2.0.38-arm64.AppImage` | **AppImage (ARM64)** — Raspberry Pi 4/5, Apple Silicon VMs |
+| `dibby-wemo-manager_2.0.38_arm64.deb` | **Debian ARM64** — Raspberry Pi OS |
 
 **AppImage:**
 ```bash
-chmod +x "Dibby Wemo Manager-2.0.37.AppImage"
-./"Dibby Wemo Manager-2.0.37.AppImage"
+chmod +x "Dibby Wemo Manager-2.0.38.AppImage"
+./"Dibby Wemo Manager-2.0.38.AppImage"
 ```
 
 **Debian / Ubuntu (.deb):**
 ```bash
-sudo dpkg -i dibby-wemo-manager_2.0.37_amd64.deb
+sudo dpkg -i dibby-wemo-manager_2.0.38_amd64.deb
 ```
 
 **Fedora / RHEL (.rpm):**
 ```bash
-sudo rpm -i dibby-wemo-manager-2.0.37.x86_64.rpm
+sudo rpm -i dibby-wemo-manager-2.0.38.x86_64.rpm
 ```
 
 ---
@@ -214,8 +214,8 @@ npm run build:win
 ```
 
 Output in `apps/desktop/dist/`:
-- `Dibby Wemo Manager Setup 2.0.37.exe` — NSIS installer
-- `Dibby Wemo Manager 2.0.37.exe` — portable exe
+- `Dibby Wemo Manager Setup 2.0.38.exe` — NSIS installer
+- `Dibby Wemo Manager 2.0.38.exe` — portable exe
 
 > **Code signing:** The build config expects a PFX certificate at `resources/srsit-codesign.pfx`. Remove the `win.certificateFile` entry from `package.json` if you don't have a certificate.
 
@@ -229,9 +229,9 @@ npm run build:linux
 ```
 
 Output in `apps/desktop/dist/`:
-- `Dibby Wemo Manager-2.0.37.AppImage`
-- `dibby-wemo-manager_2.0.37_amd64.deb`
-- `dibby-wemo-manager-2.0.37.x86_64.rpm`
+- `Dibby Wemo Manager-2.0.38.AppImage`
+- `dibby-wemo-manager_2.0.38_amd64.deb`
+- `dibby-wemo-manager-2.0.38.x86_64.rpm`
 
 #### Linux ARM64 (Raspberry Pi / Apple Silicon)
 
@@ -241,8 +241,8 @@ npm run build:linux:arm64
 ```
 
 Output in `apps/desktop/dist/`:
-- `Dibby Wemo Manager-2.0.37-arm64.AppImage`
-- `dibby-wemo-manager_2.0.37_arm64.deb`
+- `Dibby Wemo Manager-2.0.38-arm64.AppImage`
+- `dibby-wemo-manager_2.0.38_arm64.deb`
 
 #### All targets at once
 

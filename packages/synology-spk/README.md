@@ -53,11 +53,11 @@ From the repo root:
 Outputs land in `packages/synology-spk/dist/`:
 
 ```
-dibby-wemo-manager_apollolake_2.0.37.spk
-dibby-wemo-manager_geminilake_2.0.37.spk
-dibby-wemo-manager_denverton_2.0.37.spk
-dibby-wemo-manager_broadwell_2.0.37.spk
-dibby-wemo-manager_rtd1296_2.0.37.spk
+dibby-wemo-manager_apollolake_2.0.38.spk
+dibby-wemo-manager_geminilake_2.0.38.spk
+dibby-wemo-manager_denverton_2.0.38.spk
+dibby-wemo-manager_broadwell_2.0.38.spk
+dibby-wemo-manager_rtd1296_2.0.38.spk
 ```
 
 Build a single arch only:

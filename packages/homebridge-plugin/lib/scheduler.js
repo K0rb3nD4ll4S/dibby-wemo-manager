@@ -104,6 +104,13 @@ class DwmScheduler {
     this._triggerStates   = new Map();   // 'host:port' → last known boolean state (for Trigger rules)
     this._countdownStates = new Map();   // 'host:port' → last known boolean state (for Countdown rules)
     this._countdownTimers = new Map();   // 'deviceKey-ruleId' → {timer, wantOn}
+    // _intendedState — populated by every Schedule rule that fires; consulted
+    // on every health poll to detect drift (manual toggle, silent SOAP failure,
+    // confirm-read race, etc.) and re-issue the corrective setBinaryState.
+    // Key = 'host:port'. Value = { on, ruleId, ruleName, since }.
+    // Cleared on start(); never written by Countdown/Away/Trigger/AlwaysOn —
+    // those rule types have their own state semantics.
+    this._intendedState   = new Map();
     this._healthTimer     = null;
     this._startedAt     = null;
   }
@@ -136,6 +143,11 @@ class DwmScheduler {
 
     this._loadSchedule();
     this._resumeAwayLoops();
+    // Seed _intendedState from the most-recent fired Schedule entry per device
+    // so the very first health poll catches any drift that occurred while
+    // Homebridge was down (manual toggle, silent SOAP failure, etc.).
+    this._intendedState = new Map();
+    this._seedIntendedState();
     this._catchUpMissedRules();
     this._tick();
     this._startHealthMonitor();
@@ -157,6 +169,7 @@ class DwmScheduler {
     this._firedToday    = new Set();
     this._lastDate      = null;
     this._deviceHealth  = new Map();
+    this._intendedState = new Map();
     this._triggerStates = new Map();
     this._log.info?.('[DWM Scheduler] Stopped');
     return { running: false };
@@ -235,12 +248,14 @@ class DwmScheduler {
           if (startAction >= 0) {
             schedule.push({ ruleId: rule.id, ruleName: rule.name,
               targetHost: td.host, targetPort: td.port,
-              dayId: Number(dayId), targetSecs: startSecs, action: startAction });
+              dayId: Number(dayId), targetSecs: startSecs, action: startAction,
+              isSchedule: true });
           }
           if (endSecs !== null && endSecs > 0 && endAction >= 0) {
             schedule.push({ ruleId: rule.id, ruleName: rule.name,
               targetHost: td.host, targetPort: td.port,
-              dayId: Number(dayId), targetSecs: endSecs, action: endAction });
+              dayId: Number(dayId), targetSecs: endSecs, action: endAction,
+              isSchedule: true });
           }
         }
       }
@@ -432,6 +447,21 @@ class DwmScheduler {
 
     const label  = actionLabel(entry.action);
     const wantOn = entry.action === 1;
+
+    // Record intended state BEFORE the SOAP call so even if it throws the
+    // health-poll enforcement layer still knows the right target.  Only for
+    // Schedule rules — Countdown/Away/Trigger/AlwaysOn carry their own state
+    // semantics and must not be overridden by this map.
+    if (entry.isSchedule) {
+      const key = `${entry.targetHost}:${entry.targetPort}`;
+      this._intendedState.set(key, {
+        on:       wantOn,
+        ruleId:   entry.ruleId,
+        ruleName: entry.ruleName,
+        since:    Date.now(),
+      });
+    }
+
     try {
       await this._wemo.setBinaryState(entry.targetHost, entry.targetPort, wantOn);
 
@@ -496,6 +526,38 @@ class DwmScheduler {
 
     if (missed.length) {
       this._onStatus?.(this._buildStatus());
+    }
+  }
+
+  /**
+   * Seed `_intendedState` from the most recent fired Schedule entry per device
+   * for today, so the first health poll after start() catches any drift that
+   * accumulated while Homebridge was stopped (manual toggle, silent SOAP
+   * failure during the previous fire, confirm-read race, etc.).  Entries
+   * older than the catch-up window are still seeded — drift enforcement is
+   * independent of the one-shot catch-up fire, and is the user's actual
+   * stated expectation that the rule's off-state remains in force.
+   */
+  _seedIntendedState() {
+    const now     = new Date();
+    const nowSecs = secondsFromMidnight(now);
+    const todayId = jsToWemoDayId(now.getDay());
+
+    // Walk past-fired Schedule entries in chronological order so the latest
+    // one for each device wins.
+    const past = this._schedule
+      .filter((e) => e.isSchedule && e.dayId === todayId && e.targetSecs <= nowSecs)
+      .sort((a, b) => a.targetSecs - b.targetSecs);
+
+    for (const entry of past) {
+      const key = `${entry.targetHost}:${entry.targetPort}`;
+      this._intendedState.set(key, {
+        on:       entry.action === 1,
+        ruleId:   entry.ruleId,
+        ruleName: entry.ruleName,
+        since:    Date.now(),
+        seeded:   true,
+      });
     }
   }
 
@@ -570,6 +632,26 @@ class DwmScheduler {
           this._deviceHealth.set(key, true);
           if (wasOnline === undefined) {
             this._onHealth?.({ ...dev, online: true, msg: `${dev.name} online` });
+          }
+        }
+
+        // ── Schedule-rule state enforcement ───────────────────────────────
+        // If the most recent Schedule entry for this device set an intended
+        // state and the device has drifted away from it (manual toggle, silent
+        // SOAP failure, confirm-read race, etc.), re-issue the corrective
+        // setBinaryState.  Skipped if AlwaysOn is configured for this device
+        // — that path below has its own enforcement and "on" is unambiguous.
+        const intended = this._intendedState.get(key);
+        if (intended && !alwaysOnSet.has(key) && !!isOn !== intended.on) {
+          const want = intended.on;
+          const dirLabel = want ? 'OFF — turned ON' : 'ON — turned OFF';
+          try {
+            await this._wemo.setBinaryState(dev.host, dev.port, want);
+            this._emit({ success: true,
+              msg: `[enforce] ${dev.name} was ${dirLabel} (rule "${intended.ruleName}") ✓` });
+          } catch (e) {
+            this._emit({ success: false,
+              msg: `[enforce] ${dev.name} ${want ? 'turn-ON' : 'turn-OFF'} failed (rule "${intended.ruleName}"): ${e.message}` });
           }
         }
 
