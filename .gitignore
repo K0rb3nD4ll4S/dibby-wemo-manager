@@ -64,3 +64,4 @@ apps/desktop/resources/node-macos-arm64
 apps/desktop/resources/node-linux
 apps/desktop/resources/node-linux-x64
 apps/desktop/resources/node-linux-arm64
+.release-notes-v2.0.38.md

@@ -183,6 +183,7 @@ The scheduler runs inside the Homebridge process:
 - **65-second look-ahead window** — pre-schedules `setTimeout` callbacks for precise firing
 - **10-minute catch-up** — on restart, fires any rules whose time fell within the last 10 minutes
 - **Health monitor** — polls all referenced devices every 10 seconds for AlwaysOn and Trigger rule enforcement
+- **Continuous Schedule-rule enforcement** *(new in v2.0.38)* — once a Schedule rule has fired for a device, the scheduler remembers the intended state and re-asserts it on every 10-second poll until the next Schedule entry for that device flips the intended state. If anyone toggles the device back via Apple Home / a Wemo button / the Wemo app, the scheduler turns it back to the rule's intended state within 10 s. Countdown / Away / Trigger / AlwaysOn rules are intentionally exempt — they have their own state semantics. Devices with no Schedule entry today are not enforced — manual toggles work normally there.
 - **Heartbeat** — writes scheduler status every `heartbeatInterval` seconds (default: 1 s) on an independent timer; the UI reads this to show the status bar
 
 Rules are stored in `<homebridgeStoragePath>/dibby-wemo.json`. The scheduler reloads this file on every tick, so rules created or edited in the UI take effect within 30 seconds without a restart.
