@@ -4,6 +4,37 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.39] — 2026-06-08
+
+### Refine: Schedule-rule enforcement is now bounded to a 5-minute window so humans can override
+
+v2.0.38 introduced continuous enforcement that re-asserted a Schedule rule's intended state on every 10-second health poll **until the next Schedule entry for that device flipped the intention**. In practice that was too aggressive — if your 10:30 PM OFF rule fired and you walked back into the kitchen at 11 PM to turn the light on, the scheduler turned it off again 10 seconds later and kept doing so until the next morning's ON rule, treating every manual toggle as drift to be corrected.
+
+**Fix in `packages/homebridge-plugin/lib/scheduler.js`:**
+
+- New constant `ENFORCEMENT_WINDOW_MS = 5 * 60 * 1000`.
+- `_pollDeviceHealth` now checks `Date.now() - intended.since < ENFORCEMENT_WINDOW_MS` before enforcing. Past the window, the `_intendedState` entry is deleted so it isn't even re-examined on subsequent polls.
+- `_seedIntendedState` (called from `start()`) now records `since` as the **actual fire time today** (`dayStart + entry.targetSecs * 1000`), not `Date.now()`. Entries already past the 5-minute window aren't seeded at all. This means a Homebridge restart at 11 PM after a 10:30 PM OFF rule no longer re-engages enforcement — the restart respects whatever state the human chose during those 30 minutes.
+
+**Behaviour now:**
+
+- Schedule rule fires OFF at 22:30 → device(s) go off.
+- 22:30 → 22:35 (the 5-min window): if a device drifts (SOAP failure, confirm-read race, fast manual flip), it's auto-corrected back to OFF every 10 s. Catches every realistic transient failure mode without entangling user choice.
+- After 22:35: human authority. Anyone can flip the light back on and it stays on until they (or the next Schedule entry) change it. The scheduler stops watching that device until the next Schedule fire for it.
+
+The window is intentionally generous enough to mop up real failures (a Wemo's radio asleep, an SOAP timeout, a confirm-read race) and tight enough that a deliberate human override is honored quickly. AlwaysOn rules retain their unbounded enforcement (turn-on is unambiguous).
+
+### Affected packages
+
+All monorepo packages bumped to **2.0.39** in unified versioning. Functional change is confined to **`homebridge-dibby-wemo@2.0.39`** — every other surface gets the version bump and the same carry-forward of v2.0.37's location-search hybrid response shape, v2.0.36's `DwmStore` atomic writes, and v2.0.35's Synology Docker root-fallback.
+
+### Upgrade
+
+- **Homebridge:** `npm install -g homebridge-dibby-wemo@2.0.39` → restart Homebridge. Same `[enforce] ...` log lines on a drift inside the window, no log noise outside it.
+- All other surfaces: version bump only.
+
+---
+
 ## [2.0.38] — 2026-06-03
 
 ### Fix: scheduled OFF rules now self-enforce instead of giving up after one shot

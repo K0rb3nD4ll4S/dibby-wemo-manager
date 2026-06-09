@@ -73,6 +73,14 @@ function randBetween(min, max) {
 const HEALTH_POLL_MS   = 10_000;          // poll devices every 10 seconds
 const CATCHUP_WINDOW_S = 10 * 60;         // catch up rules missed within last 10 minutes
 
+// How long after a Schedule rule fires we keep auto-correcting the device
+// state.  Within this window the scheduler catches silent SOAP failures,
+// confirm-read races, and quick after-the-fact toggles (someone walks in,
+// flips the light on, walks back out).  After the window expires the scheduler
+// stops fighting — a human turning the device on at 11pm has expressed clear
+// intent to override the 10:30pm OFF schedule, and we let them.
+const ENFORCEMENT_WINDOW_MS = 5 * 60 * 1000;
+
 // ── DwmScheduler ─────────────────────────────────────────────────────────────
 
 class DwmScheduler {
@@ -532,16 +540,27 @@ class DwmScheduler {
   /**
    * Seed `_intendedState` from the most recent fired Schedule entry per device
    * for today, so the first health poll after start() catches any drift that
-   * accumulated while Homebridge was stopped (manual toggle, silent SOAP
-   * failure during the previous fire, confirm-read race, etc.).  Entries
-   * older than the catch-up window are still seeded — drift enforcement is
-   * independent of the one-shot catch-up fire, and is the user's actual
-   * stated expectation that the rule's off-state remains in force.
+   * accumulated while Homebridge was stopped (silent SOAP failure during the
+   * previous fire, confirm-read race, etc.).
+   *
+   * `since` is set to the entry's ACTUAL fire time today (not now), so the
+   * 5-minute enforcement window is honoured across Homebridge restarts — if
+   * a rule fired at 22:30 and Homebridge restarts at 23:15, the seeded entry
+   * is already 45 minutes old and the enforcement-window check in
+   * _pollDeviceHealth will skip it.  Restarting within 5 minutes of a fire
+   * still gets the catch-up correction; restarting later respects whatever
+   * state the human deliberately chose.
+   *
+   * Entries whose age is already past the window are skipped entirely (don't
+   * even land in the map).
    */
   _seedIntendedState() {
-    const now     = new Date();
-    const nowSecs = secondsFromMidnight(now);
-    const todayId = jsToWemoDayId(now.getDay());
+    const now      = new Date();
+    const nowMs    = now.getTime();
+    const nowSecs  = secondsFromMidnight(now);
+    const todayId  = jsToWemoDayId(now.getDay());
+    const dayStart = new Date(now); dayStart.setHours(0, 0, 0, 0);
+    const dayStartMs = dayStart.getTime();
 
     // Walk past-fired Schedule entries in chronological order so the latest
     // one for each device wins.
@@ -550,12 +569,15 @@ class DwmScheduler {
       .sort((a, b) => a.targetSecs - b.targetSecs);
 
     for (const entry of past) {
+      const fireMs = dayStartMs + entry.targetSecs * 1000;
+      if (nowMs - fireMs > ENFORCEMENT_WINDOW_MS) continue;  // past the window — don't seed
+
       const key = `${entry.targetHost}:${entry.targetPort}`;
       this._intendedState.set(key, {
         on:       entry.action === 1,
         ruleId:   entry.ruleId,
         ruleName: entry.ruleName,
-        since:    Date.now(),
+        since:    fireMs,
         seeded:   true,
       });
     }
@@ -636,22 +658,30 @@ class DwmScheduler {
         }
 
         // ── Schedule-rule state enforcement ───────────────────────────────
-        // If the most recent Schedule entry for this device set an intended
-        // state and the device has drifted away from it (manual toggle, silent
-        // SOAP failure, confirm-read race, etc.), re-issue the corrective
-        // setBinaryState.  Skipped if AlwaysOn is configured for this device
-        // — that path below has its own enforcement and "on" is unambiguous.
+        // Within a 5-minute window after a Schedule rule fires, re-issue the
+        // corrective setBinaryState if the device drifted (silent SOAP
+        // failure, confirm-read race, fast manual toggle).  After the window
+        // expires the intended-state entry is dropped — a human flipping the
+        // light on later has expressed clear intent to override, and we stop
+        // fighting them.  Skipped if AlwaysOn covers this device (that path
+        // below has unbounded "on" enforcement by design).
         const intended = this._intendedState.get(key);
-        if (intended && !alwaysOnSet.has(key) && !!isOn !== intended.on) {
-          const want = intended.on;
-          const dirLabel = want ? 'OFF — turned ON' : 'ON — turned OFF';
-          try {
-            await this._wemo.setBinaryState(dev.host, dev.port, want);
-            this._emit({ success: true,
-              msg: `[enforce] ${dev.name} was ${dirLabel} (rule "${intended.ruleName}") ✓` });
-          } catch (e) {
-            this._emit({ success: false,
-              msg: `[enforce] ${dev.name} ${want ? 'turn-ON' : 'turn-OFF'} failed (rule "${intended.ruleName}"): ${e.message}` });
+        if (intended && !alwaysOnSet.has(key)) {
+          const age = Date.now() - intended.since;
+          if (age > ENFORCEMENT_WINDOW_MS) {
+            // Window expired — drop the entry so we don't even check next time.
+            this._intendedState.delete(key);
+          } else if (!!isOn !== intended.on) {
+            const want = intended.on;
+            const dirLabel = want ? 'OFF — turned ON' : 'ON — turned OFF';
+            try {
+              await this._wemo.setBinaryState(dev.host, dev.port, want);
+              this._emit({ success: true,
+                msg: `[enforce] ${dev.name} was ${dirLabel} (rule "${intended.ruleName}") ✓` });
+            } catch (e) {
+              this._emit({ success: false,
+                msg: `[enforce] ${dev.name} ${want ? 'turn-ON' : 'turn-OFF'} failed (rule "${intended.ruleName}"): ${e.message}` });
+            }
           }
         }
 

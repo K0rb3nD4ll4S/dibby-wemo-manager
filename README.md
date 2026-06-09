@@ -92,11 +92,11 @@ dibby-wemo-manager/
 Download the latest installer from [Releases](../../releases):
 
 **Windows:**
-- **`Dibby Wemo Manager Setup 2.0.38.exe`** — NSIS installer (recommended)
-- **`Dibby Wemo Manager 2.0.38.exe`** — Portable single-file executable
+- **`Dibby Wemo Manager Setup 2.0.39.exe`** — NSIS installer (recommended)
+- **`Dibby Wemo Manager 2.0.39.exe`** — Portable single-file executable
 
 **macOS (universal — Intel + Apple Silicon):**
-- **`Dibby Wemo Manager-2.0.38.dmg`** — Drag to Applications
+- **`Dibby Wemo Manager-2.0.39.dmg`** — Drag to Applications
 
 The .dmg is **ad-hoc signed** (not notarised by Apple). On first launch, macOS shows "Dibby Wemo Manager can't be opened because Apple cannot check it for malicious software." To open it the first time:
 1. **Right-click** the app in Applications → **Open** → confirm in the dialog
@@ -104,13 +104,13 @@ The .dmg is **ad-hoc signed** (not notarised by Apple). On first launch, macOS s
 3. Service install via Settings → 🏠 HomeKit Bridge prompts for your macOS admin password (standard system dialog) to install the LaunchDaemon
 
 **Linux (x64):**
-- **`Dibby Wemo Manager-2.0.38.AppImage`** — Universal AppImage, runs anywhere
-- **`dibby-wemo-manager_2.0.38_amd64.deb`** — Debian / Ubuntu
-- **`dibby-wemo-manager-2.0.38.x86_64.rpm`** — Fedora / RHEL
+- **`Dibby Wemo Manager-2.0.39.AppImage`** — Universal AppImage, runs anywhere
+- **`dibby-wemo-manager_2.0.39_amd64.deb`** — Debian / Ubuntu
+- **`dibby-wemo-manager-2.0.39.x86_64.rpm`** — Fedora / RHEL
 
 **Linux (ARM64 — Raspberry Pi 4/5):**
-- **`Dibby Wemo Manager-2.0.38-arm64.AppImage`**
-- **`dibby-wemo-manager_2.0.38_arm64.deb`**
+- **`Dibby Wemo Manager-2.0.39-arm64.AppImage`**
+- **`dibby-wemo-manager_2.0.39_arm64.deb`**
 
 > **Headless 24/7 mode on Linux** — implemented via the Synology / Docker path below. The desktop app works fine for interactive device control + DWM rule editing while open; the Docker image (next section) is the recommended always-on host on Linux.
 
@@ -516,14 +516,14 @@ Each [GitHub Release](../../releases) includes:
 
 | File | OS | Description |
 |---|---|---|
-| `Dibby Wemo Manager Setup 2.0.38.exe` | Windows | NSIS installer (recommended) |
-| `Dibby Wemo Manager 2.0.38.exe` | Windows | Portable executable |
-| `Dibby Wemo Manager-2.0.38.AppImage` | Linux x64 | Universal AppImage |
-| `dibby-wemo-manager_2.0.38_amd64.deb` | Linux x64 | Debian / Ubuntu package |
-| `dibby-wemo-manager-2.0.38.x86_64.rpm` | Linux x64 | Fedora / RHEL package |
-| `Dibby Wemo Manager-2.0.38-arm64.AppImage` | Linux ARM64 | Raspberry Pi 4/5 AppImage |
-| `dibby-wemo-manager_2.0.38_arm64.deb` | Linux ARM64 | Raspberry Pi OS package |
-| `homebridge-dibby-wemo-2.0.38.tgz` | Any | Homebridge plugin npm package |
+| `Dibby Wemo Manager Setup 2.0.39.exe` | Windows | NSIS installer (recommended) |
+| `Dibby Wemo Manager 2.0.39.exe` | Windows | Portable executable |
+| `Dibby Wemo Manager-2.0.39.AppImage` | Linux x64 | Universal AppImage |
+| `dibby-wemo-manager_2.0.39_amd64.deb` | Linux x64 | Debian / Ubuntu package |
+| `dibby-wemo-manager-2.0.39.x86_64.rpm` | Linux x64 | Fedora / RHEL package |
+| `Dibby Wemo Manager-2.0.39-arm64.AppImage` | Linux ARM64 | Raspberry Pi 4/5 AppImage |
+| `dibby-wemo-manager_2.0.39_arm64.deb` | Linux ARM64 | Raspberry Pi OS package |
+| `homebridge-dibby-wemo-2.0.39.tgz` | Any | Homebridge plugin npm package |
 
 ---
 
