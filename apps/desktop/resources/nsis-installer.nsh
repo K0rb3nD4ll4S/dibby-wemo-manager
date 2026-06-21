@@ -54,6 +54,22 @@
 !macro customInstall
   SetShellVarContext all
   DetailPrint "Dibby: install complete. Open Settings → HomeKit Bridge to install the scheduler service."
+
+  ; ── Start menu shortcut for the Clear Wemo Firmware Rules add-on ─────────
+  ;
+  ; The tool wipes every native firmware rule from each Wemo Dibby has
+  ; discovered.  DWM rules (Dibby's own scheduler rules) are NOT touched.
+  ; The .cmd lives under <install>\resources\tools\clear-wemo-rules\.
+  ; node_modules + wemo-client.js + the script ride along via the existing
+  ; `tools` extraResources mapping; bundle-standalone.js npm-installs the
+  ; tool's deps at build time.
+  CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\Clear Wemo Firmware Rules.lnk" \
+                 "$INSTDIR\resources\tools\clear-wemo-rules\Clear Wemo Rules.cmd" \
+                 "" \
+                 "$INSTDIR\resources\tools\clear-wemo-rules\Clear Wemo Rules.cmd" 0 \
+                 SW_SHOWNORMAL \
+                 "" \
+                 "Wipe all native Wemo firmware rules across discovered devices (DWM rules unaffected)"
 !macroend
 
 !macro customUnInstall
@@ -80,6 +96,12 @@
   DetailPrint "Dibby: removing HomeKit bridge pairing data..."
   RMDir /r "C:\ProgramData\DibbyWemoManager\homekit-bridge"
   Delete  "C:\ProgramData\DibbyWemoManager\homekit-bridge-prefs.json"
+
+  ; Remove the Clear Wemo Firmware Rules Start menu shortcut.  The .cmd
+  ; itself + its node_modules live under <install>\resources\... so the
+  ; default uninstall already deletes them; only the shortcut needs an
+  ; explicit unlink.
+  Delete "$SMPROGRAMS\${PRODUCT_NAME}\Clear Wemo Firmware Rules.lnk"
 
   DetailPrint "Dibby: cleanup complete. devices.json, DWM rules, and scheduler.log were preserved."
 !macroend

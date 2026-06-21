@@ -4,6 +4,55 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.40] — 2026-06-21
+
+### New: Windows add-on tool — "Clear Wemo Firmware Rules"
+
+A standalone Node script ships with the **Windows installer only** that wipes every native Wemo firmware rule across all devices Dibby has discovered. Useful for cleaning up the legacy rules that stopped firing autonomously after Belkin shut down the cloud — they sit dead in each Wemo's on-device SQLite database, sometimes visible in the official Wemo app, often a source of confusion.
+
+**DWM rules are not touched.** Only the firmware-side rules in each device's own `rules1` SOAP service.
+
+#### How to use
+
+1. **Start menu → Dibby Wemo Manager → Clear Wemo Firmware Rules** (NSIS installer adds this shortcut automatically; the portable `.exe` doesn't have a Start-menu entry but the tool lives next to it).
+2. The script prints the device list it found in `C:\ProgramData\DibbyWemoManager\devices.json`.
+3. Type `yes` to confirm. Anything else cancels.
+4. The script iterates each device, calls `FetchRules` + per-rule `DeleteRule` SOAP, and prints a summary:
+   ```
+   ── Summary ───────────────────────────────────────────────────────
+     Devices processed:           33
+     Devices cleared:             29
+     Devices already empty:        2
+     Devices on unsupported f/w:   2  (Lightswitch-3_0 / Dimmer V2)
+     Total firmware rules wiped:  41
+   ── ────────────────────────────────────────────────────────────────
+   ```
+
+#### Implementation
+
+- `apps/desktop/tools/clear-wemo-rules/clear-wemo-rules.js` — main script. Uses the same `wemo-client.js` `fetchRules` + `deleteRule` SOAP path the Homebridge plugin uses.
+- `apps/desktop/tools/clear-wemo-rules/Clear Wemo Rules.cmd` — Windows batch wrapper that invokes the bundled `node.exe` (under `<install>\resources\node.exe`) on the script and pauses on completion so the user can read the summary.
+- `apps/desktop/tools/clear-wemo-rules/wemo-client.js` + `types.js` — vendored copies of the homebridge plugin lib files so the tool is self-contained.
+- `apps/desktop/scripts/bundle-standalone.js` — extended to run `npm install --omit=dev` in the tool directory at build time so the tool ships with its own `node_modules`.
+- `apps/desktop/resources/nsis-installer.nsh` — `customInstall` adds the Start menu shortcut; `customUnInstall` removes it.
+
+Loads either the bare-array device-list shape (older Dibby builds) **or** `{devices: [...]}` (current desktop service shape) — same JSON file the desktop app and headless service both write.
+
+#### Devices on the latest Lightswitch-3_0 / Dimmer V2 firmware
+
+These don't expose `FetchRules` (the SOAP action returns "Action Not Supported"). The tool detects this and skips them with a clear log line — not a failure, just an explicit "this firmware doesn't have firmware rules to wipe."
+
+### Affected packages
+
+All monorepo packages bumped to **2.0.40** in unified versioning. Functional change is in the **Windows desktop installer only** — the npm Homebridge plugin, npm Node-RED package, Synology Docker image, Synology `.spk`, HA integration, macOS `.dmg`, and Linux packages get the version bump but no functional change beyond carrying forward v2.0.39's bounded Schedule-rule enforcement.
+
+### Upgrade
+
+- **Windows desktop:** download `Dibby Wemo Manager Setup 2.0.40.exe` from the release page → run installer → look in the Start menu for the new shortcut.
+- All other surfaces: version bump only.
+
+---
+
 ## [2.0.39] — 2026-06-08
 
 ### Refine: Schedule-rule enforcement is now bounded to a 5-minute window so humans can override
