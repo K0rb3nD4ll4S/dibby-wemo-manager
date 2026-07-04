@@ -286,13 +286,36 @@ class DwmStore {
   }
 
   // ── Scheduler heartbeat ───────────────────────────────────────────────────
+  //
+  // The heartbeat is written every `heartbeatInterval` seconds (default 1 s).
+  // It used to live inside the main store, which meant a full read+rewrite of
+  // dibby-wemo.json once per second — needless flash wear on Raspberry Pi /
+  // SD-card hosts, and the single biggest source of concurrent-write pressure
+  // between the plugin runtime and the UI-server process (the race behind the
+  // historical rules-wipe bug).  It now lives in its own small sibling file;
+  // the main store is only written when devices / rules / location actually
+  // change.  Reads fall back to the legacy main-store key so a heartbeat
+  // written by an older version is still visible right after an upgrade.
 
-  getHeartbeat() { return this._load().schedulerHeartbeat ?? null; }
+  getHeartbeat() {
+    try {
+      return JSON.parse(fs.readFileSync(`${this._filePath}.heartbeat`, 'utf8'));
+    } catch {
+      return this._load().schedulerHeartbeat ?? null;   // legacy location
+    }
+  }
 
   saveHeartbeat(hb) {
-    const d = this._load();
-    d.schedulerHeartbeat = { ...hb, ts: new Date().toISOString() };
-    this._save(d);
+    const payload = JSON.stringify({ ...hb, ts: new Date().toISOString() });
+    const tmp = `${this._filePath}.heartbeat.tmp`;
+    try {
+      fs.writeFileSync(tmp, payload, 'utf8');
+      fs.renameSync(tmp, `${this._filePath}.heartbeat`);
+    } catch {
+      try { fs.unlinkSync(tmp); } catch { /* */ }
+      // Heartbeat is advisory — losing one tick is harmless; never touch the
+      // main store on the failure path.
+    }
   }
 }
 

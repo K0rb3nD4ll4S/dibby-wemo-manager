@@ -17,13 +17,79 @@ function storePath() {
   return path.join(app.getPath('userData'), 'wemo-manager.json');
 }
 
+// ── Data-loss protections ─────────────────────────────────────────────────
+// Same hardening as the Homebridge plugin's DwmStore (which lost user rules
+// to the naive load/save pattern this file also had):
+//  - distinguish missing-file from unreadable/corrupt (never overwrite what
+//    we couldn't read)
+//  - atomic writes via tmp + rename (readers never see a half-written file)
+//  - rolling .bak of the last good file
+//  - refuse to flatten non-empty on-disk data with empty in-memory state
+
+let _lastKnown  = null;
+let _safeToSave = true;
+
+function isEmptyState(d) {
+  if (!d) return true;
+  return (!Array.isArray(d.devices)  || d.devices.length  === 0)
+      && (!Array.isArray(d.dwmRules) || d.dwmRules.length === 0)
+      && (!d.location || (d.location.lat == null && d.location.lng == null));
+}
+
 function load() {
-  try { return { ...DEFAULTS, ...JSON.parse(fs.readFileSync(storePath(), 'utf8')) }; }
-  catch { return { ...DEFAULTS }; }
+  const file = storePath();
+  let raw;
+  try {
+    raw = fs.readFileSync(file, 'utf8');
+  } catch (e) {
+    if (e.code === 'ENOENT') { _safeToSave = true; return { ...DEFAULTS }; }
+    _safeToSave = false;                       // EBUSY/EACCES/EIO — don't clobber
+    console.warn(`[store] cannot read ${file} (${e.code}); refusing to save until readable`);
+    return { ...DEFAULTS };
+  }
+  try {
+    const merged = { ...DEFAULTS, ...JSON.parse(raw) };
+    _lastKnown = merged;
+    _safeToSave = true;
+    return merged;
+  } catch {
+    // Corrupt JSON — quarantine, try the .bak, only then fall back to defaults.
+    try { fs.renameSync(file, `${file}.corrupt-${Date.now()}`); } catch { /* best effort */ }
+    try {
+      const bak = fs.readFileSync(`${file}.bak`, 'utf8');
+      const merged = { ...DEFAULTS, ...JSON.parse(bak) };
+      fs.writeFileSync(file, bak, 'utf8');
+      console.warn(`[store] recovered ${file} from .bak`);
+      _lastKnown = merged;
+      _safeToSave = true;
+      return merged;
+    } catch {
+      _safeToSave = false;
+      return { ...DEFAULTS };
+    }
+  }
 }
 
 function save(data) {
-  fs.writeFileSync(storePath(), JSON.stringify(data, null, 2), 'utf8');
+  const file = storePath();
+  if (!_safeToSave) {
+    console.warn('[store] save skipped — last read was unsafe (corrupt or unreadable file)');
+    return;
+  }
+  if (isEmptyState(data) && _lastKnown && !isEmptyState(_lastKnown)) {
+    console.warn('[store] BLOCKED empty-state write — existing devices/rules/location would be lost');
+    return;
+  }
+  const tmp = `${file}.tmp`;
+  try {
+    fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8');
+    try { if (fs.existsSync(file)) fs.copyFileSync(file, `${file}.bak`); } catch { /* best effort */ }
+    fs.renameSync(tmp, file);
+    _lastKnown = data;
+  } catch (e) {
+    console.warn(`[store] save failed (${e.code || e.message}); original left intact`);
+    try { fs.unlinkSync(tmp); } catch { /* */ }
+  }
 }
 
 // Location

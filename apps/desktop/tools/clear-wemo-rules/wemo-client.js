@@ -48,10 +48,17 @@ async function getSql(log) {
     const fs = require('fs');
     const initSqlJs = require('sql.js');
 
+    // Candidate locations for sql-wasm.wasm.  The TOOL-LOCAL path
+    // (__dirname/node_modules/...) comes first because the clear-wemo-rules
+    // tool ships with its own self-contained node_modules under the install
+    // dir; the legacy homebridge-plugin layout paths come next so this file
+    // stays drop-in-compatible with that codebase too.
     const candidates = [
-      path.join(__dirname, '..', 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm'),
-      path.join(__dirname, '..', '..', '..', 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm'),
-      path.join(__dirname, 'sql-wasm.wasm'),
+      path.join(__dirname, 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm'),         // tool-local (./node_modules)
+      path.join(__dirname, '..', 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm'),    // homebridge-plugin layout
+      path.join(__dirname, '..', '..', '..', 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm'),  // workspace root
+      path.join(__dirname, '..', '..', 'sql-wasm.wasm'),                                // Dibby desktop extraResources (resources/sql-wasm.wasm)
+      path.join(__dirname, 'sql-wasm.wasm'),                                            // sibling file
     ];
 
     let wasmBinary = null;
@@ -70,7 +77,10 @@ async function getSql(log) {
 // SOAP helpers
 // ---------------------------------------------------------------------------
 
-async function soapRequest(host, port, controlURL, serviceType, action, args = {}, timeoutMs = 10_000) {
+// Default SOAP timeout bumped from 10s → 30s so the clear-wemo-rules tool
+// doesn't give up on Wemos that are just slow to respond.  The official
+// Wemo app waits ~30s; matching that.
+async function soapRequest(host, port, controlURL, serviceType, action, args = {}, timeoutMs = 30_000) {
   const url  = `http://${host}:${port}${controlURL}`;
   const root = create({ version: '1.0', encoding: 'utf-8' })
     .ele('s:Envelope', { 'xmlns:s': 'http://schemas.xmlsoap.org/soap/envelope/', 's:encodingStyle': 'http://schemas.xmlsoap.org/soap/encoding/' })

@@ -105,19 +105,28 @@ function loadDevices() {
   return list.filter((d) => d && d.host && d.port);
 }
 
+// How many devices to work on simultaneously.  Wemo radios are slow (up to
+// 30 s per SOAP round-trip when sleepy) — serial processing of a 30-device
+// home takes forever.  A small pool keeps LAN load negligible while cutting
+// wall-clock time roughly by the pool factor.  Rule deletions WITHIN a device
+// stay sequential — each DeleteRule rewrites the device's rule DB and Wemos
+// don't handle concurrent StoreRules well.
+const CONCURRENCY = Math.max(1, parseInt(process.env.DWM_CLEAR_CONCURRENCY || '4', 10) || 4);
+
 async function clearOneDevice(d) {
-  const name = d.friendlyName || d.name || d.host;
-  const tag  = `${C.bold}${name}${C.reset} ${C.dim}(${d.host}:${d.port})${C.reset}`;
+  const name  = d.friendlyName || d.name || d.host;
+  const tag   = `${C.bold}${name}${C.reset} ${C.dim}(${d.host}:${d.port})${C.reset}`;
+  const lines = [];   // buffered so pooled devices don't interleave output
   try {
     const data = await wemo.fetchRules(d.host, Number(d.port));
     const ruleIds = (data.rules || []).map((r) => r.RuleID).filter(Boolean);
 
     if (ruleIds.length === 0) {
-      console.log(`  ${C.dim}— ${tag} — no firmware rules${C.reset}`);
-      return { name, deleted: 0, failed: 0, skipped: true };
+      lines.push(`  ${C.dim}— ${tag} — no firmware rules${C.reset}`);
+      return { name, deleted: 0, failed: 0, skipped: true, lines };
     }
 
-    console.log(`  ${tag} — deleting ${C.yellow}${ruleIds.length}${C.reset} firmware rule(s)…`);
+    lines.push(`  ${tag} — deleting ${C.yellow}${ruleIds.length}${C.reset} firmware rule(s)…`);
     let ok = 0, bad = 0;
     for (const ruleId of ruleIds) {
       try {
@@ -125,22 +134,42 @@ async function clearOneDevice(d) {
         ok++;
       } catch (e) {
         bad++;
-        console.log(`     ${C.red}× rule ${ruleId} failed: ${e.message}${C.reset}`);
+        lines.push(`     ${C.red}× rule ${ruleId} failed: ${e.message}${C.reset}`);
       }
     }
-    console.log(`     ${C.green}✓ ${ok} deleted${C.reset}` + (bad ? `, ${C.red}${bad} failed${C.reset}` : ''));
-    return { name, deleted: ok, failed: bad, skipped: false };
+    lines.push(`     ${C.green}✓ ${ok} deleted${C.reset}` + (bad ? `, ${C.red}${bad} failed${C.reset}` : ''));
+    return { name, deleted: ok, failed: bad, skipped: false, lines };
   } catch (e) {
     // Dimmer V2 (WDS060) newer firmware doesn't expose FetchRules — that's
     // expected, not a bug.  Surface it clearly + don't count as a failure.
     const msg = String(e.message || e);
     if (/upnp\s*action\s*not\s*supported|Unknown Action|401|403|404/i.test(msg)) {
-      console.log(`  ${C.dim}— ${tag} — FetchRules not supported on this firmware (skipped)${C.reset}`);
-      return { name, deleted: 0, failed: 0, skipped: true, unsupported: true };
+      lines.push(`  ${C.dim}— ${tag} — FetchRules not supported on this firmware (skipped)${C.reset}`);
+      return { name, deleted: 0, failed: 0, skipped: true, unsupported: true, lines };
     }
-    console.log(`  ${C.red}× ${tag} — ${msg}${C.reset}`);
-    return { name, deleted: 0, failed: 1, skipped: false };
+    lines.push(`  ${C.red}× ${tag} — ${msg}${C.reset}`);
+    return { name, deleted: 0, failed: 1, skipped: false, lines };
   }
+}
+
+/**
+ * Run `worker` over `items` with at most `limit` in flight.  Results print
+ * in completion order (each device's buffered lines flush atomically), and
+ * return in input order for the summary.
+ */
+async function runPool(items, limit, worker) {
+  const results = new Array(items.length);
+  let next = 0;
+  async function lane() {
+    while (next < items.length) {
+      const i = next++;
+      const r = await worker(items[i]);
+      results[i] = r;
+      for (const line of r.lines || []) console.log(line);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, lane));
+  return results;
 }
 
 async function main() {
@@ -172,11 +201,8 @@ async function main() {
   }
 
   console.log('');
-  console.log(`${C.bold}Working…${C.reset}`);
-  const results = [];
-  for (const d of devices) {
-    results.push(await clearOneDevice(d));
-  }
+  console.log(`${C.bold}Working…${C.reset} ${C.dim}(${CONCURRENCY} devices at a time)${C.reset}`);
+  const results = await runPool(devices, CONCURRENCY, clearOneDevice);
 
   // Summary
   const totalDeleted   = results.reduce((s, r) => s + r.deleted, 0);

@@ -217,7 +217,14 @@ Output in `apps/desktop/dist/`:
 - `Dibby Wemo Manager Setup 2.0.40.exe` — NSIS installer
 - `Dibby Wemo Manager 2.0.40.exe` — portable exe
 
-> **Code signing:** The build config expects a PFX certificate at `resources/srsit-codesign.pfx`. Remove the `win.certificateFile` entry from `package.json` if you don't have a certificate.
+> **Code signing:** The build config expects a PFX certificate at `resources/srsit-codesign.pfx` (git-ignored, never committed). The certificate password is **not** stored in the repo — export it in the shell before building:
+>
+> ```cmd
+> set WIN_CSC_KEY_PASSWORD=<pfx-password>     &REM cmd.exe
+> $env:WIN_CSC_KEY_PASSWORD = '<pfx-password>' # PowerShell
+> ```
+>
+> electron-builder reads `WIN_CSC_KEY_PASSWORD` (or `CSC_KEY_PASSWORD`) automatically. Without it the signing step fails with a clear signtool error — remove the `win.signtoolOptions` block from `package.json` instead if you want an unsigned local build.
 
 #### Linux x64 (AppImage + .deb + .rpm)
 

@@ -4,7 +4,34 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
-## [2.0.40] — 2026-06-21
+## [Unreleased — hardening pass, ships with the next release]
+
+### Security
+
+- **Code-signing password removed from the repo.** `build.win.signtoolOptions.certificatePassword` was committed in plaintext; the build now reads `WIN_CSC_KEY_PASSWORD` (or `CSC_KEY_PASSWORD`) from the environment at signing time. The `.pfx` itself was never committed. **Action for maintainers: rotate the PFX password** — the old value is permanently visible in public git history.
+- **Docker / Synology web server** (`docker/server.js`):
+  - Optional `DWM_API_KEY` env — when set, all state-changing requests (POST/PUT/DELETE) require it via `X-Api-Key` or `Authorization: Bearer`; compared with `crypto.timingSafeEqual` to resist timing probes. GETs and healthchecks stay open so the dashboard renders without configuration. The bundled web UI sends the key automatically once stored via `localStorage.setItem('dwm.apiKey', …)`.
+  - Request bodies are now bounded (`DWM_MAX_BODY`, default 1 MiB) and rejected with `413` instead of being buffered without limit.
+  - CORS origin is configurable via `DWM_CORS_ORIGIN` (default `*` for LAN-appliance behaviour); `X-Content-Type-Options: nosniff` is set on every JSON response.
+  - Unknown `/api/*` routes return a JSON `404` instead of the `index.html` fallback, so API clients never parse an HTML page as data.
+
+### Data integrity — atomic writes + corruption recovery in every store
+
+The desktop app store (`apps/desktop/src/main/store.js`) and the Home Assistant store (`custom_components/dibby_wemo/store.py`) both had the naive `read → mutate → writeFileSync` pattern that lost user rules on the Homebridge side (fixed there in v2.0.36). Both now get the same protections:
+
+- `_load` distinguishes **missing file** (safe to save) from **unreadable / corrupt** (refuse to save until a clean read succeeds), so a transient `EBUSY`/`EACCES` or a half-written file can never overwrite real data with empty defaults.
+- **Atomic writes** via a `.tmp` sibling + `rename` / `os.replace` — readers never observe a partially-written file.
+- **Rolling `.bak`** of the last good file; corrupt JSON is quarantined to `*.corrupt-<ts>` and recovery is attempted from `.bak` before falling back to defaults.
+- **Empty-write guard** refuses to flatten a non-empty on-disk store with empty in-memory state.
+
+### Homebridge heartbeat moved out of the main store
+
+The scheduler heartbeat rewrote the whole `dibby-wemo.json` once per second (default `heartbeatInterval`) — needless SD-card wear on Pi hosts and the biggest source of concurrent-write pressure between the plugin runtime and UI-server process (the race behind the original rules-wipe). It now lives in a tiny `dibby-wemo.json.heartbeat` sidecar (atomic writes); the main store is written only when devices / rules / location change. Reads fall back to the legacy in-store key so an old heartbeat is still visible right after upgrade.
+
+### Scalability
+
+- **`clear-wemo-rules` tool processes devices concurrently** with a bounded pool (default 4, `DWM_CLEAR_CONCURRENCY` to override). Rule deletions *within* a device stay sequential (Wemos mishandle concurrent `StoreRules`); per-device output is buffered so pooled runs don't interleave. **SOAP timeout raised 10 s → 30 s** and the **`sql-wasm.wasm` lookup fixed** (the tool's own `node_modules` is tried first, plus a Dibby-desktop `resources/` fallback) — resolving the `timeout exceeded` and `sql-wasm.wasm not found` field errors.
+- **Atomic `status.json` writes** in the standalone scheduler service (`scheduler-standalone.js`); the desktop GUI polls this file and could catch it mid-write.
 
 ### New: Windows add-on tool — "Clear Wemo Firmware Rules"
 

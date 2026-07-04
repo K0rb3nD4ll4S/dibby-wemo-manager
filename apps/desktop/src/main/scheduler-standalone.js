@@ -491,15 +491,22 @@ async function startHomeKitBridge() {
 
   // Periodic status snapshot so the desktop UI can show pincode + QR
   // without running the bridge itself.
+  // Atomic write (tmp + rename) — the desktop GUI polls this file; a plain
+  // writeFileSync can be caught mid-write and hand the GUI truncated JSON.
+  const writeStatusFile = (obj) => {
+    const tmp = `${HK_STATUS_FILE}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(obj, null, 2), 'utf8');
+    fs.renameSync(tmp, HK_STATUS_FILE);
+  };
+
   const writeStatus = async () => {
     try {
       const s = await _hkBridgeMod.getStatus();
-      const out = {
+      writeStatusFile({
         ...s,
         host:        'service',
         updatedAt:   new Date().toISOString(),
-      };
-      fs.writeFileSync(HK_STATUS_FILE, JSON.stringify(out, null, 2), 'utf8');
+      });
     } catch (e) { /* non-critical */ }
   };
   await writeStatus();
@@ -512,11 +519,15 @@ async function stopHomeKitBridge() {
     try { await _hkBridgeMod.stop(); } catch { /* ignore */ }
     _hkBridgeOn = false;
   }
-  // Mark status file so desktop knows the bridge isn't running
+  // Mark status file so desktop knows the bridge isn't running.  Same
+  // tmp+rename dance as the periodic writer so readers never see a
+  // half-written file.
   try {
-    fs.writeFileSync(HK_STATUS_FILE, JSON.stringify({
+    const tmp = `${HK_STATUS_FILE}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify({
       running: false, host: 'service', updatedAt: new Date().toISOString(),
     }, null, 2), 'utf8');
+    fs.renameSync(tmp, HK_STATUS_FILE);
   } catch { /* ignore */ }
 }
 

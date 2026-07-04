@@ -48,11 +48,36 @@ function getLocalIP() {
   return 'localhost';
 }
 
+// ── Security knobs (all optional, all env-driven) ─────────────────────────────
+//
+// DWM_API_KEY      — when set, every state-CHANGING request (POST/PUT/DELETE)
+//                    must carry it in an `X-Api-Key` header (or
+//                    `Authorization: Bearer <key>`).  GET stays open so the
+//                    dashboard renders and healthchecks pass without a key.
+//                    The bundled web UI sends the key automatically if the
+//                    user stores it once: localStorage['dwm.apiKey'].
+// DWM_CORS_ORIGIN  — Access-Control-Allow-Origin value.  Defaults to '*'
+//                    (LAN-appliance behaviour); set to your dashboard origin
+//                    to lock it down, e.g. http://nas.local:3456
+// DWM_MAX_BODY     — max request-body bytes (default 1 MiB).  Prevents a
+//                    misbehaving client from ballooning memory.
+const API_KEY     = process.env.DWM_API_KEY || null;
+const CORS_ORIGIN = process.env.DWM_CORS_ORIGIN || '*';
+const MAX_BODY    = Math.max(16 * 1024, parseInt(process.env.DWM_MAX_BODY || '', 10) || 1024 * 1024);
+
+// Constant-time comparison so the key can't be guessed via timing.
+function keyMatches(supplied) {
+  if (!supplied || supplied.length !== API_KEY.length) return false;
+  const crypto = require('crypto');
+  return crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(API_KEY));
+}
+
 function json(res, data, status = 200) {
   const body = JSON.stringify(data);
   res.writeHead(status, {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': CORS_ORIGIN,
+    'X-Content-Type-Options': 'nosniff',
   });
   res.end(body);
 }
@@ -69,20 +94,43 @@ async function handleRequest(req, res) {
 
   if (method === 'OPTIONS') {
     res.writeHead(204, {
-      'Access-Control-Allow-Origin':  '*',
+      'Access-Control-Allow-Origin':  CORS_ORIGIN,
       'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, X-Api-Key, Authorization',
     });
     res.end();
     return;
   }
 
-  const body = await new Promise((resolve) => {
+  // Mutating requests require the API key when one is configured.
+  if (API_KEY && method !== 'GET') {
+    const supplied = req.headers['x-api-key']
+      || (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    if (!keyMatches(supplied)) {
+      return jsonErr(res, 'unauthorized — set the X-Api-Key header (DWM_API_KEY)', 401);
+    }
+  }
+
+  // Bounded body read — reject anything over MAX_BODY instead of buffering it.
+  const body = await new Promise((resolve, reject) => {
     if (method !== 'POST' && method !== 'PUT') return resolve({});
-    let raw = '';
-    req.on('data', (c) => { raw += c; });
-    req.on('end', () => { try { resolve(JSON.parse(raw)); } catch { resolve({}); } });
+    let raw = '', size = 0;
+    req.on('data', (c) => {
+      size += c.length;
+      if (size > MAX_BODY) {
+        reject(Object.assign(new Error('payload too large'), { status: 413 }));
+        req.destroy();
+        return;
+      }
+      raw += c;
+    });
+    req.on('end',   () => { try { resolve(JSON.parse(raw || '{}')); } catch { resolve({}); } });
+    req.on('error', () => resolve({}));
+  }).catch((e) => {
+    jsonErr(res, e.message, e.status || 400);
+    return null;
   });
+  if (body === null) return;   // over-limit response already sent
 
   try {
     // ── Devices ────────────────────────────────────────────────────────────
@@ -230,6 +278,12 @@ async function handleRequest(req, res) {
         res.end(data);
       });
       return;
+    }
+
+    // Unknown /api/* routes get a JSON 404 — never the index.html fallback,
+    // which used to make API clients parse HTML as data.
+    if (url.startsWith('/api/')) {
+      return jsonErr(res, `no such endpoint: ${method} ${url}`, 404);
     }
 
     // Fallback → serve mobile web UI

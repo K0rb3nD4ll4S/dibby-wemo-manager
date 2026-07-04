@@ -53,5 +53,16 @@ services:
       PORT: 3456
       TZ: America/New_York         # set to your timezone for rule scheduling
 
+      # ── Optional security hardening ────────────────────────────────────
+      # DWM_API_KEY: "pick-a-long-random-string"
+      #   When set, every state-CHANGING request (device toggles, rule edits,
+      #   voice-alias changes) must carry the key; viewing the dashboard and
+      #   healthchecks stay open.  Teach the bundled web UI the key once from
+      #   the browser console:  localStorage.setItem('dwm.apiKey', '<key>')
+      # DWM_CORS_ORIGIN: "http://your-nas:3456"
+      #   Lock cross-origin access to your dashboard's origin (default: *).
+      # DWM_MAX_BODY: "1048576"
+      #   Max request-body bytes (default 1 MiB).
+
     volumes:
       - /volume1/docker/dibby-wemo/data:/data

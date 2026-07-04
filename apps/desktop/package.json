@@ -63,7 +63,9 @@
         {
           "from": "resources/node-macos",
           "to": "node",
-          "filter": ["**/*"]
+          "filter": [
+            "**/*"
+          ]
         }
       ],
       "hardenedRuntime": false,
@@ -96,7 +98,6 @@
       "icon": "resources/icon.ico",
       "signtoolOptions": {
         "certificateFile": "resources/srsit-codesign.pfx",
-        "certificatePassword": "SRSITSign2024!",
         "signingHashAlgorithms": [
           "sha256"
         ]
@@ -133,7 +134,9 @@
         {
           "from": "resources/node-linux",
           "to": "node",
-          "filter": ["**/*"]
+          "filter": [
+            "**/*"
+          ]
         }
       ]
     },
