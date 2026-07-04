@@ -108,47 +108,61 @@ function loadDevices() {
 // How many devices to work on simultaneously.  Wemo radios are slow (up to
 // 30 s per SOAP round-trip when sleepy) — serial processing of a 30-device
 // home takes forever.  A small pool keeps LAN load negligible while cutting
-// wall-clock time roughly by the pool factor.  Rule deletions WITHIN a device
-// stay sequential — each DeleteRule rewrites the device's rule DB and Wemos
-// don't handle concurrent StoreRules well.
-const CONCURRENCY = Math.max(1, parseInt(process.env.DWM_CLEAR_CONCURRENCY || '4', 10) || 4);
+// wall-clock time roughly by the pool factor.  Each device is wiped in a
+// SINGLE StoreRules round-trip (see clearAllRules), so there's no per-rule
+// reboot storm even at higher concurrency.
+const CONCURRENCY = Math.max(1, parseInt(process.env.DWM_CLEAR_CONCURRENCY || '6', 10) || 6);
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function clearOneDevice(d) {
   const name  = d.friendlyName || d.name || d.host;
   const tag   = `${C.bold}${name}${C.reset} ${C.dim}(${d.host}:${d.port})${C.reset}`;
   const lines = [];   // buffered so pooled devices don't interleave output
-  try {
-    const data = await wemo.fetchRules(d.host, Number(d.port));
-    const ruleIds = (data.rules || []).map((r) => r.RuleID).filter(Boolean);
 
-    if (ruleIds.length === 0) {
-      lines.push(`  ${C.dim}— ${tag} — no firmware rules${C.reset}`);
-      return { name, deleted: 0, failed: 0, skipped: true, lines };
-    }
-
-    lines.push(`  ${tag} — deleting ${C.yellow}${ruleIds.length}${C.reset} firmware rule(s)…`);
-    let ok = 0, bad = 0;
-    for (const ruleId of ruleIds) {
-      try {
-        await wemo.deleteRule(d.host, Number(d.port), ruleId);
-        ok++;
-      } catch (e) {
-        bad++;
-        lines.push(`     ${C.red}× rule ${ruleId} failed: ${e.message}${C.reset}`);
+  // One retry: a device that StoreRules briefly bounced (or was mid-reboot
+  // from an earlier op) refuses the connection for a few seconds.  Wait and
+  // try once more before giving up.
+  const MAX_ATTEMPTS = 2;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      // Single-shot: one FetchRules + one StoreRules wipes the whole table,
+      // instead of one StoreRules per rule (which caused the reboot storm).
+      const removed = await wemo.clearAllRules(d.host, Number(d.port));
+      if (removed === 0) {
+        lines.push(`  ${C.dim}— ${tag} — no firmware rules${C.reset}`);
+        return { name, deleted: 0, failed: 0, skipped: true, lines };
       }
+      lines.push(`  ${C.green}✓ ${tag} — wiped ${removed} firmware rule(s)${C.reset}`);
+      return { name, deleted: removed, failed: 0, skipped: false, lines };
+    } catch (e) {
+      const msg = String(e.message || e);
+
+      // Firmware that doesn't expose FetchRules (Dimmer V2 / newer
+      // Lightswitch-3_0) — expected, not a failure.
+      if (/upnp\s*action\s*not\s*supported|Unknown Action|401|403|404/i.test(msg)) {
+        lines.push(`  ${C.dim}— ${tag} — FetchRules not supported on this firmware (skipped)${C.reset}`);
+        return { name, deleted: 0, failed: 0, skipped: true, unsupported: true, lines };
+      }
+
+      // An empty ruleDbPath means the device has never stored a rules DB —
+      // nothing to wipe.  Count it as "already empty", not an error.
+      if (/no ruleDbPath/i.test(msg)) {
+        lines.push(`  ${C.dim}— ${tag} — no rules database on device (already empty)${C.reset}`);
+        return { name, deleted: 0, failed: 0, skipped: true, lines };
+      }
+
+      // Connection-level errors → the device is likely mid-reboot.  Retry once.
+      const isConn = /ECONNREFUSED|ECONNRESET|ETIMEDOUT|aborted|socket hang up/i.test(msg);
+      if (isConn && attempt < MAX_ATTEMPTS) {
+        lines.push(`  ${C.dim}… ${tag} — ${msg}; retrying in 5s…${C.reset}`);
+        await sleep(5000);
+        continue;
+      }
+
+      lines.push(`  ${C.red}× ${tag} — ${msg}${C.reset}`);
+      return { name, deleted: 0, failed: 1, skipped: false, lines };
     }
-    lines.push(`     ${C.green}✓ ${ok} deleted${C.reset}` + (bad ? `, ${C.red}${bad} failed${C.reset}` : ''));
-    return { name, deleted: ok, failed: bad, skipped: false, lines };
-  } catch (e) {
-    // Dimmer V2 (WDS060) newer firmware doesn't expose FetchRules — that's
-    // expected, not a bug.  Surface it clearly + don't count as a failure.
-    const msg = String(e.message || e);
-    if (/upnp\s*action\s*not\s*supported|Unknown Action|401|403|404/i.test(msg)) {
-      lines.push(`  ${C.dim}— ${tag} — FetchRules not supported on this firmware (skipped)${C.reset}`);
-      return { name, deleted: 0, failed: 0, skipped: true, unsupported: true, lines };
-    }
-    lines.push(`  ${C.red}× ${tag} — ${msg}${C.reset}`);
-    return { name, deleted: 0, failed: 1, skipped: false, lines };
   }
 }
 

@@ -248,7 +248,14 @@ function discoverDevices(timeoutMs = 10_000) {
 // Rules — fetch (ZIP + SQLite)
 // ---------------------------------------------------------------------------
 
-async function fetchRules(host, port) {
+// Fetch the raw rules DB from the device: { version, dbBuffer, entryName }.
+//
+// Mutators must modify THIS buffer in place — the firmware's DB contains
+// ~10 tables (RULESNOTIFYMESSAGE, BLOCKEDRULES, LOCATIONINFO, …) and
+// silently ignores an uploaded DB that's missing its expected schema.
+// Rebuilding a 3-table DB from scratch looks like it works (StoreRules
+// returns OK) but never persists — verified against live F7C030 hardware.
+async function _fetchRuleDb(host, port) {
   const res = await soapWithFallback(host, port, RULES_URL, RULES_SVC, 'FetchRules');
   const version = String(res['ruleDbVersion'] ?? '0');
   const dbUrl   = String(res['ruleDbPath'] ?? '');
@@ -259,8 +266,14 @@ async function fetchRules(host, port) {
   const entry = zip.getEntries().find((e) => e.entryName.endsWith('.db'));
   if (!entry) throw new Error('No .db file in rules ZIP');
 
+  return { version, dbBuffer: entry.getData(), entryName: entry.entryName };
+}
+
+async function fetchRules(host, port) {
+  const { version, dbBuffer } = await _fetchRuleDb(host, port);
+
   const SQL = await getSql();
-  const db  = new SQL.Database(entry.getData());
+  const db  = new SQL.Database(dbBuffer);
 
   const rules       = _dbQuery(db, 'SELECT * FROM RULES');
   const ruleDevices = _dbQuery(db, 'SELECT * FROM RULEDEVICES');
@@ -282,22 +295,24 @@ function _dbQuery(db, sql) {
 // Rules — store (ZIP + CDATA encode)
 // ---------------------------------------------------------------------------
 
-async function storeRules(host, port, version, dbBuffer) {
+async function storeRules(host, port, version, dbBuffer, entryName) {
   const zip = new AdmZip();
-  zip.addFile('temppluginRules.db', dbBuffer);
+  zip.addFile(entryName || 'temppluginRules.db', dbBuffer);
   const b64 = zip.toBuffer().toString('base64');
 
-  // CRITICAL: body must be entity-encoded CDATA — hand-crafted XML only
-  const soapXml = `<?xml version="1.0" encoding="utf-8"?>
-<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-  <s:Body>
-    <u:StoreRules xmlns:u="urn:Belkin:service:rules:1">
-      <ruleDbVersion>${version}</ruleDbVersion>
-      <StartSync>NOSYNC</StartSync>
-      <ruleDbBody>&lt;![CDATA[${b64}]]&gt;</ruleDbBody>
-    </u:StoreRules>
-  </s:Body>
-</s:Envelope>`;
+  // CRITICAL details, matched to the battle-tested desktop implementation
+  // (apps/desktop/src/main/wemo.js):
+  //  - body must be entity-encoded CDATA — hand-crafted XML only
+  //  - <processDb>1</processDb> tells the firmware to actually APPLY the DB;
+  //    without it the device ACKs the upload and silently discards it
+  //  - success is signalled via <errorInfo> containing 'successful', NOT by
+  //    the absence of the word 'failed' (checked below)
+  const soapXml = `<?xml version="1.0" encoding="utf-8"?>`
+    + `<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">`
+    + `<s:Body><u:StoreRules xmlns:u="${RULES_SVC}">`
+    + `<ruleDbVersion>${version}</ruleDbVersion><processDb>1</processDb>`
+    + `<ruleDbBody>&lt;![CDATA[${b64}]]&gt;</ruleDbBody>`
+    + `</u:StoreRules></s:Body></s:Envelope>`;
 
   const url = `http://${host}:${port}${RULES_URL}`;
   const res = await axios.post(url, soapXml, {
@@ -309,82 +324,105 @@ async function storeRules(host, port, version, dbBuffer) {
     httpAgent: NO_KEEPALIVE,
     timeout: 20_000,
   });
-  if (String(res.data).includes('failed')) throw new Error('StoreRules: device returned failure');
+
+  const parsed = await parseStringPromise(res.data, { explicitArray: false, ignoreAttrs: true });
+  const errorInfo = String(
+    parsed?.['s:Envelope']?.['s:Body']?.['u:StoreRulesResponse']?.['errorInfo'] ?? ''
+  ).trim();
+  if (!errorInfo.toLowerCase().includes('successful')) {
+    throw new Error(`StoreRules rejected by device: ${errorInfo || 'no errorInfo in response'}`);
+  }
 }
 
 // ---------------------------------------------------------------------------
 // Rules — create / update / delete / toggle
+//
+// All mutators open the DEVICE'S OWN fetched DB and modify it in place,
+// preserving the full firmware schema (~10 tables), then upload with
+// processDb=1.  Rebuilding a 3-table DB from scratch — the previous
+// approach — is ACKed by the device but silently never applied.
 // ---------------------------------------------------------------------------
 
-async function createRule(host, port, ruleData) {
-  const SQL    = await getSql();
-  const { version, rules, ruleDevices, targets } = await fetchRules(host, port);
-  const db     = new SQL.Database();
-  _createSchema(db);
-  for (const r of rules)       _insertRule(db, r);
-  for (const r of ruleDevices) _insertRuleDevice(db, r);
-  for (const r of targets)     _insertTargetDevice(db, r);
+async function _mutateRuleDb(host, port, mutate) {
+  const SQL = await getSql();
+  const { version, dbBuffer, entryName } = await _fetchRuleDb(host, port);
+  const db = new SQL.Database(dbBuffer);
 
-  const newId  = _nextRuleId(db);
-  _insertNewRule(db, newId, ruleData);
+  let result;
+  try {
+    result = mutate(db);
+  } catch (e) {
+    db.close();
+    throw e;
+  }
 
-  const buf    = Buffer.from(db.export());
+  const buf = Buffer.from(db.export());
   db.close();
-  await storeRules(host, port, String(parseInt(version, 10) + 2), buf);
-  return newId;
+  await storeRules(host, port, String(parseInt(version, 10) + 2), buf, entryName);
+  return result;
+}
+
+async function createRule(host, port, ruleData) {
+  return _mutateRuleDb(host, port, (db) => {
+    const newId = _nextRuleId(db);
+    _insertNewRule(db, newId, ruleData);
+    return newId;
+  });
 }
 
 async function updateRule(host, port, ruleId, ruleData) {
-  const SQL    = await getSql();
-  const { version, rules, ruleDevices, targets } = await fetchRules(host, port);
-  const db     = new SQL.Database();
-  _createSchema(db);
-  for (const r of rules)       _insertRule(db, r);
-  for (const r of ruleDevices) _insertRuleDevice(db, r);
-  for (const r of targets)     _insertTargetDevice(db, r);
-
-  db.run('DELETE FROM RULES WHERE RuleID = ?', [String(ruleId)]);
-  db.run('DELETE FROM RULEDEVICES WHERE RuleID = ?', [String(ruleId)]);
-  db.run('DELETE FROM TARGETDEVICES WHERE RuleID = ?', [String(ruleId)]);
-  _insertNewRule(db, ruleId, ruleData);
-
-  const buf    = Buffer.from(db.export());
-  db.close();
-  await storeRules(host, port, String(parseInt(version, 10) + 2), buf);
+  await _mutateRuleDb(host, port, (db) => {
+    db.run('DELETE FROM RULES WHERE RuleID = ?', [String(ruleId)]);
+    db.run('DELETE FROM RULEDEVICES WHERE RuleID = ?', [String(ruleId)]);
+    db.run('DELETE FROM TARGETDEVICES WHERE RuleID = ?', [String(ruleId)]);
+    _insertNewRule(db, ruleId, ruleData);
+  });
 }
 
 async function deleteRule(host, port, ruleId) {
-  const SQL    = await getSql();
-  const { version, rules, ruleDevices, targets } = await fetchRules(host, port);
-  const db     = new SQL.Database();
-  _createSchema(db);
-  for (const r of rules)       _insertRule(db, r);
-  for (const r of ruleDevices) _insertRuleDevice(db, r);
-  for (const r of targets)     _insertTargetDevice(db, r);
+  await _mutateRuleDb(host, port, (db) => {
+    db.run('DELETE FROM RULES WHERE RuleID = ?', [String(ruleId)]);
+    db.run('DELETE FROM RULEDEVICES WHERE RuleID = ?', [String(ruleId)]);
+    db.run('DELETE FROM TARGETDEVICES WHERE RuleID = ?', [String(ruleId)]);
+  });
+}
 
-  db.run('DELETE FROM RULES WHERE RuleID = ?', [String(ruleId)]);
-  db.run('DELETE FROM RULEDEVICES WHERE RuleID = ?', [String(ruleId)]);
-  db.run('DELETE FROM TARGETDEVICES WHERE RuleID = ?', [String(ruleId)]);
+/**
+ * Wipe EVERY firmware rule on a device in a single StoreRules round-trip.
+ * Empties every rule-related table present in the device's own DB.
+ * Returns the number of rules removed (0 = device was already clean and
+ * was not written to at all).
+ */
+async function clearAllRules(host, port) {
+  const SQL = await getSql();
+  const { version, dbBuffer, entryName } = await _fetchRuleDb(host, port);
+  const db = new SQL.Database(dbBuffer);
 
-  const buf    = Buffer.from(db.export());
+  let count = 0;
+  try {
+    const stmt = db.prepare('SELECT COUNT(*) AS n FROM RULES');
+    if (stmt.step()) count = Number(stmt.getAsObject().n) || 0;
+    stmt.free();
+  } catch { /* no RULES table → nothing to clear */ }
+  if (count === 0) { db.close(); return 0; }
+
+  const tables = _dbQuery(db, "SELECT name FROM sqlite_master WHERE type='table'")
+    .map((r) => String(r.name || ''));
+  for (const t of ['RULES', 'RULEDEVICES', 'TARGETDEVICES', 'RULESNOTIFYMESSAGE',
+                   'BLOCKEDRULES', 'SENSORNOTIFICATION', 'GROUPDEVICES', 'DEVICECOMBINATION']) {
+    if (tables.includes(t)) db.run(`DELETE FROM ${t}`);
+  }
+
+  const buf = Buffer.from(db.export());
   db.close();
-  await storeRules(host, port, String(parseInt(version, 10) + 2), buf);
+  await storeRules(host, port, String(parseInt(version, 10) + 2), buf, entryName);
+  return count;
 }
 
 async function toggleRule(host, port, ruleId, enabled) {
-  const SQL    = await getSql();
-  const { version, rules, ruleDevices, targets } = await fetchRules(host, port);
-  const db     = new SQL.Database();
-  _createSchema(db);
-  for (const r of rules)       _insertRule(db, r);
-  for (const r of ruleDevices) _insertRuleDevice(db, r);
-  for (const r of targets)     _insertTargetDevice(db, r);
-
-  db.run('UPDATE RULES SET State = ? WHERE RuleID = ?', [enabled ? '1' : '0', String(ruleId)]);
-
-  const buf    = Buffer.from(db.export());
-  db.close();
-  await storeRules(host, port, String(parseInt(version, 10) + 2), buf);
+  await _mutateRuleDb(host, port, (db) => {
+    db.run('UPDATE RULES SET State = ? WHERE RuleID = ?', [enabled ? '1' : '0', String(ruleId)]);
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -509,5 +547,6 @@ module.exports = {
   createRule,
   updateRule,
   deleteRule,
+  clearAllRules,
   toggleRule,
 };

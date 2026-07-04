@@ -258,7 +258,13 @@ function discoverDevices(timeoutMs = 10_000) {
 // Rules — fetch (ZIP + SQLite)
 // ---------------------------------------------------------------------------
 
-async function fetchRules(host, port) {
+// Fetch the raw rules DB from the device: { version, dbBuffer }.
+// Callers that need to WRITE back should modify THIS buffer in place —
+// the firmware's DB contains ~10 tables (RULESNOTIFYMESSAGE, BLOCKEDRULES,
+// LOCATIONINFO, …) and silently ignores an uploaded DB that's missing its
+// expected schema.  Rebuilding a 3-table DB from scratch looks like it
+// works (StoreRules returns OK) but never persists.
+async function _fetchRuleDb(host, port) {
   const res = await soapWithFallback(host, port, RULES_URL, RULES_SVC, 'FetchRules');
   const version = String(res['ruleDbVersion'] ?? '0');
   const dbUrl   = String(res['ruleDbPath'] ?? '');
@@ -269,8 +275,16 @@ async function fetchRules(host, port) {
   const entry = zip.getEntries().find((e) => e.entryName.endsWith('.db'));
   if (!entry) throw new Error('No .db file in rules ZIP');
 
+  // entryName is preserved so StoreRules can echo the device's own filename
+  // back — some firmware only applies DBs whose inner name matches.
+  return { version, dbBuffer: entry.getData(), entryName: entry.entryName };
+}
+
+async function fetchRules(host, port) {
+  const { version, dbBuffer } = await _fetchRuleDb(host, port);
+
   const SQL = await getSql();
-  const db  = new SQL.Database(entry.getData());
+  const db  = new SQL.Database(dbBuffer);
 
   const rules       = _dbQuery(db, 'SELECT * FROM RULES');
   const ruleDevices = _dbQuery(db, 'SELECT * FROM RULEDEVICES');
@@ -292,22 +306,24 @@ function _dbQuery(db, sql) {
 // Rules — store (ZIP + CDATA encode)
 // ---------------------------------------------------------------------------
 
-async function storeRules(host, port, version, dbBuffer) {
+async function storeRules(host, port, version, dbBuffer, entryName) {
   const zip = new AdmZip();
-  zip.addFile('temppluginRules.db', dbBuffer);
+  zip.addFile(entryName || 'temppluginRules.db', dbBuffer);
   const b64 = zip.toBuffer().toString('base64');
 
-  // CRITICAL: body must be entity-encoded CDATA — hand-crafted XML only
-  const soapXml = `<?xml version="1.0" encoding="utf-8"?>
-<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-  <s:Body>
-    <u:StoreRules xmlns:u="urn:Belkin:service:rules:1">
-      <ruleDbVersion>${version}</ruleDbVersion>
-      <StartSync>NOSYNC</StartSync>
-      <ruleDbBody>&lt;![CDATA[${b64}]]&gt;</ruleDbBody>
-    </u:StoreRules>
-  </s:Body>
-</s:Envelope>`;
+  // CRITICAL details, matched to the battle-tested desktop implementation
+  // (apps/desktop/src/main/wemo.js):
+  //  - body must be entity-encoded CDATA — hand-crafted XML only
+  //  - <processDb>1</processDb> tells the firmware to actually APPLY the DB;
+  //    without it the device ACKs the upload and silently discards it
+  //  - success is signalled via <errorInfo> containing 'successful', NOT by
+  //    the absence of the word 'failed'
+  const soapXml = `<?xml version="1.0" encoding="utf-8"?>`
+    + `<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">`
+    + `<s:Body><u:StoreRules xmlns:u="${RULES_SVC}">`
+    + `<ruleDbVersion>${version}</ruleDbVersion><processDb>1</processDb>`
+    + `<ruleDbBody>&lt;![CDATA[${b64}]]&gt;</ruleDbBody>`
+    + `</u:StoreRules></s:Body></s:Envelope>`;
 
   const url = `http://${host}:${port}${RULES_URL}`;
   const res = await axios.post(url, soapXml, {
@@ -317,9 +333,16 @@ async function storeRules(host, port, version, dbBuffer) {
       'Connection': 'close',
     },
     httpAgent: NO_KEEPALIVE,
-    timeout: 20_000,
+    timeout: 30_000,
   });
-  if (String(res.data).includes('failed')) throw new Error('StoreRules: device returned failure');
+
+  const parsed = await parseStringPromise(res.data, { explicitArray: false, ignoreAttrs: true });
+  const errorInfo = String(
+    parsed?.['s:Envelope']?.['s:Body']?.['u:StoreRulesResponse']?.['errorInfo'] ?? ''
+  ).trim();
+  if (!errorInfo.toLowerCase().includes('successful')) {
+    throw new Error(`StoreRules rejected by device: ${errorInfo || 'no errorInfo in response'}`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -379,6 +402,65 @@ async function deleteRule(host, port, ruleId) {
   const buf    = Buffer.from(db.export());
   db.close();
   await storeRules(host, port, String(parseInt(version, 10) + 2), buf);
+}
+
+/**
+ * Wipe EVERY firmware rule on a device in a single StoreRules round-trip.
+ *
+ * The per-rule deleteRule() does a full FetchRules → rebuild → StoreRules
+ * cycle for each rule; on a 20-rule device that's 20 StoreRules writes, and
+ * each write briefly resets the Wemo's SOAP radio — so later deletes on the
+ * same device hit a device mid-reconnect (ECONNREFUSED / ETIMEDOUT storm).
+ *
+ * This does it once: fetch the current DB, empty all three rule tables,
+ * store the emptied DB.  Returns the count of rules that were present.
+ */
+async function clearAllRules(host, port) {
+  const SQL = await getSql();
+  const { version, dbBuffer, entryName } = await _fetchRuleDb(host, port);
+
+  // Open the DEVICE'S OWN database and empty the rule tables in place.
+  // This preserves every other table (RULESNOTIFYMESSAGE, BLOCKEDRULES,
+  // LOCATIONINFO, SENSORNOTIFICATION, …) plus sqlite metadata, which the
+  // firmware requires before it will accept the uploaded DB.
+  const db = new SQL.Database(dbBuffer);
+
+  let count = 0;
+  try {
+    const stmt = db.prepare('SELECT COUNT(*) AS n FROM RULES');
+    if (stmt.step()) count = Number(stmt.getAsObject().n) || 0;
+    stmt.free();
+  } catch { /* no RULES table at all → nothing to clear */ }
+
+  if (count === 0) { db.close(); return 0; }   // don't touch the device
+
+  // Empty every rule-related table that exists in this DB.  Table sets vary
+  // by firmware generation, so probe sqlite_master rather than assuming.
+  const tables = _dbQuery(db, "SELECT name FROM sqlite_master WHERE type='table'")
+    .map((r) => String(r.name || ''));
+  for (const t of ['RULES', 'RULEDEVICES', 'TARGETDEVICES', 'RULESNOTIFYMESSAGE',
+                   'BLOCKEDRULES', 'SENSORNOTIFICATION', 'GROUPDEVICES', 'DEVICECOMBINATION']) {
+    if (tables.includes(t)) db.run(`DELETE FROM ${t}`);
+  }
+
+  const buf = Buffer.from(db.export());
+  db.close();
+  await storeRules(host, port, String(parseInt(version, 10) + 2), buf, entryName);
+
+  // Read-back verification: the firmware ACKs StoreRules even when it
+  // silently rejects the DB, so trust only what FetchRules says afterwards.
+  await new Promise((r) => setTimeout(r, 2000));
+  try {
+    const after = await fetchRules(host, port);
+    if ((after.rules || []).length > 0) {
+      throw new Error(`device still reports ${after.rules.length} rule(s) after wipe`);
+    }
+  } catch (e) {
+    if (/still reports/.test(String(e.message))) throw e;
+    // Post-store reboot can make the verification read itself flaky —
+    // treat an unreachable verify as unverified success rather than failure.
+  }
+  return count;
 }
 
 async function toggleRule(host, port, ruleId, enabled) {
@@ -519,5 +601,6 @@ module.exports = {
   createRule,
   updateRule,
   deleteRule,
+  clearAllRules,
   toggleRule,
 };
