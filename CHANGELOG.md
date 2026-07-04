@@ -4,7 +4,19 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
-## [Unreleased — hardening pass, ships with the next release]
+## [2.0.40] — 2026-07-04
+
+### Critical fix: firmware-rule writes never persisted (Homebridge Device Rules tab + new tool)
+
+Field debugging on a live 30-device network uncovered that **every firmware-rule write through the Homebridge plugin's SOAP client was a silent no-op** — the device ACKed each `StoreRules` upload and then discarded it. The Homebridge UI's Device Rules tab (toggle / delete / create) has never actually changed anything on a device. Three compounding bugs in `packages/homebridge-plugin/lib/wemo-client.js`:
+
+1. **Missing `<processDb>1</processDb>`.** The client sent `<StartSync>NOSYNC</StartSync>` where the firmware requires `processDb=1` to actually apply an uploaded DB. Proof: the on-device `ruleDbVersion` never advanced across "successful" writes; with the fix it advances by 2 per write and rules genuinely change.
+2. **Wrong success detection.** Success was inferred from the absence of the word "failed" in the response body; the firmware actually signals success via an `<errorInfo>` field containing `successful`. Rejections were invisible.
+3. **Schema-stripping rebuild.** Mutators rebuilt a 3-table SQLite DB from scratch; the firmware's own DB has ~10 tables (`RULESNOTIFYMESSAGE`, `BLOCKEDRULES`, `LOCATIONINFO`, …) and ignores an upload missing its expected schema. All mutators now open the **device's own fetched DB** and modify it in place, echoing back the original zip entry name.
+
+New `clearAllRules(host, port)` export: single-shot whole-table wipe with post-store **read-back verification** — because the firmware ACKs even rejected uploads, only a subsequent `FetchRules` is trusted.
+
+Verified live: 300 firmware rules wiped across 16 devices, every wipe read-back-confirmed, DB versions advanced, DWM rules untouched.
 
 ### Security
 
