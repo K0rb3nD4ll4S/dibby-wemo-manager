@@ -4,6 +4,40 @@ All notable changes to Dibby Wemo Manager are documented here.
 
 ---
 
+## [2.0.41] — 2026-09-24
+
+### Fix: countdown rules ignored their day-of-week selection
+
+A countdown rule's `days` selection was saved and displayed correctly but was never consulted
+when the rule was evaluated. Only the trigger state and the optional active window were
+checked, so a countdown configured for weekdays only still started on a Saturday. Every
+scheduler implementation carried the same omission and all three are fixed:
+
+- `packages/homebridge-plugin/lib/scheduler.js` (Homebridge plugin / Docker / Synology)
+- `apps/desktop/src/main/scheduler.js` (Windows, macOS, Linux desktop app)
+- `custom_components/dibby_wemo/scheduler.py` (Home Assistant integration)
+
+Each now applies the same day filter the Schedule and Away paths already used, via the existing
+`jsToWemoDayId()` / `_py_to_wemo_day()` helpers.
+
+**Midnight-crossing windows are attributed to the day they started on.** For a 22:00 → 06:00
+window, an evaluation at 01:30 rolls back to the previous weekday before the day test, so a
+"Friday" countdown covers Fri 22:00 → Sat 06:00 — matching what the rule editor implies and
+what the Schedule path already did.
+
+A day miss is handled exactly like a window miss: any pending countdown timer for that rule is
+cleared and the rule is skipped.
+
+**Rules with no days selected are unchanged and still run every day.** The rule editor
+deliberately exempts Countdown from the "select at least one day" requirement, so an empty
+`days` array continues to mean *every day*.
+
+### Affected packages
+
+All monorepo packages bumped to **2.0.41** in unified versioning.
+
+---
+
 ## [2.0.40] — 2026-07-04
 
 ### Critical fix: firmware-rule writes never persisted (Homebridge Device Rules tab + new tool)

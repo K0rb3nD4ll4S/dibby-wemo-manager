@@ -514,7 +514,8 @@ class LocalScheduler {
         //    the pending timer if the device leaves the state or window. ──
         if (countdownDevMap.has(key)) {
           this._countdownStates.set(key, isOn);
-          const nowSecs = secondsFromMidnight(new Date());
+          const now     = new Date();
+          const nowSecs = secondsFromMidnight(now);
           for (const { rule, td } of countdownDevMap.get(key)) {
             const condition      = rule.countdownAction ?? 'on_to_off';
             const inTriggerState = condition === 'on_to_off' ? isOn : !isOn;
@@ -523,10 +524,11 @@ class LocalScheduler {
 
             // Active window check (if defined)
             let inWindow = true;
+            let crossesMidnight = false;
             const winStart = Number(rule.windowStart ?? -1);
             const winEnd   = Number(rule.windowEnd   ?? -1);
             if (winStart >= 0 && winEnd >= 0) {
-              const crossesMidnight = winEnd < winStart;
+              crossesMidnight = winEnd < winStart;
               inWindow = crossesMidnight
                 ? (nowSecs >= winStart || nowSecs <= winEnd)
                 : (nowSecs >= winStart && nowSecs <= winEnd);
@@ -534,8 +536,16 @@ class LocalScheduler {
               inWindow = nowSecs >= winStart;
             }
 
-            // Not in trigger state / outside window → cancel any pending timer
-            if (!inTriggerState || !inWindow) {
+            // Day-of-week check — a window that crossed midnight still belongs to
+            // the day it started on, so roll back a day while in its tail half.
+            let onDay = true;
+            if ((rule.days ?? []).length) {
+              const jsDay = crossesMidnight && nowSecs <= winEnd ? (now.getDay() + 6) % 7 : now.getDay();
+              onDay = rule.days.includes(jsToWemoDayId(jsDay));
+            }
+
+            // Not in trigger state / outside window or day → cancel any pending timer
+            if (!inTriggerState || !inWindow || !onDay) {
               if (existing) { clearTimeout(existing.timer); this._countdownTimers.delete(timerKey); }
               continue;
             }

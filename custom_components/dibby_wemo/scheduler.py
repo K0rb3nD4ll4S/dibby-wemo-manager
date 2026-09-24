@@ -541,7 +541,8 @@ class DwmScheduler:
                 # Cancels the pending timer if the device leaves the state or window.
                 if key in countdown_dev_map:
                     self._countdown_states[key] = is_on
-                    now_secs = _secs_from_midnight()
+                    now_dt = datetime.now()
+                    now_secs = _secs_from_midnight(now_dt)
                     for item in countdown_dev_map[key]:
                         rule, td = item["rule"], item["td"]
                         condition = rule.get("countdownAction", "on_to_off")
@@ -550,18 +551,30 @@ class DwmScheduler:
                         existing = self._countdown_timers.get(timer_key)
 
                         in_window = True
+                        crosses_midnight = False
                         win_start = rule.get("windowStart", -1)
                         win_end   = rule.get("windowEnd",   -1)
                         if win_start is not None and win_start >= 0 and win_end is not None and win_end >= 0:
-                            if win_end < win_start:
+                            crosses_midnight = win_end < win_start
+                            if crosses_midnight:
                                 in_window = now_secs >= win_start or now_secs <= win_end
                             else:
                                 in_window = win_start <= now_secs <= win_end
                         elif win_start is not None and win_start >= 0:
                             in_window = now_secs >= win_start
 
-                        # Not in trigger state / outside window → cancel pending timer
-                        if not in_trigger_state or not in_window:
+                        # Day-of-week check — a window that crossed midnight still belongs
+                        # to the day it started on, so roll back a day in its tail half.
+                        on_day = True
+                        rule_days = rule.get("days") or []
+                        if rule_days:
+                            weekday = now_dt.weekday()
+                            if crosses_midnight and now_secs <= win_end:
+                                weekday = (weekday - 1) % 7
+                            on_day = _py_to_wemo_day(weekday) in rule_days
+
+                        # Not in trigger state / outside window or day → cancel pending timer
+                        if not in_trigger_state or not in_window or not on_day:
                             if existing:
                                 existing.cancel()
                                 self._countdown_timers.pop(timer_key, None)
